@@ -1,0 +1,126 @@
+# build artifacts & cache
+build/
+build*/
+tests/JSONTestSuite
+
+# python
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+env/
+.venv/
+
+# coverage & profiling
+*.gcov
+*.gcda
+*.gcno
+*.profraw
+*.profdata
+perf.data
+perf.data.old
+
+# libraries & objects
+*.o
+*.obj
+*.a
+*.lib
+*.so
+*.dylib
+*.dll
+
+# executables & compiled binaries
+*.exe
+*.out
+*.app
+test_amalgamated
+test_dom
+tests/run_stage1
+tests/run_stage1_avx2
+tests/run_tests
+tests/run_tests_avx2
+tests/test_allocator
+tests/test_bomb
+tests/test_builder
+tests/test_builder_remove
+tests/test_conformance
+tests/test_fastfloat
+tests/test_pointer
+tests/test_stage1
+tests/test_stage2
+tests/test_stringify
+tests/test_suite
+tests/test_utf8
+tests/fuzzer
+tests/fuzz_parser
+benchmarks/bench_compare
+benchmarks/bench_gotos
+benchmarks/bench_parse
+examples/dom_access
+examples/embedded_noalloc
+examples/error_handling
+examples/float128_precision
+examples/simple_parse
+
+# wasm build artifacts
+docs/demo/cjsonx_wasm.js
+docs/demo/cjsonx_wasm.wasm
+
+# submodules / test suites
+tests/JSONTestSuite
+/JSONTestSuite/
+
+# datasets
+benchmarks/bench_datasets/*.json
+!benchmarks/bench_datasets/.keep
+
+# environment & secrets (security)
+.env
+.env.*
+*.local
+credentials.json
+*.pem
+*.key
+
+# logs & temporary
+*.log
+*.bak
+*.tmp
+*.temp
+core
+core.*
+
+# cmake specific
+CMakeCache.txt
+CMakeFiles/
+Makefile
+cmake_install.cmake
+install_manifest.txt
+compile_commands.json
+_deps/
+
+# IDE / editor configs
+.vscode/
+.idea/
+.vs/
+
+# vim & neovim
+[._]*.s[a-v][a-z]
+[._]*.sw[a-p]
+[._]s[a-rt-v][a-z]
+[._]ss[a-gi-z]
+[._]uv[a-z]
+[._]sw?
+[._]*.un~
+undo/
+.netrwhist
+*~
+
+# os specific
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# c++ tools
+.cache/
+.clangd/
