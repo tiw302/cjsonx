@@ -1,0 +1,173 @@
+/**
+ * @file cjsonx_fastfloat.h
+ * @brief Fast float parser using Clinger and Eisel-Lemire
+ *
+ * @note Architecture and coding style inspired by yyjson (https://github.com/ibireme/yyjson)
+ */
+#ifndef CJSONX_FASTFLOAT_H
+#define CJSONX_FASTFLOAT_H
+
+#include <stdint.h>
+#include <stdbool.h>
+#include <string.h>
+#include "cjsonx_eisel_lemire.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+// fast integer to double string parser using clinger's fast path and eisel-lemire algorithm.
+
+static const double cjsonx_power_of_10[] = {
+    1e0,  1e1,  1e2,  1e3,  1e4,  1e5,  1e6,  1e7,  1e8,  1e9,
+    1e10, 1e11, 1e12, 1e13, 1e14, 1e15, 1e16, 1e17, 1e18, 1e19,
+    1e20, 1e21, 1e22
+};
+
+// 64x64 -> 128 bit multiplication
+static inline uint64_t cjsonx_mul64_high(uint64_t a, uint64_t b) {
+#if defined(__SIZEOF_INT128__)
+    return (uint64_t)((((unsigned __int128)a) * b) >> 64);
+#else
+    uint32_t a32 = a >> 32, a00 = a & 0xFFFFFFFF;
+    uint32_t b32 = b >> 32, b00 = b & 0xFFFFFFFF;
+    uint64_t p00 = (uint64_t)a00 * b00;
+    uint64_t p32 = (uint64_t)a32 * b00 + (p00 >> 32);
+    uint64_t p03 = (uint64_t)a00 * b32 + (uint32_t)p32;
+    uint64_t p33 = (uint64_t)a32 * b32 + (p32 >> 32) + (p03 >> 32);
+    return p33;
+#endif
+}
+
+// convert (mantissa × 10^exponent) to ieee-754 double using fast path or eisel-lemire
+static inline bool cjsonx_compute_float(uint64_t mantissa, int exponent, double* out) {
+    if (mantissa == 0) {
+        *out = 0.0;
+        return true;
+    }
+    
+    // clinger's fast path
+    if (mantissa <= 9007199254740991ULL && exponent >= -22 && exponent <= 22) {
+        double d = (double)mantissa;
+        if (exponent < 0) d /= cjsonx_power_of_10[-exponent];
+        else d *= cjsonx_power_of_10[exponent];
+        *out = d;
+        return true;
+    }
+    
+    // eisel-lemire algorithm
+    if (exponent < -348) { *out = 0.0; return true; }
+    if (exponent > 342) { *out = 1e308 * 10; return true; } // infinity
+    
+    int index = exponent + 348;
+    uint64_t table_m = cjsonx_eisel_lemire_mantissa[index];
+    int16_t table_e = cjsonx_eisel_lemire_exp[index];
+    
+    int lz = __builtin_clzll(mantissa);
+    uint64_t w = mantissa << lz;
+    
+    uint64_t high = cjsonx_mul64_high(w, table_m);
+    
+    int msb = (high >> 63) == 1 ? 63 : 62;
+    int shift = msb - 52;
+    
+    uint64_t mantissa_53 = high >> shift;
+    
+    uint64_t mask = (1ULL << shift) - 1;
+    uint64_t discarded = high & mask;
+    
+    if (discarded == 0 || discarded == (1ULL << (shift - 1))) {
+        return false; // tie-breaking required, fallback to strtod
+    }
+    
+    if (discarded > (1ULL << (shift - 1))) {
+        mantissa_53++;
+    }
+    
+    if (mantissa_53 >= (1ULL << 53)) {
+        mantissa_53 >>= 1;
+        shift++;
+    }
+    
+    int final_exp = table_e - lz + 116 + shift;
+    
+    // subnormal numbers or extremely small numbers
+    if (final_exp <= -1023) {
+        return false;
+    }
+    
+    uint64_t d_bits = (mantissa_53 & 0xFFFFFFFFFFFFF) | ((uint64_t)(final_exp + 1023) << 52);
+    memcpy(out, &d_bits, 8);
+    return true;
+}
+
+static inline bool cjsonx_parse_fast_float(const char* s, const char* limit, const char** out_end, double* out_val) {
+    const char* p = s;
+    if (p >= limit) return false;
+    
+    bool negative = false;
+    if (*p == '-') { negative = true; p++; }
+    if (p >= limit) return false;
+    
+    uint64_t mantissa = 0;
+    int digits = 0;
+    
+    int exponent = 0;
+    if (*p == '0') {
+        p++;
+        if (p < limit && *p >= '0' && *p <= '9') return false; 
+    } else if (*p >= '1' && *p <= '9') {
+        while (p < limit && *p >= '0' && *p <= '9') {
+            if (digits < 19) {
+                mantissa = mantissa * 10 + (*p - '0');
+            } else {
+                exponent++;
+            }
+            digits++; p++;
+        }
+    } else return false;
+    
+    if (p < limit && *p == '.') {
+        p++;
+        if (p >= limit || *p < '0' || *p > '9') return false;
+        while (p < limit && *p >= '0' && *p <= '9') {
+            if (mantissa == 0 && *p == '0') {
+                exponent--;
+            } else if (digits < 19) {
+                mantissa = mantissa * 10 + (*p - '0');
+                exponent--;
+                digits++;
+            }
+            p++;
+        }
+    }
+    
+    if (p < limit && (*p == 'e' || *p == 'E')) {
+        p++;
+        bool exp_negative = false;
+        if (p < limit && (*p == '+' || *p == '-')) { exp_negative = (*p == '-'); p++; }
+        if (p >= limit || *p < '0' || *p > '9') return false;
+        int exp_val = 0;
+        while (p < limit && *p >= '0' && *p <= '9') {
+            if (exp_val < 10000) exp_val = exp_val * 10 + (*p - '0');
+            p++;
+        }
+        exponent += exp_negative ? -exp_val : exp_val;
+    }
+    
+    *out_end = p;
+    
+    double val;
+    if (!cjsonx_compute_float(mantissa, exponent, &val)) {
+        return false;
+    }
+    
+    *out_val = negative ? -val : val;
+    return true;
+}
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif // CJSONX_FASTFLOAT_H
