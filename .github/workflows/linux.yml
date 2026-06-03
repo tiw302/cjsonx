@@ -1,0 +1,34 @@
+name: Linux
+
+on:
+  push:
+    branches: [ master, main ]
+  pull_request:
+    branches: [ master, main ]
+
+jobs:
+  x86_64:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure CMake
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+      - name: Build
+        run: cmake --build build --config Release
+      - name: Run tests
+        run: ctest --test-dir build -C Release --output-on-failure -V
+
+  riscv64:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install RISC-V toolchain and QEMU
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y gcc-riscv64-linux-gnu qemu-user
+      - name: Compile and run (RISC-V64 Scalar via QEMU)
+        run: |
+          # Since we are cross-compiling, it's easier to use raw gcc than CMake here
+          # to avoid setting up a full CMake toolchain file for RISC-V.
+          riscv64-linux-gnu-gcc tests/test_suite.c -Iinclude -I. -O3 -lm -static -o test_riscv64
+          qemu-riscv64 ./test_riscv64
