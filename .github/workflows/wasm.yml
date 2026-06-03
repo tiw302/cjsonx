@@ -1,0 +1,33 @@
+name: WASM
+
+on:
+  push:
+    branches: [ master, main ]
+  pull_request:
+    branches: [ master, main ]
+
+jobs:
+  emscripten:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Emscripten
+        uses: mymindstorm/setup-emsdk@v14
+      
+      - name: Compile cjsonx_wasm.js
+        run: |
+          # Ensure emcc is available
+          source emsdk_env.sh || true
+          
+          emcc js/wasm_wrapper.c -o docs/demo/cjsonx_wasm.js \
+            -O3 \
+            -s EXPORTED_FUNCTIONS="['_cjsonx_parse', '_cjsonx_get', '_cjsonx_type', '_cjsonx_str', '_cjsonx_str_len', '_cjsonx_num', '_cjsonx_get_index', '_cjsonx_doc_free', '_malloc', '_free']" \
+            -s EXPORTED_RUNTIME_METHODS="['ccall', 'cwrap']" \
+            -s ALLOW_MEMORY_GROWTH=1 \
+            -Iinclude \
+            -I.
+
+      - name: Verify build artifacts exist
+        run: |
+          ls -la docs/demo/cjsonx_wasm.js
+          ls -la docs/demo/cjsonx_wasm.wasm
