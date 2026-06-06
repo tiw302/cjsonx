@@ -7,6 +7,11 @@
 #ifndef CJSONX_CONFIG_H
 #define CJSONX_CONFIG_H
 
+/*==============================================================================
+ * MARK: - configuration
+ *============================================================================*/
+
+
 // configuration constants
 
 // maximum nesting level for arrays and objects to prevent stack overflow
