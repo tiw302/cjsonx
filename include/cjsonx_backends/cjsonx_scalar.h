@@ -7,17 +7,22 @@
 #ifndef CJSONX_SCALAR_H
 #define CJSONX_SCALAR_H
 
+/*==============================================================================
+ * MARK: - scalar backend
+ *============================================================================*/
+
+
 #include <stdint.h>
 #include <stddef.h>
 #include <stdbool.h>
 
 // character classification helpers for stage 1 scanner
 
-static inline bool is_whitespace(char c) {
+static inline bool cjsonx_is_whitespace(char c) {
     return c == ' ' || c == '\t' || c == '\n' || c == '\r';
 }
 
-static inline bool is_structural(char c) {
+static inline bool cjsonx_is_structural(char c) {
     return c == '{' || c == '}' || c == '[' || c == ']' || c == ':' || c == ',' || c == '"';
 }
 
@@ -68,12 +73,12 @@ static inline bool cjsonx_stage1_scalar(const char* json, size_t length, cjsonx_
                     return false;
                 }
                 prev_was_sep = true;
-            } else if (is_structural(c)) {
+            } else if (cjsonx_is_structural(c)) {
                 if (!cjsonx_tape_push(tape, (uint32_t)i)) {
                     return false;
                 }
                 prev_was_sep = true;
-            } else if (!is_whitespace(c)) {
+            } else if (!cjsonx_is_whitespace(c)) {
                 // start of a primitive token
                 if (prev_was_sep) {
                     if (!cjsonx_tape_push(tape, (uint32_t)i)) {
