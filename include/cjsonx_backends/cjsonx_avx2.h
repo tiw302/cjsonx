@@ -7,6 +7,11 @@
 #ifndef CJSONX_AVX2_H
 #define CJSONX_AVX2_H
 
+/*==============================================================================
+ * MARK: - avx2 backend
+ *============================================================================*/
+
+
 #include <immintrin.h>
 #include <wmmintrin.h> // for pclmulqdq
 #include <stdint.h>
