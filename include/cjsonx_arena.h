@@ -7,6 +7,11 @@
 #ifndef CJSONX_ARENA_H
 #define CJSONX_ARENA_H
 
+/*==============================================================================
+ * MARK: - memory arena
+ *============================================================================*/
+
+
 #include <stdlib.h>
 #include <stdint.h>
 #include "cjsonx_config.h"
@@ -19,11 +24,13 @@
  * all allocations are freed together when cjsonx_doc_free() is called.
  */
 static inline void* cjsonx_arena_alloc(cjsonx_doc_t* doc, size_t size) {
+    if (size > (size_t) - 8) return NULL;
     // round up to 8-byte alignment for safe struct access
     size = (size + 7) & ~7;
 
     // current chunk exhausted or first allocation — grow arena with a new chunk
     if (!doc->current_chunk || doc->chunk_used + size > doc->chunk_size) {
+        if (doc->is_static) return NULL; // static buffers cannot be expanded
         size_t new_chunk_size = doc->chunk_size ? doc->chunk_size * 2 : CJSONX_ARENA_CHUNK_SIZE;
         if (new_chunk_size < size + sizeof(cjsonx_arena_node_t)) {
             new_chunk_size = size + sizeof(cjsonx_arena_node_t) + CJSONX_ARENA_CHUNK_SIZE;
