@@ -35,6 +35,7 @@ perf.data.old
 *.app
 test_amalgamated
 test_dom
+a.out
 tests/run_stage1
 tests/run_stage1_avx2
 tests/run_tests
@@ -56,6 +57,7 @@ tests/fuzz_parser
 benchmarks/bench_compare
 benchmarks/bench_gotos
 benchmarks/bench_parse
+benchmarks/third_party/
 examples/dom_access
 examples/embedded_noalloc
 examples/error_handling
@@ -71,6 +73,7 @@ tests/JSONTestSuite
 /JSONTestSuite/
 
 # datasets
+benchmarks/datasets/
 benchmarks/bench_datasets/*.json
 !benchmarks/bench_datasets/.keep
 
