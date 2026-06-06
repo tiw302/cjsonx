@@ -7,6 +7,11 @@
 #ifndef CJSONX_FASTFLOAT_H
 #define CJSONX_FASTFLOAT_H
 
+/*==============================================================================
+ * MARK: - fast float parsing
+ *============================================================================*/
+
+
 #include <stdint.h>
 #include <stdbool.h>
 #include <string.h>
@@ -96,6 +101,8 @@ static inline bool cjsonx_compute_float(uint64_t mantissa, int exponent, double*
         return false;
     }
     
+    // note: the sign bit is intentionally not set here.
+    // the caller (cjsonx_parse_fast_float) applies the sign: `negative ? -val : val`
     uint64_t d_bits = (mantissa_53 & 0xFFFFFFFFFFFFF) | ((uint64_t)(final_exp + 1023) << 52);
     memcpy(out, &d_bits, 8);
     return true;
