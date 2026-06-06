@@ -119,6 +119,7 @@ endif()
 if(TARGET cjsonx AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_utf8.c")
     add_executable(test_utf8 tests/test_utf8.c)
     target_link_libraries(test_utf8 PRIVATE cjsonx)
+    add_test(NAME test_utf8 COMMAND test_utf8)
 endif()
 
 # benchmark
