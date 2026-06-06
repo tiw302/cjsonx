@@ -18,6 +18,10 @@
 #include <string.h>
 #include "cjsonx_utf8.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 // parse 4-digit hex escape (\uxxxx) to codepoint
 static inline bool cjsonx_parse_hex4(const char* p, uint32_t* out) {
     uint32_t val = 0;
@@ -90,6 +94,15 @@ static inline bool cjsonx_parse_string_impl(cjsonx_doc_t* doc, cjsonx_node_t* ou
     }
     if (mask & 0x8080808080808080ULL) has_non_ascii = true;
     
+    // check for raw control characters (< 0x20) per RFC 8259 §7
+    // this catches control chars that SIMD backends may skip
+    for (size_t j = 0; j < len; j++) {
+        if ((unsigned char)str_start[j] < 0x20) {
+            doc->error = CJSONX_ERROR_INVALID_CONTROL_CHAR;
+            return false;
+        }
+    }
+
     if (has_non_ascii) {
         uint32_t state = CJSONX_UTF8_ACCEPT;
         uint32_t codep;
@@ -141,6 +154,9 @@ static inline bool cjsonx_parse_string_impl(cjsonx_doc_t* doc, cjsonx_node_t* ou
                         if (cp2 < 0xDC00 || cp2 > 0xDFFF) return false;
                         cp = (((cp - 0xD800) << 10) | (cp2 - 0xDC00)) + 0x10000;
                         p += 6;
+                    } else if (cp >= 0xDC00 && cp <= 0xDFFF) {
+                        // lone low surrogate is invalid
+                        return false;
                     }
                     size_t enc_len = cjsonx_encode_utf8(cp, d);
                     if (enc_len == 0) return false;
@@ -158,5 +174,9 @@ static inline bool cjsonx_parse_string_impl(cjsonx_doc_t* doc, cjsonx_node_t* ou
     out_node->val.str = out;
     return true;
 }
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif // CJSONX_STRING_H
