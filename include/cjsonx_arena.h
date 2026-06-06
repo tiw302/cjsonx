@@ -17,6 +17,10 @@
 #include "cjsonx_config.h"
 #include "cjsonx_dom.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /*
  * arena allocator: allocate `size` bytes from the document's memory pool.
  *
@@ -31,9 +35,15 @@ static inline void* cjsonx_arena_alloc(cjsonx_doc_t* doc, size_t size) {
     // current chunk exhausted or first allocation — grow arena with a new chunk
     if (!doc->current_chunk || doc->chunk_used + size > doc->chunk_size) {
         if (doc->is_static) return NULL; // static buffers cannot be expanded
+        size_t min_needed = size + sizeof(cjsonx_arena_node_t);
+        if (min_needed < size) return NULL; // overflow check
+
         size_t new_chunk_size = doc->chunk_size ? doc->chunk_size * 2 : CJSONX_ARENA_CHUNK_SIZE;
-        if (new_chunk_size < size + sizeof(cjsonx_arena_node_t)) {
-            new_chunk_size = size + sizeof(cjsonx_arena_node_t) + CJSONX_ARENA_CHUNK_SIZE;
+        if (new_chunk_size < min_needed) {
+            new_chunk_size = min_needed + CJSONX_ARENA_CHUNK_SIZE;
+            if (new_chunk_size < min_needed) {
+                new_chunk_size = min_needed; // handle overflow by allocating exact amount
+            }
         }
 
         cjsonx_arena_node_t* node;
@@ -56,5 +66,9 @@ static inline void* cjsonx_arena_alloc(cjsonx_doc_t* doc, size_t size) {
     doc->chunk_used += size;
     return ptr;
 }
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif // CJSONX_ARENA_H
