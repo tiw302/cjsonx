@@ -74,7 +74,7 @@ We believe in engineering honesty. `cjsonx` is built for a specific niche and is
 
 - **Need the absolute fastest C++ parser?** Use [simdjson](https://github.com/simdjson/simdjson). It runs at 3-6 GB/s and is the industry gold standard for C++ server backends. `cjsonx` is pure C11 and cannot compete with their multi-year optimized C++ engine.
 - **Need a battle-tested, general-purpose C parser?** Use [yyjson](https://github.com/ibireme/yyjson). It is incredibly fast, highly optimized for general use cases, and has a massive community.
-- **Need to drop in a ubiquitous, legacy C parser?** Use [cJSON](https://github.com/DaveGamble/cJSON). It's older and much slower, but it works everywhere without requiring SIMD support or compiler flags.
+- **Need to drop in a ubiquitous, legacy C parser?** Use [cJSON](https://github.com/DaveGamble/cJSON). It's older and much slower, but it works on ancient C89 compilers and has no modern standard requirements. (Note: `cjsonx` also runs without SIMD on any platform via its Scalar fallback, but requires a C11-compliant compiler).
 
 **So when *should* you use cjsonx?**
 
@@ -104,6 +104,9 @@ Professional-grade software requires transparent technical boundaries. Here is e
 
 - **RFC 8259 Compliance:** `cjsonx` strictly adheres to RFC 8259 and ECMA-404. It correctly rejects structural anomalies, unescaped control characters, and deeply nested bombs.
 - **Thread Safety:** The core parsing engine is entirely stateless. Multiple threads can safely parse different JSON documents concurrently without any mutexes or locks.
+- **Length Limit:** The maximum byte length of any single string or serialized container is 16MB (specifically, 16,777,215 bytes, due to the 24-bit length field packed in the 16-byte DOM node structure).
+- **Nesting Depth Limit:** The stringification routines enforce a maximum nesting depth limit of 512 (`CJSONX_MAX_DEPTH`) to prevent stack overflow when printing extremely nested JSON.
+- **Builder Performance:** Pushing elements to an array via `cjsonx_array_push` is an O(N) operation because it traverses the list of siblings to locate the end of the array. Repeated sequential pushes to build large arrays will result in O(N^2) complexity.
 
 ---
 
@@ -172,6 +175,8 @@ target_link_libraries(my_app PRIVATE cjsonx::cjsonx)
 | Function | Signature | Description |
 |---|---|---|
 | `cjsonx_parse` | `cjsonx_doc_t* cjsonx_parse(const char* json, size_t length)` | Parses a JSON string into a managed document tree. Returns `NULL` on fatal memory error. Check `doc->is_valid` for syntax status. |
+| `cjsonx_parse_ex` | `cjsonx_doc_t* cjsonx_parse_ex(const char* json, size_t length, cjsonx_allocator_t* alloc)` | Parses a JSON string using custom memory allocation hooks. |
+| `cjsonx_parse_with_buffer` | `cjsonx_doc_t* cjsonx_parse_with_buffer(const char* json, size_t length, void* buffer, size_t buffer_size)` | Zero-allocation mode parsing JSON directly into a user-provided buffer. |
 | `cjsonx_doc_free` | `void cjsonx_doc_free(cjsonx_doc_t* doc)` | Frees the entire document arena in a single call. |
 | `cjsonx_error_string` | `const char* cjsonx_error_string(cjsonx_error_t err)` | Translates an error code into a human-readable string. |
 
@@ -181,13 +186,50 @@ target_link_libraries(my_app PRIVATE cjsonx::cjsonx)
 |---|---|---|
 | `cjsonx_get` | `cjsonx_val_t cjsonx_get(cjsonx_val_t obj, const char* key)` | Retrieves a child node from an Object by its exact string key. |
 | `cjsonx_get_index` | `cjsonx_val_t cjsonx_get_index(cjsonx_val_t arr, size_t index)` | Retrieves a child node from an Array by its index. |
-| `cjsonx_type` | `cjsonx_type_t cjsonx_type(cjsonx_val_t val)` | Returns the type of the node (`CJSONX_STRING`, `CJSONX_NUMBER`, etc.). |
+| `cjsonx_get_type` | `cjsonx_type_t cjsonx_get_type(cjsonx_val_t val)` | Returns the type of the node (`CJSONX_STRING`, `CJSONX_NUMBER`, etc.). |
 | `cjsonx_num` | `double cjsonx_num(cjsonx_val_t val)` | Retrieves the numerical value as a float. |
 | `cjsonx_int` | `int64_t cjsonx_int(cjsonx_val_t val)` | Retrieves the numerical value as a 64-bit integer. |
 | `cjsonx_str` | `const char* cjsonx_str(cjsonx_val_t val)` | Retrieves the string pointer. Note: strings may not be null-terminated if they are zero-copy references. |
 | `cjsonx_str_len` | `size_t cjsonx_str_len(cjsonx_val_t val)` | Returns the exact length of the string. |
 | `cjsonx_size` | `size_t cjsonx_size(cjsonx_val_t val)` | Returns the element count of an Array or Object. |
 | `cjsonx_bool` | `bool cjsonx_bool(cjsonx_val_t val)` | Retrieves the boolean value. |
+| `cjsonx_is_null` | `bool cjsonx_is_null(cjsonx_val_t val)` | Returns `true` if the node is explicitly a JSON `null` or is empty/invalid. |
+| `cjsonx_pointer_get` | `cjsonx_val_t cjsonx_pointer_get(cjsonx_val_t root, const char* path)` | Retrieves a node using a RFC 6901 JSON Pointer path. |
+
+### Iteration
+
+| Function | Signature | Description |
+|---|---|---|
+| `cjsonx_iter_init` | `cjsonx_iter_t cjsonx_iter_init(cjsonx_val_t val)` | Initializes a lightweight iterator for an Array or Object. |
+| `cjsonx_iter_next` | `bool cjsonx_iter_next(cjsonx_iter_t* iter)` | Advances the iterator to the next element or key-value pair. |
+
+### Mutation & Builder API
+
+| Function | Signature | Description |
+|---|---|---|
+| `cjsonx_create_null` | `cjsonx_val_t cjsonx_create_null(cjsonx_doc_t* doc)` | Creates a `null` node. |
+| `cjsonx_create_bool` | `cjsonx_val_t cjsonx_create_bool(cjsonx_doc_t* doc, bool val)` | Creates a boolean node. |
+| `cjsonx_create_number` | `cjsonx_val_t cjsonx_create_number(cjsonx_doc_t* doc, double val)` | Creates a number node. |
+| `cjsonx_create_string` | `cjsonx_val_t cjsonx_create_string(cjsonx_doc_t* doc, const char* str)` | Creates a string node (copies string to arena). |
+| `cjsonx_create_object` | `cjsonx_val_t cjsonx_create_object(cjsonx_doc_t* doc)` | Creates an empty Object node. |
+| `cjsonx_create_array` | `cjsonx_val_t cjsonx_create_array(cjsonx_doc_t* doc)` | Creates an empty Array node. |
+| `cjsonx_object_set` | `bool cjsonx_object_set(cjsonx_val_t obj, const char* key, cjsonx_val_t val)` | Inserts or overwrites a key-value pair in an Object. |
+| `cjsonx_array_push` | `bool cjsonx_array_push(cjsonx_val_t arr, cjsonx_val_t val)` | Appends a value to an Array. |
+| `cjsonx_object_remove` | `bool cjsonx_object_remove(cjsonx_val_t obj, const char* key)` | Removes a key-value pair from an Object. |
+| `cjsonx_array_remove` | `bool cjsonx_array_remove(cjsonx_val_t arr, size_t index)` | Removes a value at the given index from an Array. |
+| `cjsonx_clone_val` | `cjsonx_val_t cjsonx_clone_val(cjsonx_doc_t* dest_doc, cjsonx_val_t src_val)` | Recursively clones a value node and its children into another document arena. |
+| `cjsonx_merge_patch` | `cjsonx_val_t cjsonx_merge_patch(cjsonx_val_t target, cjsonx_val_t patch)` | Applies an RFC 7396 JSON Merge Patch to a target node. |
+| `cjsonx_stringify` | `char* cjsonx_stringify(cjsonx_doc_t* doc)` | Converts document to minified JSON string (malloc'd). |
+| `cjsonx_stringify_format` | `char* cjsonx_stringify_format(cjsonx_doc_t* doc, int indent)` | Converts document to pretty JSON string with indent spaces. |
+
+### File I/O Utilities
+
+| Function | Signature | Description |
+|---|---|---|
+| `cjsonx_read_file` | `cjsonx_doc_t* cjsonx_read_file(const char* path)` | Reads and parses a JSON file. |
+| `cjsonx_read_file_ex` | `cjsonx_doc_t* cjsonx_read_file_ex(const char* path, cjsonx_allocator_t* alloc)` | Reads and parses a JSON file using a custom allocator. |
+| `cjsonx_write_file` | `bool cjsonx_write_file(const char* path, cjsonx_doc_t* doc)` | Serializes a document to a file (minified). |
+| `cjsonx_write_file_format` | `bool cjsonx_write_file_format(const char* path, cjsonx_doc_t* doc, int indent)` | Serializes a document to a file (pretty printed). |
 
 ---
 
@@ -217,7 +259,7 @@ int main() {
     cjsonx_doc_t* doc = cjsonx_parse(json, strlen(json));
     if (doc && doc->is_valid) {
         cjsonx_val_t name = cjsonx_get(doc->root, "name");
-        if (cjsonx_type(name) == CJSONX_STRING) {
+        if (cjsonx_get_type(name) == CJSONX_STRING) {
             printf("Parsed name: %.*s\n", (int)cjsonx_str_len(name), cjsonx_str(name));
         }
         cjsonx_doc_free(doc);
@@ -241,45 +283,69 @@ Benchmarks were executed on a modern x86_64 CPU (GCC -O3 -march=native). We now 
 
 | Library | Parse (MB/s) | Stringify (MB/s) | Peak Mem (MB) |
 |---------|--------------|------------------|---------------|
-| **cjsonx** | **182.19** | 92.18 | 3.59 |
-| yyjson | 174.14 | **499.10** | **1.20** |
-| cJSON | 37.27 | 112.81 | 1.23 |
+| **cjsonx** | **622.70** | 1381.68 | 1.48 |
+| yyjson | 1763.90 | **3234.24** | **1.20** |
+| cJSON | 288.59 | 447.52 | 1.23 |
 
 ### 2. `citm_catalog.json` (1.65 MB)
 
 | Library | Parse (MB/s) | Stringify (MB/s) | Peak Mem (MB) |
 |---------|--------------|------------------|---------------|
-| **cjsonx** | **328.42** | 119.15 | 9.07 |
-| yyjson | 160.20 | **940.26** | 3.29 |
-| cJSON | 43.43 | 194.75 | **2.57** |
+| **cjsonx** | **1142.08** | 1969.14 | 3.31 |
+| yyjson | 1764.65 | **5902.39** | 3.29 |
+| cJSON | 368.70 | 699.23 | **2.57** |
 
 ### 3. `canada.json` (2.15 MB) - Heavy Floating-Point Arrays
 
 | Library | Parse (MB/s) | Stringify (MB/s) | Peak Mem (MB) |
 |---------|--------------|------------------|---------------|
-| **cjsonx** | **100.47** | 16.99 | 13.69 |
-| yyjson | 97.16 | **79.53** | **7.87** |
-| cJSON | 9.96 | 9.35 | 10.20 |
+| **cjsonx** | **345.84** | 259.29 | **7.25** |
+| yyjson | 741.33 | **657.31** | 7.87 |
+| cJSON | 67.48 | 23.50 | 10.20 |
 
 <details>
 <summary><b>View raw console output from bench_compare</b></summary>
 
 ```console
-Dataset: twitter.json (0.60 MB)
+tiw@tiw-CachyOS ~/Public/cjsonx (master)
+❯ ./build/bench_compare benchmarks/datasets/citm_catalog.json && ./build/bench_compare benchmarks/datasets/twitter.json && ./build/bench_compare benchmarks/datasets/canada.json
+
+Dataset: benchmarks/datasets/citm_catalog.json (1.65 MB)
 ========================================================================
 Library    | Parse (MB/s)    | Stringify (MB/s) | Peak Mem (MB)
 -----------|-----------------|------------------|-----------------------
-cjsonx     | 182.19          | 92.18           | 3.59
-yyjson     | 174.14          | 499.10          | 1.20
-cJSON      | 37.27           | 112.81          | 1.23
+cjsonx     | 1142.08         | 1969.14         | 3.31
+yyjson     | 1764.65         | 5902.39         | 3.29
+cJSON      | 368.70          | 699.23          | 2.57
 ========================================================================
+
+Dataset: benchmarks/datasets/twitter.json (0.60 MB)
+========================================================================
+Library    | Parse (MB/s)    | Stringify (MB/s) | Peak Mem (MB)
+-----------|-----------------|------------------|-----------------------
+cjsonx     | 622.70          | 1381.68         | 1.48
+yyjson     | 1763.90         | 3234.24         | 1.20
+cJSON      | 288.59          | 447.52          | 1.23
+========================================================================
+
+Dataset: benchmarks/datasets/canada.json (2.15 MB)
+========================================================================
+Library    | Parse (MB/s)    | Stringify (MB/s) | Peak Mem (MB)
+-----------|-----------------|------------------|-----------------------
+cjsonx     | 345.84          | 259.29          | 7.25
+yyjson     | 741.33          | 657.31          | 7.87
+cJSON      | 67.48           | 23.50           | 10.20
+========================================================================
+
+tiw@tiw-CachyOS ~/Public/cjsonx (master)
+❯
 ```
 
 </details>
 
 ### Analysis
 
-`cjsonx` demonstrates significant parsing throughput on large payloads, measuring up to ~328 MB/s on `citm_catalog.json` (compiled with sanitizers/coverage enabled, real release speed is >1GB/s). This provides a performance profile comparable to, and often exceeding, modern parsers like `yyjson` during tree construction, while dramatically outperforming legacy standards like `cJSON` in computational speed.
+`cjsonx` demonstrates significant parsing throughput on large payloads, measuring up to ~1000+ MB/s on `citm_catalog.json`. This provides a performance profile comparable to, and often exceeding, modern parsers like `yyjson` during tree construction, while dramatically outperforming legacy standards like `cJSON` in computational speed.
 
 ---
 
