@@ -18,10 +18,22 @@ def amalgamate(root_file, out_file, include_paths):
             return
         processed_files.add(filepath)
 
-        with open(filepath, 'r') as f:
+        with open(filepath, 'r', encoding='utf-8') as f:
             lines = f.readlines()
 
-        for line in lines:
+        start_idx = 0
+        if filepath != root_file:
+            if len(lines) > 0 and (lines[0].strip().startswith("/**") or lines[0].strip().startswith("/*")):
+                for idx, line in enumerate(lines):
+                    if "*/" in line:
+                        start_idx = idx + 1
+                        break
+
+        for line in lines[start_idx:]:
+            # Strip #pragma once as it's not needed/wanted in amalgamated headers
+            if line.strip() == "#pragma once":
+                continue
+
             # Handle standard library includes
             std_match = re.match(r'^\s*#include\s+<([^>]+)>', line)
             if std_match:
@@ -39,9 +51,8 @@ def amalgamate(root_file, out_file, include_paths):
                 for search_path in include_paths:
                     candidate = os.path.join(search_path, inc_name)
                     if os.path.exists(candidate):
-                        out_lines.append(f"// --- Begin {inc_name} ---\n")
-                        process_file(candidate)
-                        out_lines.append(f"// --- End {inc_name} ---\n\n")
+                        if candidate not in processed_files:
+                            process_file(candidate)
                         found = True
                         break
                 if not found:
@@ -56,7 +67,7 @@ def amalgamate(root_file, out_file, include_paths):
     
     out_lines.append("\n#endif // CJSONX_SINGLE_HEADER_H\n")
 
-    with open(out_file, 'w') as f:
+    with open(out_file, 'w', encoding='utf-8') as f:
         f.writelines(out_lines)
     
     print(f"Amalgamation complete: {out_file}")
