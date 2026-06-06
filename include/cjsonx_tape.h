@@ -7,6 +7,11 @@
 #ifndef CJSONX_TAPE_H
 #define CJSONX_TAPE_H
 
+/*==============================================================================
+ * MARK: - parsing tape
+ *============================================================================*/
+
+
 #include <stdlib.h>
 #include <stdint.h>
 #include <stdbool.h>
@@ -22,6 +27,9 @@ typedef struct {
     bool is_static;      // if true, do not free or realloc
     cjsonx_allocator_t* alloc; // optional custom allocator
 } cjsonx_tape_t;
+
+// alias for compatibility with non-t API
+typedef cjsonx_tape_t cjsonx_tape;
 
 // init tape with pre-alloc cap, false on oom
 static inline bool cjsonx_tape_init(cjsonx_tape_t* tape, size_t capacity, cjsonx_allocator_t* alloc) {
