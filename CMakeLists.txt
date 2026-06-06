@@ -7,7 +7,6 @@ set(CMAKE_C_STANDARD_REQUIRED ON)
 # -----------------------------------------------------------------------
 # options
 # -----------------------------------------------------------------------
-option(CJSONX_ENABLE_SIMD_F128 "Enable simd-f128 for 128-bit float parsing" ON)
 option(CJSONX_ENABLE_SANITIZERS "Enable AddressSanitizer and UndefinedBehaviorSanitizer" OFF)
 option(CJSONX_ENABLE_COVERAGE "Enable gcov code coverage generation" OFF)
 
@@ -42,10 +41,6 @@ add_library(cjsonx STATIC src/cjsonx.c)
 target_include_directories(cjsonx PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
 )
-
-if(CJSONX_ENABLE_SIMD_F128)
-    target_compile_definitions(cjsonx PUBLIC CJSONX_ENABLE_SIMD_F128)
-endif()
 
 endif()
 
@@ -124,12 +119,7 @@ endif()
 if(TARGET cjsonx AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_utf8.c")
     add_executable(test_utf8 tests/test_utf8.c)
     target_link_libraries(test_utf8 PRIVATE cjsonx)
-    add_test(NAME test_utf8 COMMAND test_utf8)
 endif()
-
-enable_testing()
-
-# tests
 
 # benchmark
 # note: bench_compare requires third_party libraries (yyjson, cjson, jsmn)
