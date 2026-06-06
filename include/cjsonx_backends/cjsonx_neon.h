@@ -7,6 +7,11 @@
 #ifndef CJSONX_NEON_H
 #define CJSONX_NEON_H
 
+/*==============================================================================
+ * MARK: - neon backend
+ *============================================================================*/
+
+
 #include <arm_neon.h>
 #include <stdint.h>
 #include <stdbool.h>
