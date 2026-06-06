@@ -16,12 +16,18 @@
 #include <stdint.h>
 #include <stdbool.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 // structural tokens tape
 // stores index offsets of all structural characters like { } [ ] : , "
 // helps stage 2 parser skip whitespace and parse faster
-
+//
+// NOTE: Using uint32_t for index offsets limits the maximum supported JSON input
+// size to 4 GiB (UINT32_MAX).
 typedef struct {
-    uint32_t* indices;   // array of index offsets
+    uint32_t* indices;   // array of 32-bit index offsets (limits input size to 4 GiB)
     size_t count;        // number of indices inside the tape
     size_t capacity;     // capacity of the indices array
     bool is_static;      // if true, do not free or realloc
@@ -88,5 +94,9 @@ static inline bool cjsonx_tape_push(cjsonx_tape_t* tape, uint32_t index) {
     tape->indices[tape->count++] = index;
     return true;
 }
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif // CJSONX_TAPE_H
