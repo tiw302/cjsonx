@@ -7,25 +7,36 @@
 #ifndef CJSONX_STAGE1_H
 #define CJSONX_STAGE1_H
 
+/*==============================================================================
+ * MARK: - stage 1 (structural indexing)
+ *============================================================================*/
+
+
 #include <stdlib.h>
 
 // detect architecture and select best available backend
 #if defined(__AVX2__)
     #include "cjsonx_backends/cjsonx_avx2.h"
-    #define cjsonx_stage1_build_tape cjsonx_stage1_avx2
-
 #elif defined(__ARM_NEON)
     #include "cjsonx_backends/cjsonx_neon.h"
-    #define cjsonx_stage1_build_tape cjsonx_stage1_neon
-
-
 #elif defined(__wasm_simd128__)
     #include "cjsonx_backends/cjsonx_wasm.h"
-    #define cjsonx_stage1_build_tape cjsonx_stage1_wasm
-
 #else
     #include "cjsonx_backends/cjsonx_scalar.h"
-    #define cjsonx_stage1_build_tape cjsonx_stage1_scalar
+#endif
+
+#ifdef CJSONX_IMPLEMENTATION
+bool cjsonx_stage1_build_tape(const char* json, size_t length, cjsonx_tape_t* tape) {
+#if defined(__AVX2__)
+    return cjsonx_stage1_avx2(json, length, tape);
+#elif defined(__ARM_NEON)
+    return cjsonx_stage1_neon(json, length, tape);
+#elif defined(__wasm_simd128__)
+    return cjsonx_stage1_wasm(json, length, tape);
+#else
+    return cjsonx_stage1_scalar(json, length, tape);
+#endif
+}
 #endif
 
 #endif  // CJSONX_STAGE1_H
