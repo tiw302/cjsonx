@@ -7,6 +7,11 @@
 #ifndef CJSONX_WASM_H
 #define CJSONX_WASM_H
 
+/*==============================================================================
+ * MARK: - wasm simd backend
+ *============================================================================*/
+
+
 #include <wasm_simd128.h>
 #include <stdint.h>
 #include <stdbool.h>
