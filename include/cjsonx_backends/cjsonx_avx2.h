@@ -17,6 +17,18 @@
 #include <stdint.h>
 #include <stdbool.h>
 
+// MSVC compatibility for gcc/clang builtins
+#if defined(_MSC_VER) && !defined(__clang__)
+#include <intrin.h>
+static inline uint32_t cjsonx_ctz32(uint32_t x) {
+    unsigned long idx;
+    _BitScanForward(&idx, x);
+    return (uint32_t)idx;
+}
+#define __builtin_ctz cjsonx_ctz32
+#define __builtin_prefetch(addr, ...) _mm_prefetch((const char*)(addr), _MM_HINT_T0)
+#endif
+
 // avx2 specific scanner utilizing 32-byte vectors and pclmulqdq
 static inline bool cjsonx_stage1_avx2(const char* json, size_t length, cjsonx_tape_t* tape) {
     uint32_t prev_in_string = 0; // 0 or 0xffffffff
