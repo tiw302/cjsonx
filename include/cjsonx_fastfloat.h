@@ -17,6 +17,17 @@
 #include <string.h>
 #include "cjsonx_eisel_lemire.h"
 
+// MSVC compatibility for __builtin_clzll
+#if defined(_MSC_VER) && !defined(__clang__)
+#include <intrin.h>
+static inline int cjsonx_clzll(uint64_t x) {
+    unsigned long idx;
+    _BitScanReverse64(&idx, x);
+    return 63 - (int)idx;
+}
+#define __builtin_clzll cjsonx_clzll
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
