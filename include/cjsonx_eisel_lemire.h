@@ -7,6 +7,11 @@
 #ifndef CJSONX_EISEL_LEMIRE_H
 #define CJSONX_EISEL_LEMIRE_H
 
+/*==============================================================================
+ * MARK: - eisel-lemire float parsing
+ *============================================================================*/
+
+
 #include <stdint.h>
 
 static const uint64_t cjsonx_eisel_lemire_mantissa[] = {
