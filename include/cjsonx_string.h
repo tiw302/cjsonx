@@ -7,6 +7,11 @@
 #ifndef CJSONX_STRING_H
 #define CJSONX_STRING_H
 
+/*==============================================================================
+ * MARK: - string processing
+ *============================================================================*/
+
+
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -72,7 +77,12 @@ static inline bool cjsonx_parse_string_impl(cjsonx_doc_t* doc, cjsonx_node_t* ou
         uint64_t chunk;
         memcpy(&chunk, str_start + i, 8);
         mask |= chunk;
-        if (!has_escape && memchr(str_start + i, '\\', 8)) has_escape = true;
+        if (!has_escape) {
+            uint64_t x = chunk ^ 0x5C5C5C5C5C5C5C5CULL;
+            if ((x - 0x0101010101010101ULL) & ~x & 0x8080808080808080ULL) {
+                has_escape = true;
+            }
+        }
     }
     for (; i < len; i++) {
         mask |= (uint8_t)str_start[i];
