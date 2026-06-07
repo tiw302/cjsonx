@@ -283,25 +283,25 @@ Benchmarks were executed on a modern x86_64 CPU (GCC -O3 -march=native). We now 
 
 | Library | Parse (MB/s) | Stringify (MB/s) | Peak Mem (MB) |
 |---------|--------------|------------------|---------------|
-| **cjsonx** | **622.70** | 1381.68 | 1.48 |
-| yyjson | 1763.90 | **3234.24** | **1.20** |
-| cJSON | 288.59 | 447.52 | 1.23 |
+| **cjsonx** | **668.15** | 1650.59 | 1.48 |
+| yyjson | 1885.03 | **3753.99** | **1.20** |
+| cJSON | 311.80 | 493.99 | 1.23 |
 
 ### 2. `citm_catalog.json` (1.65 MB)
 
 | Library | Parse (MB/s) | Stringify (MB/s) | Peak Mem (MB) |
 |---------|--------------|------------------|---------------|
-| **cjsonx** | **1142.08** | 1969.14 | 3.31 |
-| yyjson | 1764.65 | **5902.39** | 3.29 |
-| cJSON | 368.70 | 699.23 | **2.57** |
+| **cjsonx** | **1195.10** | 2127.93 | 3.31 |
+| yyjson | 1909.71 | **6366.43** | 3.29 |
+| cJSON | 343.89 | 742.70 | **2.57** |
 
 ### 3. `canada.json` (2.15 MB) - Heavy Floating-Point Arrays
 
 | Library | Parse (MB/s) | Stringify (MB/s) | Peak Mem (MB) |
 |---------|--------------|------------------|---------------|
-| **cjsonx** | **345.84** | 259.29 | **7.25** |
-| yyjson | 741.33 | **657.31** | 7.87 |
-| cJSON | 67.48 | 23.50 | 10.20 |
+| **cjsonx** | **341.93** | 273.25 | **7.25** |
+| yyjson | 800.85 | **702.60** | 7.87 |
+| cJSON | 71.46 | 24.76 | 10.20 |
 
 <details>
 <summary><b>View raw console output from bench_compare</b></summary>
@@ -314,27 +314,27 @@ Dataset: benchmarks/datasets/citm_catalog.json (1.65 MB)
 ========================================================================
 Library    | Parse (MB/s)    | Stringify (MB/s) | Peak Mem (MB)
 -----------|-----------------|------------------|-----------------------
-cjsonx     | 1142.08         | 1969.14         | 3.31
-yyjson     | 1764.65         | 5902.39         | 3.29
-cJSON      | 368.70          | 699.23          | 2.57
+cjsonx     | 1195.10         | 2127.93         | 3.31
+yyjson     | 1909.71         | 6366.43         | 3.29
+cJSON      | 343.89          | 742.70          | 2.57
 ========================================================================
 
 Dataset: benchmarks/datasets/twitter.json (0.60 MB)
 ========================================================================
 Library    | Parse (MB/s)    | Stringify (MB/s) | Peak Mem (MB)
 -----------|-----------------|------------------|-----------------------
-cjsonx     | 622.70          | 1381.68         | 1.48
-yyjson     | 1763.90         | 3234.24         | 1.20
-cJSON      | 288.59          | 447.52          | 1.23
+cjsonx     | 668.15          | 1650.59         | 1.48
+yyjson     | 1885.03         | 3753.99         | 1.20
+cJSON      | 311.80          | 493.99          | 1.23
 ========================================================================
 
 Dataset: benchmarks/datasets/canada.json (2.15 MB)
 ========================================================================
 Library    | Parse (MB/s)    | Stringify (MB/s) | Peak Mem (MB)
 -----------|-----------------|------------------|-----------------------
-cjsonx     | 345.84          | 259.29          | 7.25
-yyjson     | 741.33          | 657.31          | 7.87
-cJSON      | 67.48           | 23.50           | 10.20
+cjsonx     | 341.93          | 273.25          | 7.25
+yyjson     | 800.85          | 702.60          | 7.87
+cJSON      | 71.46           | 24.76           | 10.20
 ========================================================================
 
 tiw@tiw-CachyOS ~/Public/cjsonx (master)
@@ -360,6 +360,12 @@ To achieve this level of stability and performance within a short timeframe, thi
 - Automate the generation of robust cross-platform CI/CD pipelines (Linux, macOS, Windows, WASM).
 
 However, **human agency remains at the core of this project**. Every single line of code generated or suggested was manually inspected, audited, and strictly verified. The core architecture, algorithms, and memory design were meticulously human-planned. This hybrid approach—combining human architectural vision with AI-driven debugging and verification—allowed us to push the boundaries of performance and reliability in a modern C library without compromising security or code ownership.
+
+---
+
+## Author's Note
+
+I'm just a kid building projects as a hobby. Thank you for showing interest in my little library! It really means a lot to me. :)
 
 ---
 
