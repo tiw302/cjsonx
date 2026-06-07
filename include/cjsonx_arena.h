@@ -27,21 +27,21 @@ extern "C" {
  * returns an 8-byte aligned pointer, or null on oom.
  * all allocations are freed together when cjsonx_doc_free() is called.
  */
-static inline void* cjsonx_arena_alloc(cjsonx_doc_t* doc, size_t size) {
-    if (size > (size_t) - 8) return NULL;
+static cjsonx_always_inline void* cjsonx_arena_alloc(cjsonx_doc_t* __restrict doc, size_t size) {
+    if (CJSONX_UNLIKELY(size > (size_t) - 8)) return NULL;
     // round up to 8-byte alignment for safe struct access
     size = (size + 7) & ~7;
 
     // current chunk exhausted or first allocation — grow arena with a new chunk
-    if (!doc->current_chunk || doc->chunk_used + size > doc->chunk_size) {
-        if (doc->is_static) return NULL; // static buffers cannot be expanded
+    if (CJSONX_UNLIKELY(!doc->current_chunk || doc->chunk_used + size > doc->chunk_size)) {
+        if (CJSONX_UNLIKELY(doc->is_static)) return NULL; // static buffers cannot be expanded
         size_t min_needed = size + sizeof(cjsonx_arena_node_t);
-        if (min_needed < size) return NULL; // overflow check
+        if (CJSONX_UNLIKELY(min_needed < size)) return NULL; // overflow check
 
         size_t new_chunk_size = doc->chunk_size ? doc->chunk_size * 2 : CJSONX_ARENA_CHUNK_SIZE;
         if (new_chunk_size < min_needed) {
             new_chunk_size = min_needed + CJSONX_ARENA_CHUNK_SIZE;
-            if (new_chunk_size < min_needed) {
+            if (CJSONX_UNLIKELY(new_chunk_size < min_needed)) {
                 new_chunk_size = min_needed; // handle overflow by allocating exact amount
             }
         }
@@ -52,7 +52,7 @@ static inline void* cjsonx_arena_alloc(cjsonx_doc_t* doc, size_t size) {
         } else {
             node = (cjsonx_arena_node_t*)malloc(new_chunk_size);
         }
-        if (!node) return NULL;
+        if (CJSONX_UNLIKELY(!node)) return NULL;
 
         node->next = doc->head;
         doc->head = node;
