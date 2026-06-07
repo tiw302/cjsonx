@@ -12,6 +12,20 @@
  *============================================================================*/
 
 
+/*==============================================================================
+ * MARK: - compiler hints
+ *============================================================================*/
+
+#if defined(__GNUC__) || defined(__clang__)
+#define CJSONX_LIKELY(x) __builtin_expect(!!(x), 1)
+#define CJSONX_UNLIKELY(x) __builtin_expect(!!(x), 0)
+#define cjsonx_always_inline __attribute__((always_inline)) inline
+#else
+#define CJSONX_LIKELY(x) (x)
+#define CJSONX_UNLIKELY(x) (x)
+#define cjsonx_always_inline inline
+#endif
+
 // configuration constants
 
 // maximum nesting level for arrays and objects to prevent stack overflow
