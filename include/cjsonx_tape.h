@@ -38,14 +38,14 @@ typedef struct {
 typedef cjsonx_tape_t cjsonx_tape;
 
 // init tape with pre-alloc cap, false on oom
-static inline bool cjsonx_tape_init(cjsonx_tape_t* tape, size_t capacity, cjsonx_allocator_t* alloc) {
+static cjsonx_always_inline bool cjsonx_tape_init(cjsonx_tape_t* tape, size_t capacity, cjsonx_allocator_t* alloc) {
     tape->alloc = alloc;
     if (alloc && alloc->malloc_fn) {
         tape->indices = (uint32_t*)alloc->malloc_fn(capacity * sizeof(uint32_t), alloc->user_data);
     } else {
         tape->indices = (uint32_t*)malloc(capacity * sizeof(uint32_t));
     }
-    if (!tape->indices) return false;
+    if (CJSONX_UNLIKELY(!tape->indices)) return false;
     tape->count = 0;
     tape->capacity = capacity;
     tape->is_static = false;
@@ -53,7 +53,7 @@ static inline bool cjsonx_tape_init(cjsonx_tape_t* tape, size_t capacity, cjsonx
 }
 
 // init static tape with user buffer
-static inline void cjsonx_tape_init_static(cjsonx_tape_t* tape, uint32_t* buffer, size_t capacity) {
+static cjsonx_always_inline void cjsonx_tape_init_static(cjsonx_tape_t* tape, uint32_t* buffer, size_t capacity) {
     tape->indices = buffer;
     tape->count = 0;
     tape->capacity = capacity;
@@ -62,7 +62,7 @@ static inline void cjsonx_tape_init_static(cjsonx_tape_t* tape, uint32_t* buffer
 }
 
 // free tape and reset
-static inline void cjsonx_tape_free(cjsonx_tape_t* tape) {
+static cjsonx_always_inline void cjsonx_tape_free(cjsonx_tape_t* tape) {
     if (tape->indices && !tape->is_static) {
         if (tape->alloc && tape->alloc->free_fn) {
             tape->alloc->free_fn(tape->indices, tape->alloc->user_data);
@@ -77,9 +77,9 @@ static inline void cjsonx_tape_free(cjsonx_tape_t* tape) {
 }
 
 // push offset to tape, grow 2x on full
-static inline bool cjsonx_tape_push(cjsonx_tape_t* tape, uint32_t index) {
-    if (tape->count >= tape->capacity) {
-        if (tape->is_static) return false;
+static cjsonx_always_inline bool cjsonx_tape_push(cjsonx_tape_t* tape, uint32_t index) {
+    if (CJSONX_UNLIKELY(tape->count >= tape->capacity)) {
+        if (CJSONX_UNLIKELY(tape->is_static)) return false;
         size_t new_cap = tape->capacity ? tape->capacity * 2 : 64;
         uint32_t* new_indices;
         if (tape->alloc && tape->alloc->realloc_fn) {
@@ -87,7 +87,7 @@ static inline bool cjsonx_tape_push(cjsonx_tape_t* tape, uint32_t index) {
         } else {
             new_indices = (uint32_t*)realloc(tape->indices, new_cap * sizeof(uint32_t));
         }
-        if (!new_indices) return false;
+        if (CJSONX_UNLIKELY(!new_indices)) return false;
         tape->indices = new_indices;
         tape->capacity = new_cap;
     }
