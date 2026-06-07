@@ -47,7 +47,7 @@ static inline size_t cjsonx_encode_utf8(uint32_t cp, char* out) {
 }
 
 // flat string parser: writes directly to out_node
-static inline bool cjsonx_parse_string_impl(cjsonx_doc_t* doc, cjsonx_node_t* out_node, const char* json, uint32_t start_pos, uint32_t end_pos) {
+static cjsonx_always_inline bool cjsonx_parse_string_impl(cjsonx_doc_t* doc, cjsonx_node_t* out_node, const char* json, uint32_t start_pos, uint32_t end_pos) {
     size_t len = end_pos - start_pos - 1;
     const char* str_start = json + start_pos + 1;
 
@@ -55,27 +55,88 @@ static inline bool cjsonx_parse_string_impl(cjsonx_doc_t* doc, cjsonx_node_t* ou
     size_t i = 0;
     bool has_escape = false;
     bool has_non_ascii = false;
+    bool has_control = false;
 
-#ifdef __AVX2__
+#if defined(__AVX2__)
     __m256i escape_char = _mm256_set1_epi8('\\');
     for (; i + 32 <= len; i += 32) {
         __m256i chunk = _mm256_loadu_si256((const __m256i*)(str_start + i));
         
         // check for non-ascii (highest bit set)
-        if (!_mm256_testz_si256(chunk, _mm256_set1_epi8((char)0x80))) {
+        if (CJSONX_UNLIKELY(!_mm256_testz_si256(chunk, _mm256_set1_epi8((char)0x80)))) {
             has_non_ascii = true;
         }
         
         // check for escape character
-        __m256i cmp = _mm256_cmpeq_epi8(chunk, escape_char);
-        if (!_mm256_testz_si256(cmp, cmp)) {
+        __m256i cmp_esc = _mm256_cmpeq_epi8(chunk, escape_char);
+        
+        // check for control char (< 0x20)
+        __m256i cmp_ctrl = _mm256_cmpeq_epi8(_mm256_subs_epu8(chunk, _mm256_set1_epi8(0x1F)), _mm256_setzero_si256());
+        
+        __m256i bad = _mm256_or_si256(cmp_esc, cmp_ctrl);
+        if (CJSONX_UNLIKELY(!_mm256_testz_si256(bad, bad))) {
+            if (!_mm256_testz_si256(cmp_ctrl, cmp_ctrl)) has_control = true;
             has_escape = true;
-            break; // found escape, we must use the slow path.
+            break; // found escape or control, break to handle it
+        }
+    }
+#elif defined(__ARM_NEON)
+    uint8x16_t escape_char = vdupq_n_u8('\\');
+    uint8x16_t ctrl_limit = vdupq_n_u8(0x20);
+    for (; i + 16 <= len; i += 16) {
+        uint8x16_t chunk = vld1q_u8((const uint8_t*)(str_start + i));
+        
+        // check for non-ascii (signed < 0)
+        uint8x16_t non_ascii = vcltq_s8(vreinterpretq_s8_u8(chunk), vdupq_n_s8(0));
+        
+        // check for escape character
+        uint8x16_t cmp_esc = vceqq_u8(chunk, escape_char);
+        
+        // check for control char (< 0x20)
+        uint8x16_t cmp_ctrl = vcltq_u8(chunk, ctrl_limit);
+        
+        uint8x16_t bad = vorrq_u8(cmp_esc, cmp_ctrl);
+        
+        // bitwise OR across vector to check if any condition matched
+        uint32x4_t bad_u32 = vreinterpretq_u32_u8(bad);
+        uint32x4_t non_ascii_u32 = vreinterpretq_u32_u8(non_ascii);
+        
+        if (CJSONX_UNLIKELY(vmaxvq_u32(bad_u32) != 0)) {
+            if (vmaxvq_u32(vreinterpretq_u32_u8(cmp_ctrl)) != 0) has_control = true;
+            has_escape = true;
+            break;
+        }
+        if (CJSONX_UNLIKELY(vmaxvq_u32(non_ascii_u32) != 0)) {
+            has_non_ascii = true;
+        }
+    }
+#elif defined(__wasm_simd128__)
+    v128_t escape_char = wasm_i8x16_splat('\\');
+    v128_t ctrl_limit = wasm_i8x16_splat(0x20);
+    v128_t zero = wasm_i8x16_splat(0);
+    for (; i + 16 <= len; i += 16) {
+        v128_t chunk = wasm_v128_load((const v128_t*)(str_start + i));
+        
+        // check for non-ascii (signed < 0)
+        v128_t non_ascii = wasm_i8x16_lt(chunk, zero);
+        
+        v128_t cmp_esc = wasm_i8x16_eq(chunk, escape_char);
+        v128_t cmp_ctrl = wasm_u8x16_lt(chunk, ctrl_limit);
+        
+        v128_t bad = wasm_v128_or(cmp_esc, cmp_ctrl);
+        
+        if (CJSONX_UNLIKELY(wasm_v128_any_true(bad))) {
+            if (wasm_v128_any_true(cmp_ctrl)) has_control = true;
+            has_escape = true;
+            break;
+        }
+        if (CJSONX_UNLIKELY(wasm_v128_any_true(non_ascii))) {
+            has_non_ascii = true;
         }
     }
 #endif
 
-    // scalar fallback for remaining bytes or if avx2 is disabled
+    // scalar fallback for remaining bytes or if simd is disabled
     uint64_t mask = 0;
     for (; i + 8 <= len; i += 8) {
         uint64_t chunk;
@@ -83,34 +144,39 @@ static inline bool cjsonx_parse_string_impl(cjsonx_doc_t* doc, cjsonx_node_t* ou
         mask |= chunk;
         if (!has_escape) {
             uint64_t x = chunk ^ 0x5C5C5C5C5C5C5C5CULL;
-            if ((x - 0x0101010101010101ULL) & ~x & 0x8080808080808080ULL) {
+            if (CJSONX_UNLIKELY((x - 0x0101010101010101ULL) & ~x & 0x8080808080808080ULL)) {
                 has_escape = true;
+            }
+            // check for control char (< 0x20)
+            uint64_t msb = chunk & 0x8080808080808080ULL;
+            uint64_t no_msb = chunk ^ msb;
+            uint64_t t = no_msb + 0x6060606060606060ULL;
+            if (CJSONX_UNLIKELY((~t & ~msb) & 0x8080808080808080ULL)) {
+                 has_control = true;
+                 has_escape = true;
             }
         }
     }
     for (; i < len; i++) {
         mask |= (uint8_t)str_start[i];
-        if (!has_escape && str_start[i] == '\\') has_escape = true;
+        if (CJSONX_UNLIKELY(str_start[i] == '\\')) has_escape = true;
+        if (CJSONX_UNLIKELY((unsigned char)str_start[i] < 0x20)) { has_control = true; has_escape = true; }
     }
-    if (mask & 0x8080808080808080ULL) has_non_ascii = true;
+    if (CJSONX_UNLIKELY(mask & 0x8080808080808080ULL)) has_non_ascii = true;
     
-    // check for raw control characters (< 0x20) per RFC 8259 §7
-    // this catches control chars that SIMD backends may skip
-    for (size_t j = 0; j < len; j++) {
-        if ((unsigned char)str_start[j] < 0x20) {
-            doc->error = CJSONX_ERROR_INVALID_CONTROL_CHAR;
-            return false;
-        }
+    if (CJSONX_UNLIKELY(has_control)) {
+        doc->error = CJSONX_ERROR_INVALID_CONTROL_CHAR;
+        return false;
     }
 
-    if (has_non_ascii) {
+    if (CJSONX_UNLIKELY(has_non_ascii)) {
         uint32_t state = CJSONX_UTF8_ACCEPT;
         uint32_t codep;
         for (size_t j = 0; j < len; j++) {
             cjsonx_utf8_decode(&state, &codep, (uint8_t)str_start[j]);
-            if (state == CJSONX_UTF8_REJECT) { doc->error = CJSONX_ERROR_INVALID_UTF8; return false; }
+            if (CJSONX_UNLIKELY(state == CJSONX_UTF8_REJECT)) { doc->error = CJSONX_ERROR_INVALID_UTF8; return false; }
         }
-        if (state != CJSONX_UTF8_ACCEPT) { doc->error = CJSONX_ERROR_INVALID_UTF8; return false; }
+        if (CJSONX_UNLIKELY(state != CJSONX_UTF8_ACCEPT)) { doc->error = CJSONX_ERROR_INVALID_UTF8; return false; }
     }
 
     // zero-copy fast path
