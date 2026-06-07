@@ -56,8 +56,8 @@ static inline uint64_t cjsonx_mul64_high(uint64_t a, uint64_t b) {
 }
 
 // convert (mantissa × 10^exponent) to ieee-754 double using fast path or eisel-lemire
-static inline bool cjsonx_compute_float(uint64_t mantissa, int exponent, double* out) {
-    if (mantissa == 0) {
+static cjsonx_always_inline bool cjsonx_compute_float(uint64_t mantissa, int exponent, double* out) {
+    if (CJSONX_UNLIKELY(mantissa == 0)) {
         *out = 0.0;
         return true;
     }
@@ -119,13 +119,13 @@ static inline bool cjsonx_compute_float(uint64_t mantissa, int exponent, double*
     return true;
 }
 
-static inline bool cjsonx_parse_fast_float(const char* s, const char* limit, const char** out_end, double* out_val) {
+static cjsonx_always_inline bool cjsonx_parse_fast_float(const char* __restrict s, const char* __restrict limit, const char** __restrict out_end, double* __restrict out_val) {
     const char* p = s;
-    if (p >= limit) return false;
+    if (CJSONX_UNLIKELY(p >= limit)) return false;
     
     bool negative = false;
     if (*p == '-') { negative = true; p++; }
-    if (p >= limit) return false;
+    if (CJSONX_UNLIKELY(p >= limit)) return false;
     
     uint64_t mantissa = 0;
     int digits = 0;
@@ -133,10 +133,10 @@ static inline bool cjsonx_parse_fast_float(const char* s, const char* limit, con
     int exponent = 0;
     if (*p == '0') {
         p++;
-        if (p < limit && *p >= '0' && *p <= '9') return false; 
-    } else if (*p >= '1' && *p <= '9') {
+        if (CJSONX_UNLIKELY(p < limit && *p >= '0' && *p <= '9')) return false; 
+    } else if (CJSONX_LIKELY(*p >= '1' && *p <= '9')) {
         while (p < limit && *p >= '0' && *p <= '9') {
-            if (digits < 19) {
+            if (CJSONX_LIKELY(digits < 19)) {
                 mantissa = mantissa * 10 + (*p - '0');
             } else {
                 exponent++;
@@ -147,11 +147,11 @@ static inline bool cjsonx_parse_fast_float(const char* s, const char* limit, con
     
     if (p < limit && *p == '.') {
         p++;
-        if (p >= limit || *p < '0' || *p > '9') return false;
+        if (CJSONX_UNLIKELY(p >= limit || *p < '0' || *p > '9')) return false;
         while (p < limit && *p >= '0' && *p <= '9') {
-            if (mantissa == 0 && *p == '0') {
+            if (CJSONX_UNLIKELY(mantissa == 0 && *p == '0')) {
                 exponent--;
-            } else if (digits < 19) {
+            } else if (CJSONX_LIKELY(digits < 19)) {
                 mantissa = mantissa * 10 + (*p - '0');
                 exponent--;
                 digits++;
@@ -164,10 +164,10 @@ static inline bool cjsonx_parse_fast_float(const char* s, const char* limit, con
         p++;
         bool exp_negative = false;
         if (p < limit && (*p == '+' || *p == '-')) { exp_negative = (*p == '-'); p++; }
-        if (p >= limit || *p < '0' || *p > '9') return false;
+        if (CJSONX_UNLIKELY(p >= limit || *p < '0' || *p > '9')) return false;
         int exp_val = 0;
         while (p < limit && *p >= '0' && *p <= '9') {
-            if (exp_val < 10000) exp_val = exp_val * 10 + (*p - '0');
+            if (CJSONX_LIKELY(exp_val < 10000)) exp_val = exp_val * 10 + (*p - '0');
             p++;
         }
         exponent += exp_negative ? -exp_val : exp_val;
@@ -176,7 +176,7 @@ static inline bool cjsonx_parse_fast_float(const char* s, const char* limit, con
     *out_end = p;
     
     double val;
-    if (!cjsonx_compute_float(mantissa, exponent, &val)) {
+    if (CJSONX_UNLIKELY(!cjsonx_compute_float(mantissa, exponent, &val))) {
         return false;
     }
     
