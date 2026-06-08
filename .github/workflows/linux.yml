@@ -34,6 +34,6 @@ jobs:
         run: |
           # Since we are cross-compiling, it's easier to use raw gcc than CMake here
           # to avoid setting up a full CMake toolchain file for RISC-V.
-          riscv64-linux-gnu-gcc tests/test_suite.c -Iinclude -I. -O3 -lm -static -o test_riscv64
+          riscv64-linux-gnu-gcc tests/test_suite.c src/cjsonx.c -Iinclude -I. -Isrc -O3 -lm -static -o test_riscv64
           echo "{}" > test_dummy.json
           qemu-riscv64 ./test_riscv64 test_dummy.json
