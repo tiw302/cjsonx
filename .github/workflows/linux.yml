@@ -11,6 +11,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: true
       - name: Configure CMake
         run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
       - name: Build
@@ -22,6 +24,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: true
       - name: Install RISC-V toolchain and QEMU
         run: |
           sudo apt-get update -q
@@ -30,9 +34,6 @@ jobs:
         run: |
           # Since we are cross-compiling, it's easier to use raw gcc than CMake here
           # to avoid setting up a full CMake toolchain file for RISC-V.
-          if [ -f tests/test_suite.c ]; then
-            riscv64-linux-gnu-gcc tests/test_suite.c -Iinclude -I. -O3 -lm -static -o test_riscv64
-            qemu-riscv64 ./test_riscv64
-          else
-            echo "Skipping because tests/test_suite.c does not exist yet"
-          fi
+          riscv64-linux-gnu-gcc tests/test_suite.c -Iinclude -I. -O3 -lm -static -o test_riscv64
+          echo "{}" > test_dummy.json
+          qemu-riscv64 ./test_riscv64 test_dummy.json
