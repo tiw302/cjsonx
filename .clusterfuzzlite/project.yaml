@@ -1,0 +1,6 @@
+language: c
+primary_contact: "contact@example.com"
+sanitizers:
+  - address
+  - undefined
+  - memory
