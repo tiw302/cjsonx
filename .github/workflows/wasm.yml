@@ -19,23 +19,15 @@ jobs:
           # Ensure emcc is available
           source emsdk_env.sh || true
           
-          if [ -f js/wasm_wrapper.c ]; then
           emcc js/wasm_wrapper.c -o docs/demo/cjsonx_wasm.js \
             -O3 \
-            -s EXPORTED_FUNCTIONS="['_cjsonx_parse', '_cjsonx_get', '_cjsonx_type', '_cjsonx_str', '_cjsonx_str_len', '_cjsonx_num', '_cjsonx_get_index', '_cjsonx_doc_free', '_malloc', '_free']" \
-            -s EXPORTED_RUNTIME_METHODS="['ccall', 'cwrap']" \
+            -s EXPORTED_FUNCTIONS="['_cjsonx_wasm_parse', '_cjsonx_wasm_get_error', '_cjsonx_wasm_get_error_offset', '_cjsonx_wasm_dump', '_cjsonx_wasm_free', '_malloc', '_free']" \
+            -s EXPORTED_RUNTIME_METHODS="['ccall', 'cwrap', 'UTF8ToString', 'getValue', 'setValue', 'lengthBytesUTF8', 'stringToUTF8']" \
             -s ALLOW_MEMORY_GROWTH=1 \
             -Iinclude \
             -I.
-          else
-            echo "Skipping because js/wasm_wrapper.c does not exist yet"
-          fi
 
       - name: Verify build artifacts exist
         run: |
-          if [ -f js/wasm_wrapper.c ]; then
           ls -la docs/demo/cjsonx_wasm.js
           ls -la docs/demo/cjsonx_wasm.wasm
-          else
-            echo "Skipping verification"
-          fi
