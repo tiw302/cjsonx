@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>cjsonx | Extreme Performance JSON Parser</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css?v=2">
+</head>
+
+<body>
+    <div class="hero">
+        <h1>cjsonx</h1>
+        <p>Extreme performance JSON parser for C11/C++ directly in your browser using WebAssembly. Features 1.0+ GB/s parse speed, a zero-dependency single-header design, a crash-proof 16-byte DOM, and Eisel-Lemire float precision.</p>
+        <div class="demo-box">
+            <div class="constants-bar">
+                <label for="templateSelect" style="font-size: 0.9rem; margin-right: 10px;">Examples:</label>
+                <select id="templateSelect" class="op-select">
+                    <option value="valid">Valid JSON</option>
+                    <option value="invalid">Invalid JSON</option>
+                    <option value="large">Large JSON Array</option>
+                    <option value="nested">Deeply Nested</option>
+                    <option value="unicode">Unicode & Emoji</option>
+                    <option value="numbers">Precision Numbers</option>
+                </select>
+            </div>
+            
+            <textarea id="inputJson" rows="10" placeholder="Paste your JSON here...">{"name": "Alice", "age": 28, "skills": ["C", "SIMD", "WASM"]}</textarea>
+            <br>
+            <button id="parseBtn">Parse JSON with cjsonx</button>
+            
+            <div class="result-container">
+                <div class="result-header">
+                    <div class="result-title">cjsonx WASM (DOM Structure)</div>
+                    <button id="btnCopy" class="btn-small">Copy</button>
+                </div>
+                <div class="status-bar" id="statusBar">Loading WASM Module...</div>
+                <div class="result" id="resultBox">Please wait...</div>
+            </div>
+        </div>
+
+        </div>
+
+        <div class="demo-box" style="margin-top: 20px;">
+            <div class="result-header">
+                <div class="result-title">Usage Examples (Hello World)</div>
+                <div>
+                    <select id="langSelect" class="op-select" style="margin-right: 5px;">
+                        <option value="c">C (Native)</option>
+                        <option value="cpp">C++ (Wrapper)</option>
+                        <option value="wasm">WebAssembly (JS)</option>
+                    </select>
+                    <button id="btnCopySnippet" class="btn-small">Copy</button>
+                </div>
+            </div>
+            <div class="result" id="codeBox">Loading...</div>
+        </div>
+
+        <div class="footer-links">
+            <a href="https://github.com/tiw302/cjsonx">GitHub Repository</a> | 
+            <a href="https://github.com/tiw302/cjsonx/blob/master/docs/index.md" target="_blank">Official Documentation</a>
+        </div>
+    </div>
+
+    <script src="cjsonx_wasm.js"></script>
+    <script src="app.js"></script>
+</body>
+
+</html>
