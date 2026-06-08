@@ -52,8 +52,8 @@ int main() {
             double diff = fabs(fast_val - std_val);
             if (diff > 1e-10 * fabs(std_val)) { // small tolerance since we didn't do full 192-bit exact tie-breaking
                 printf("[FAIL] %s\n", s);
-                printf("  fast_float: %.20g (0x%016lx)\n", fast_val, fast_bits);
-                printf("  strtod:     %.20g (0x%016lx)\n", std_val, std_bits);
+                printf("  fast_float: %.20g (0x%016llx)\n", fast_val, (unsigned long long)fast_bits);
+                printf("  strtod:     %.20g (0x%016llx)\n", std_val, (unsigned long long)std_bits);
                 failed++;
             } else {
                 printf("[WARN] %s (close but not exact)\n", s);
