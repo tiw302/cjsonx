@@ -26,6 +26,7 @@ static inline uint32_t cjsonx_builder_alloc_node(cjsonx_doc_t* doc) {
     if (!doc || doc->is_static) return UINT32_MAX; // static docs cannot be mutated
     if (doc->node_count >= doc->node_capacity) {
         size_t new_cap = doc->node_capacity == 0 ? 128 : doc->node_capacity * 2;
+        if (CJSONX_UNLIKELY(new_cap < doc->node_capacity || new_cap > (size_t)-1 / sizeof(cjsonx_node_t))) return UINT32_MAX;
         cjsonx_node_t* new_nodes;
         if (doc->alloc.realloc_fn) {
             new_nodes = (cjsonx_node_t*)doc->alloc.realloc_fn(doc->nodes, new_cap * sizeof(cjsonx_node_t), doc->alloc.user_data);
@@ -655,9 +656,14 @@ typedef struct {
 
 static cjsonx_always_inline void cjsonx_strbuf_append(cjsonx_strbuf_t* __restrict sb, const char* __restrict str, size_t len) {
     if (CJSONX_UNLIKELY(sb->oom)) return;
+    if (CJSONX_UNLIKELY(sb->len + len < sb->len)) { // overflow check
+        sb->oom = true;
+        return;
+    }
     if (CJSONX_UNLIKELY(sb->len + len >= sb->cap)) {
         size_t new_cap = sb->cap == 0 ? 2048 : sb->cap * 2;
         if (new_cap <= sb->len + len) new_cap = sb->len + len + 1024;
+        if (CJSONX_UNLIKELY(new_cap < sb->len + len)) new_cap = sb->len + len; // clamp on overflow
         char* new_buf;
         if (sb->alloc && sb->alloc->realloc_fn) {
             new_buf = (char*)sb->alloc->realloc_fn(sb->buf, new_cap, sb->alloc->user_data);
@@ -677,8 +683,13 @@ static cjsonx_always_inline void cjsonx_strbuf_append(cjsonx_strbuf_t* __restric
 
 static cjsonx_always_inline void cjsonx_strbuf_append_c(cjsonx_strbuf_t* __restrict sb, char c) {
     if (CJSONX_UNLIKELY(sb->oom)) return;
+    if (CJSONX_UNLIKELY(sb->len + 1 < sb->len)) { // overflow check
+        sb->oom = true;
+        return;
+    }
     if (CJSONX_UNLIKELY(sb->len + 1 >= sb->cap)) {
         size_t new_cap = sb->cap == 0 ? 2048 : sb->cap * 2;
+        if (CJSONX_UNLIKELY(new_cap < sb->cap)) new_cap = sb->len + 1; // clamp on overflow
         char* new_buf;
         if (sb->alloc && sb->alloc->realloc_fn) {
             new_buf = (char*)sb->alloc->realloc_fn(sb->buf, new_cap, sb->alloc->user_data);
@@ -981,16 +992,16 @@ cjsonx_doc_t* cjsonx_read_file_ex(const char* path, cjsonx_allocator_t* alloc) {
     long fsize = ftell(fp);
     fseek(fp, 0, SEEK_SET);
 
-    if (fsize < 0) {
+    if (fsize < 0 || (unsigned long)fsize >= (size_t)-1) {
         fclose(fp);
         return NULL;
     }
 
     char* string;
     if (alloc && alloc->malloc_fn) {
-        string = (char*)alloc->malloc_fn(fsize + 1, alloc->user_data);
+        string = (char*)alloc->malloc_fn((size_t)fsize + 1, alloc->user_data);
     } else {
-        string = (char*)malloc(fsize + 1);
+        string = (char*)malloc((size_t)fsize + 1);
     }
     if (!string) {
         fclose(fp);
