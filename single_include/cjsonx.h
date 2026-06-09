@@ -356,6 +356,7 @@ typedef cjsonx_tape_t cjsonx_tape;
 
 // init tape with pre-alloc cap, false on oom
 static cjsonx_always_inline bool cjsonx_tape_init(cjsonx_tape_t* tape, size_t capacity, cjsonx_allocator_t* alloc) {
+    if (CJSONX_UNLIKELY(capacity > (size_t)-1 / sizeof(uint32_t))) return false;
     tape->alloc = alloc;
     if (alloc && alloc->malloc_fn) {
         tape->indices = (uint32_t*)alloc->malloc_fn(capacity * sizeof(uint32_t), alloc->user_data);
@@ -398,6 +399,7 @@ static cjsonx_always_inline bool cjsonx_tape_push(cjsonx_tape_t* tape, uint32_t 
     if (CJSONX_UNLIKELY(tape->count >= tape->capacity)) {
         if (CJSONX_UNLIKELY(tape->is_static)) return false;
         size_t new_cap = tape->capacity ? tape->capacity * 2 : 64;
+        if (CJSONX_UNLIKELY(new_cap < tape->capacity || new_cap > (size_t)-1 / sizeof(uint32_t))) return false;
         uint32_t* new_indices;
         if (tape->alloc && tape->alloc->realloc_fn) {
             new_indices = (uint32_t*)tape->alloc->realloc_fn(tape->indices, new_cap * sizeof(uint32_t), tape->alloc->user_data);
@@ -500,6 +502,7 @@ static inline uint32_t cjsonx_builder_alloc_node(cjsonx_doc_t* doc) {
     if (!doc || doc->is_static) return UINT32_MAX; // static docs cannot be mutated
     if (doc->node_count >= doc->node_capacity) {
         size_t new_cap = doc->node_capacity == 0 ? 128 : doc->node_capacity * 2;
+        if (CJSONX_UNLIKELY(new_cap < doc->node_capacity || new_cap > (size_t)-1 / sizeof(cjsonx_node_t))) return UINT32_MAX;
         cjsonx_node_t* new_nodes;
         if (doc->alloc.realloc_fn) {
             new_nodes = (cjsonx_node_t*)doc->alloc.realloc_fn(doc->nodes, new_cap * sizeof(cjsonx_node_t), doc->alloc.user_data);
@@ -1129,9 +1132,14 @@ typedef struct {
 
 static cjsonx_always_inline void cjsonx_strbuf_append(cjsonx_strbuf_t* __restrict sb, const char* __restrict str, size_t len) {
     if (CJSONX_UNLIKELY(sb->oom)) return;
+    if (CJSONX_UNLIKELY(sb->len + len < sb->len)) { // overflow check
+        sb->oom = true;
+        return;
+    }
     if (CJSONX_UNLIKELY(sb->len + len >= sb->cap)) {
         size_t new_cap = sb->cap == 0 ? 2048 : sb->cap * 2;
         if (new_cap <= sb->len + len) new_cap = sb->len + len + 1024;
+        if (CJSONX_UNLIKELY(new_cap < sb->len + len)) new_cap = sb->len + len; // clamp on overflow
         char* new_buf;
         if (sb->alloc && sb->alloc->realloc_fn) {
             new_buf = (char*)sb->alloc->realloc_fn(sb->buf, new_cap, sb->alloc->user_data);
@@ -1151,8 +1159,13 @@ static cjsonx_always_inline void cjsonx_strbuf_append(cjsonx_strbuf_t* __restric
 
 static cjsonx_always_inline void cjsonx_strbuf_append_c(cjsonx_strbuf_t* __restrict sb, char c) {
     if (CJSONX_UNLIKELY(sb->oom)) return;
+    if (CJSONX_UNLIKELY(sb->len + 1 < sb->len)) { // overflow check
+        sb->oom = true;
+        return;
+    }
     if (CJSONX_UNLIKELY(sb->len + 1 >= sb->cap)) {
         size_t new_cap = sb->cap == 0 ? 2048 : sb->cap * 2;
+        if (CJSONX_UNLIKELY(new_cap < sb->cap)) new_cap = sb->len + 1; // clamp on overflow
         char* new_buf;
         if (sb->alloc && sb->alloc->realloc_fn) {
             new_buf = (char*)sb->alloc->realloc_fn(sb->buf, new_cap, sb->alloc->user_data);
@@ -1455,16 +1468,16 @@ cjsonx_doc_t* cjsonx_read_file_ex(const char* path, cjsonx_allocator_t* alloc) {
     long fsize = ftell(fp);
     fseek(fp, 0, SEEK_SET);
 
-    if (fsize < 0) {
+    if (fsize < 0 || (unsigned long)fsize >= (size_t)-1) {
         fclose(fp);
         return NULL;
     }
 
     char* string;
     if (alloc && alloc->malloc_fn) {
-        string = (char*)alloc->malloc_fn(fsize + 1, alloc->user_data);
+        string = (char*)alloc->malloc_fn((size_t)fsize + 1, alloc->user_data);
     } else {
-        string = (char*)malloc(fsize + 1);
+        string = (char*)malloc((size_t)fsize + 1);
     }
     if (!string) {
         fclose(fp);
@@ -2204,7 +2217,7 @@ static inline bool cjsonx_stage1_scalar(const char* json, size_t length, cjsonx_
         char c = json[i];
         
         if (in_string) {
-            // raw control characters < 0x20 must be escaped inside json strings
+            // no raw control chars allowed in strings, rfc8259 says so
             if ((unsigned char)c < 0x20) {
                 return false; 
             }
@@ -2235,7 +2248,7 @@ static inline bool cjsonx_stage1_scalar(const char* json, size_t length, cjsonx_
                 }
                 prev_was_sep = true;
             } else if (!cjsonx_is_whitespace(c)) {
-                // start of a primitive token
+                // start of a primitive (number, true/false/null). only store the first byte.
                 if (prev_was_sep) {
                     if (!cjsonx_tape_push(tape, (uint32_t)i)) {
                         return false; 
@@ -2243,7 +2256,7 @@ static inline bool cjsonx_stage1_scalar(const char* json, size_t length, cjsonx_
                 }
                 prev_was_sep = false;
             } else {
-                // whitespace between tokens marks a boundary
+                // whitespace marks a token boundary
                 prev_was_sep = true;
             }
         }
@@ -4212,6 +4225,10 @@ static bool cjsonx_stage2_build(cjsonx_doc_t* doc, const char* json, cjsonx_tape
     
     // skip allocation if nodes were already pre-allocated (e.g. static buffer)
     if (!doc->nodes) {
+        if (CJSONX_UNLIKELY(tape->count > (size_t)-1 / sizeof(cjsonx_node_t))) {
+            doc->error = CJSONX_ERROR_OOM;
+            return false;
+        }
         if (doc->alloc.malloc_fn) {
             doc->nodes = (cjsonx_node_t*)doc->alloc.malloc_fn(tape->count * sizeof(cjsonx_node_t), doc->alloc.user_data);
         } else {
@@ -4242,6 +4259,13 @@ static bool cjsonx_stage2_build(cjsonx_doc_t* doc, const char* json, cjsonx_tape
 #endif
 
 #ifdef CJSONX_USE_GOTOS
+#if defined(__clang__)
+    #pragma clang diagnostic push
+    #pragma clang diagnostic ignored "-Winitializer-overrides"
+#elif defined(__GNUC__)
+    #pragma GCC diagnostic push
+    #pragma GCC diagnostic ignored "-Woverride-init"
+#endif
     static const void* dispatch_table[256] = {
         [0 ... 255] = &&l_default,
         ['"'] = &&l_string,
@@ -4255,6 +4279,11 @@ static bool cjsonx_stage2_build(cjsonx_doc_t* doc, const char* json, cjsonx_tape
         ['f'] = &&l_false,
         ['n'] = &&l_null
     };
+#if defined(__clang__)
+    #pragma clang diagnostic pop
+#elif defined(__GNUC__)
+    #pragma GCC diagnostic pop
+#endif
     
     #define CJSONX_NEXT_TOKEN() do { \
         if (CJSONX_UNLIKELY(tape_idx >= tape->count)) goto end_loop; \
