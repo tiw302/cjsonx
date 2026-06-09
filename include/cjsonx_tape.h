@@ -39,6 +39,7 @@ typedef cjsonx_tape_t cjsonx_tape;
 
 // init tape with pre-alloc cap, false on oom
 static cjsonx_always_inline bool cjsonx_tape_init(cjsonx_tape_t* tape, size_t capacity, cjsonx_allocator_t* alloc) {
+    if (CJSONX_UNLIKELY(capacity > (size_t)-1 / sizeof(uint32_t))) return false;
     tape->alloc = alloc;
     if (alloc && alloc->malloc_fn) {
         tape->indices = (uint32_t*)alloc->malloc_fn(capacity * sizeof(uint32_t), alloc->user_data);
@@ -81,6 +82,7 @@ static cjsonx_always_inline bool cjsonx_tape_push(cjsonx_tape_t* tape, uint32_t 
     if (CJSONX_UNLIKELY(tape->count >= tape->capacity)) {
         if (CJSONX_UNLIKELY(tape->is_static)) return false;
         size_t new_cap = tape->capacity ? tape->capacity * 2 : 64;
+        if (CJSONX_UNLIKELY(new_cap < tape->capacity || new_cap > (size_t)-1 / sizeof(uint32_t))) return false;
         uint32_t* new_indices;
         if (tape->alloc && tape->alloc->realloc_fn) {
             new_indices = (uint32_t*)tape->alloc->realloc_fn(tape->indices, new_cap * sizeof(uint32_t), tape->alloc->user_data);
