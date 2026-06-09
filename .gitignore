@@ -125,6 +125,9 @@ undo/
 Thumbs.db
 desktop.ini
 
+# gemini
+GEMINI.md
+
 # c++ tools
 .cache/
 .clangd/
