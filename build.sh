@@ -1,9 +1,10 @@
 #!/bin/bash
 # cjsonx helper build script
-set -e
+set -euo pipefail
 
-# define paths
-build_dir="build"
+# define paths based on the script's location
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+build_dir="${script_dir}/build"
 run_tests=false
 clean_first=false
 
@@ -39,7 +40,7 @@ fi
 
 # run cmake configuration
 echo "configuring build with cmake..."
-cmake -B "$build_dir" -S . -DCMAKE_BUILD_TYPE=Release
+cmake -B "$build_dir" -S "$script_dir" -DCMAKE_BUILD_TYPE=Release
 
 # build targets
 echo "building cjsonx target binaries..."
