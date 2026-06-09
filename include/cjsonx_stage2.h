@@ -74,6 +74,10 @@ static bool cjsonx_stage2_build(cjsonx_doc_t* doc, const char* json, cjsonx_tape
     
     // skip allocation if nodes were already pre-allocated (e.g. static buffer)
     if (!doc->nodes) {
+        if (CJSONX_UNLIKELY(tape->count > (size_t)-1 / sizeof(cjsonx_node_t))) {
+            doc->error = CJSONX_ERROR_OOM;
+            return false;
+        }
         if (doc->alloc.malloc_fn) {
             doc->nodes = (cjsonx_node_t*)doc->alloc.malloc_fn(tape->count * sizeof(cjsonx_node_t), doc->alloc.user_data);
         } else {
@@ -104,6 +108,13 @@ static bool cjsonx_stage2_build(cjsonx_doc_t* doc, const char* json, cjsonx_tape
 #endif
 
 #ifdef CJSONX_USE_GOTOS
+#if defined(__clang__)
+    #pragma clang diagnostic push
+    #pragma clang diagnostic ignored "-Winitializer-overrides"
+#elif defined(__GNUC__)
+    #pragma GCC diagnostic push
+    #pragma GCC diagnostic ignored "-Woverride-init"
+#endif
     static const void* dispatch_table[256] = {
         [0 ... 255] = &&l_default,
         ['"'] = &&l_string,
@@ -117,6 +128,11 @@ static bool cjsonx_stage2_build(cjsonx_doc_t* doc, const char* json, cjsonx_tape
         ['f'] = &&l_false,
         ['n'] = &&l_null
     };
+#if defined(__clang__)
+    #pragma clang diagnostic pop
+#elif defined(__GNUC__)
+    #pragma GCC diagnostic pop
+#endif
     
     #define CJSONX_NEXT_TOKEN() do { \
         if (CJSONX_UNLIKELY(tape_idx >= tape->count)) goto end_loop; \
