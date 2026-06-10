@@ -6,28 +6,28 @@
 
 /**
  * @file cjsonx.h
- * @brief Public API and single-header entry point
+ * @brief public api and single-header entry point
  *
- * @note I'm just a kid building projects as a hobby. Thank you for showing interest in my little library! It really means a lot to me. :)
- * @note Architecture and coding style inspired by yyjson (https://github.com/ibireme/yyjson)
+ * @note i'm just a kid building projects as a hobby. thank you for showing interest in my little library! it really means a lot to me. :)
+ * @note architecture and coding style inspired by yyjson (https://github.com/ibireme/yyjson)
  */
 /*
- * cjsonx.h -- Extreme performance JSON parser for C11/C++
- * Project URL: https://github.com/tiw302/cjsonx
+ * cjsonx.h -- extreme performance json parser for c11/c++
+ * project url: https://github.com/tiw302/cjsonx
  *
- * How to use:
- * 1. Include this file normally in headers to get types and API declarations.
- * 2. In exactly one C/C++ source file, define the implementation macro:
+ * how to use:
+ * 1. include this file normally in headers to get types and api declarations.
+ * 2. in exactly one c/c++ source file, define the implementation macro:
  *    #define cjsonx_implementation
  *    #include <cjsonx.h>
  *
- * Technical background:
- * - Two-stage parsing algorithm inspired by simdjson.
- *   - Stage 1: Structural indexing (finding {}[]:,")
- *   - Stage 2: Recursive descent parsing (building DOM via arena allocator)
+ * technical background:
+ * - two-stage parsing algorithm inspired by simdjson.
+ *   - stage 1: structural indexing (finding {}[]:,")
+ *   - stage 2: recursive descent parsing (building dom via arena allocator)
  *
- * MIT License
- * Copyright (c) 2026 Jirawat Siripuk
+ * mit license
+ * copyright (c) 2026 jirawat siripuk
  */
 
 #ifndef CJSONX_H
@@ -38,7 +38,7 @@
 #include <stdint.h>
 #include <string.h>
 
-// Version macros
+// version macros
 #define CJSONX_VERSION_MAJOR 1
 #define CJSONX_VERSION_MINOR 0
 #define CJSONX_VERSION_PATCH 0
@@ -51,12 +51,12 @@
 #define CJSONX_CONFIG_H
 
 /*==============================================================================
- * MARK: - configuration
+ * mark: - configuration
  *============================================================================*/
 
 
 /*==============================================================================
- * MARK: - compiler hints
+ * mark: - compiler hints
  *============================================================================*/
 
 #if defined(__GNUC__) || defined(__clang__)
@@ -91,12 +91,12 @@
 #define CJSONX_ARENA_CHUNK_SIZE 4096
 #endif
 
-#endif // CJSONX_CONFIG_H
+#endif // cjsonx_config_h
 #ifndef CJSONX_ERROR_H
 #define CJSONX_ERROR_H
 
 /*==============================================================================
- * MARK: - error handling
+ * mark: - error handling
  *============================================================================*/
 
 
@@ -161,12 +161,12 @@ static inline const char* cjsonx_error_string(cjsonx_error_t err) {
     }
 }
 
-#endif // CJSONX_ERROR_H
+#endif // cjsonx_error_h
 #ifndef CJSONX_DOM_H
 #define CJSONX_DOM_H
 
 /*==============================================================================
- * MARK: - dom (document object model)
+ * mark: - dom (document object model)
  *============================================================================*/
 
 
@@ -192,7 +192,7 @@ typedef enum {
 } cjsonx_type_t;
 
 // 16-byte flat node, packed for cache efficiency.
-// Max length/count supported per node is 16,777,215 (24-bit).
+// max length/count supported per node is 16,777,215 (24-bit).
 typedef struct {
     uint32_t type_and_length;  // 8-bit type | 24-bit length (max 16,777,215)
     uint32_t next_sibling;     // next sibling index for fast skipping
@@ -217,8 +217,8 @@ static cjsonx_always_inline uint32_t cjsonx_node_length(const cjsonx_node_t* n) 
 }
 
 static cjsonx_always_inline void cjsonx_node_set_type_len(cjsonx_node_t* __restrict n, cjsonx_type_t type, uint32_t length) {
-    // Silently clamp length to 24-bit maximum (16,777,215).
-    // Strings longer than 16MB or collections with more than 16M elements will be capped.
+    // silently clamp length to 24-bit maximum (16,777,215).
+    // strings longer than 16mb or collections with more than 16m elements will be capped.
     if (CJSONX_UNLIKELY(length > 0xFFFFFF)) length = 0xFFFFFF;
     n->type_and_length = ((uint32_t)type) | (length << 8);
 }
@@ -311,7 +311,7 @@ static inline cjsonx_val_t cjsonx_make_null_handle(void) {
     return v;
 }
 
-// type and function aliases for compatibility with non-t API
+// type and function aliases for compatibility with non-t api
 typedef cjsonx_doc_t cjsonx_doc;
 typedef cjsonx_val_t cjsonx_val;
 typedef cjsonx_iter_t cjsonx_iter;
@@ -322,12 +322,12 @@ typedef cjsonx_allocator_t cjsonx_alc;
 }
 #endif
 
-#endif  // CJSONX_DOM_H
+#endif  // cjsonx_dom_h
 #ifndef CJSONX_TAPE_H
 #define CJSONX_TAPE_H
 
 /*==============================================================================
- * MARK: - parsing tape
+ * mark: - parsing tape
  *============================================================================*/
 
 
@@ -341,17 +341,17 @@ extern "C" {
 // stores index offsets of all structural characters like { } [ ] : , "
 // helps stage 2 parser skip whitespace and parse faster
 //
-// NOTE: Using uint32_t for index offsets limits the maximum supported JSON input
-// size to 4 GiB (UINT32_MAX).
+// note: using uint32_t for index offsets limits the maximum supported json input
+// size to 4 gib (uint32_max).
 typedef struct {
-    uint32_t* indices;   // array of 32-bit index offsets (limits input size to 4 GiB)
+    uint32_t* indices;   // array of 32-bit index offsets (limits input size to 4 gib)
     size_t count;        // number of indices inside the tape
     size_t capacity;     // capacity of the indices array
     bool is_static;      // if true, do not free or realloc
     cjsonx_allocator_t* alloc; // optional custom allocator
 } cjsonx_tape_t;
 
-// alias for compatibility with non-t API
+// alias for compatibility with non-t api
 typedef cjsonx_tape_t cjsonx_tape;
 
 // init tape with pre-alloc cap, false on oom
@@ -418,12 +418,12 @@ static cjsonx_always_inline bool cjsonx_tape_push(cjsonx_tape_t* tape, uint32_t 
 }
 #endif
 
-#endif // CJSONX_TAPE_H
+#endif // cjsonx_tape_h
 #ifndef CJSONX_ARENA_H
 #define CJSONX_ARENA_H
 
 /*==============================================================================
- * MARK: - memory arena
+ * mark: - memory arena
  *============================================================================*/
 
 
@@ -482,12 +482,12 @@ static cjsonx_always_inline void* cjsonx_arena_alloc(cjsonx_doc_t* __restrict do
 }
 #endif
 
-#endif // CJSONX_ARENA_H
+#endif // cjsonx_arena_h
 #ifndef CJSONX_BUILDER_H
 #define CJSONX_BUILDER_H
 
 /*==============================================================================
- * MARK: - builder api
+ * mark: - builder api
  *============================================================================*/
 
 
@@ -605,6 +605,10 @@ static inline bool cjsonx_object_set(cjsonx_val_t obj_handle, const char* key, c
         curr = v_node->next_sibling;
     }
     
+    // guard against maximum length limit for 24-bit field
+    size_t len = cjsonx_node_length(obj);
+    if (CJSONX_UNLIKELY(len >= 0xFFFFFF)) return false;
+
     // allocate key node
     uint32_t key_idx = cjsonx_builder_alloc_node(obj_handle.doc);
     if (key_idx == UINT32_MAX) return false;
@@ -621,10 +625,9 @@ static inline bool cjsonx_object_set(cjsonx_val_t obj_handle, const char* key, c
     obj = &obj_handle.doc->nodes[obj_handle.node_idx];
     key_node = &obj_handle.doc->nodes[key_idx];
     
-    // link
+    // link key and value into object
     key_node->next_sibling = val_handle.node_idx;
     
-    size_t len = cjsonx_node_length(obj);
     if (len == 0) {
         obj->val.first_child = key_idx;
     } else {
@@ -644,15 +647,17 @@ static inline bool cjsonx_object_set(cjsonx_val_t obj_handle, const char* key, c
     return true;
 }
 
-// note: each push traverses the child list to find the last element (O(n)),
-// so repeated pushes to the same array are O(n²). this is fine for small
+// note: each push traverses the child list to find the last element (o(n)),
+// so repeated pushes to the same array are o(n²). this is fine for small
 // builder workloads but not suitable for bulk construction of large arrays.
 static inline bool cjsonx_array_push(cjsonx_val_t arr_handle, cjsonx_val_t val_handle) {
     if (!arr_handle.doc || !val_handle.doc || arr_handle.doc != val_handle.doc) return false;
     cjsonx_node_t* arr = &arr_handle.doc->nodes[arr_handle.node_idx];
     if (cjsonx_node_type(arr) != CJSONX_ARRAY) return false;
     
+    // guard against maximum length limit for 24-bit field
     size_t len = cjsonx_node_length(arr);
+    if (CJSONX_UNLIKELY(len >= 0xFFFFFF)) return false;
     
     if (len == 0) {
         arr->val.first_child = val_handle.node_idx;
@@ -1571,13 +1576,15 @@ cjsonx_val_t cjsonx_clone_val(cjsonx_doc_t* dest_doc, cjsonx_val_t src_val) {
             return cjsonx_create_number(dest_doc, src_node->val.f64);
         case CJSONX_STRING: {
             uint32_t len = cjsonx_node_length(src_node);
+            // save pointer before allocation, as reallocation might invalidate src_node
+            const char* src_str = src_node->val.str;
             uint32_t idx = cjsonx_builder_alloc_node(dest_doc);
             if (idx == UINT32_MAX) return cjsonx_make_null_handle();
             cjsonx_node_set_type_len(&dest_doc->nodes[idx], CJSONX_STRING, len);
             dest_doc->nodes[idx].next_sibling = idx + 1;
             char* s = (char*)cjsonx_arena_alloc(dest_doc, len + 1);
             if (!s) return cjsonx_make_null_handle();
-            memcpy(s, src_node->val.str, len + 1);
+            memcpy(s, src_str, len + 1);
             dest_doc->nodes[idx].val.str = s;
             return (cjsonx_val_t){dest_doc, idx};
         }
@@ -1686,7 +1693,7 @@ cjsonx_doc_t* cjsonx_parse_ex(const char* json, size_t length, cjsonx_allocator_
 #define CJSONX_STAGE1_H
 
 /*==============================================================================
- * MARK: - stage 1 (structural indexing)
+ * mark: - stage 1 (structural indexing)
  *============================================================================*/
 
 
@@ -1697,14 +1704,14 @@ cjsonx_doc_t* cjsonx_parse_ex(const char* json, size_t length, cjsonx_allocator_
 #define CJSONX_AVX2_H
 
 /*==============================================================================
- * MARK: - avx2 backend
+ * mark: - avx2 backend
  *============================================================================*/
 
 
 #include <immintrin.h>
 #include <wmmintrin.h> // for pclmulqdq
 
-// MSVC compatibility for gcc/clang builtins
+// msvc compatibility for gcc/clang builtins
 #if defined(_MSC_VER) && !defined(__clang__)
 #include <intrin.h>
 static inline uint32_t cjsonx_ctz32(uint32_t x) {
@@ -1858,7 +1865,7 @@ static inline bool cjsonx_stage1_avx2(const char* json, size_t length, cjsonx_ta
 #define CJSONX_NEON_H
 
 /*==============================================================================
- * MARK: - neon backend
+ * mark: - neon backend
  *============================================================================*/
 
 
@@ -2020,13 +2027,13 @@ static inline bool cjsonx_stage1_neon(const char* json, size_t length, cjsonx_ta
     return true;
 }
 
-#endif // CJSONX_NEON_H
+#endif // cjsonx_neon_h
 #elif defined(__wasm_simd128__)
 #ifndef CJSONX_WASM_H
 #define CJSONX_WASM_H
 
 /*==============================================================================
- * MARK: - wasm simd backend
+ * mark: - wasm simd backend
  *============================================================================*/
 
 
@@ -2174,13 +2181,13 @@ static inline bool cjsonx_stage1_wasm(const char* json, size_t length, cjsonx_ta
     return true;
 }
 
-#endif // CJSONX_WASM_H
+#endif // cjsonx_wasm_h
 #else
 #ifndef CJSONX_SCALAR_H
 #define CJSONX_SCALAR_H
 
 /*==============================================================================
- * MARK: - scalar backend
+ * mark: - scalar backend
  *============================================================================*/
 
 
@@ -2275,7 +2282,7 @@ static inline bool cjsonx_stage1_scalar(const char* json, size_t length, cjsonx_
     return true;
 }
 
-#endif // CJSONX_SCALAR_H
+#endif // cjsonx_scalar_h
 #endif
 
 #ifdef CJSONX_IMPLEMENTATION
@@ -2292,21 +2299,22 @@ bool cjsonx_stage1_build_tape(const char* json, size_t length, cjsonx_tape_t* ta
 }
 #endif
 
-#endif  // CJSONX_STAGE1_H
+#endif  // cjsonx_stage1_h
 #ifndef CJSONX_STAGE2_H
 #define CJSONX_STAGE2_H
 
 /*==============================================================================
- * MARK: - stage 2 (dom building)
+ * mark: - stage 2 (dom building)
  *============================================================================*/
 
 
+#include <locale.h>
 
 #ifndef CJSONX_STRING_H
 #define CJSONX_STRING_H
 
 /*==============================================================================
- * MARK: - string processing
+ * mark: - string processing
  *============================================================================*/
 
 
@@ -2314,7 +2322,7 @@ bool cjsonx_stage1_build_tape(const char* json, size_t length, cjsonx_tape_t* ta
 #define CJSONX_UTF8_H
 
 /*==============================================================================
- * MARK: - utf-8 validation
+ * mark: - utf-8 validation
  *============================================================================*/
 
 
@@ -2323,7 +2331,7 @@ bool cjsonx_stage1_build_tape(const char* json, size_t length, cjsonx_tape_t* ta
 extern "C" {
 #endif
 
-// Copyright (c) 2008-2009 Bjoern Hoehrmann <bjoern@hoehrmann.de>
+// copyright (c) 2008-2009 bjoern hoehrmann <bjoern@hoehrmann.de>
 // see http://bjoern.hoehrmann.de/utf-8/decoder/dfa/ for details.
 
 #define CJSONX_UTF8_ACCEPT 0
@@ -2360,7 +2368,7 @@ static inline uint32_t cjsonx_utf8_decode(uint32_t* state, uint32_t* codep, uint
 #ifdef __cplusplus
 }
 #endif
-#endif // CJSONX_UTF8_H
+#endif // cjsonx_utf8_h
 
 #ifdef __cplusplus
 extern "C" {
@@ -2441,7 +2449,7 @@ static cjsonx_always_inline bool cjsonx_parse_string_impl(cjsonx_doc_t* doc, cjs
         
         uint8x16_t bad = vorrq_u8(cmp_esc, cmp_ctrl);
         
-        // bitwise OR across vector to check if any condition matched
+        // bitwise or across vector to check if any condition matched
         uint32x4_t bad_u32 = vreinterpretq_u32_u8(bad);
         uint32x4_t non_ascii_u32 = vreinterpretq_u32_u8(non_ascii);
         
@@ -2589,13 +2597,13 @@ static cjsonx_always_inline bool cjsonx_parse_string_impl(cjsonx_doc_t* doc, cjs
 }
 #endif
 
-#endif // CJSONX_STRING_H
+#endif // cjsonx_string_h
 
 #ifndef CJSONX_FASTFLOAT_H
 #define CJSONX_FASTFLOAT_H
 
 /*==============================================================================
- * MARK: - fast float parsing
+ * mark: - fast float parsing
  *============================================================================*/
 
 
@@ -2603,7 +2611,7 @@ static cjsonx_always_inline bool cjsonx_parse_string_impl(cjsonx_doc_t* doc, cjs
 #define CJSONX_EISEL_LEMIRE_H
 
 /*==============================================================================
- * MARK: - eisel-lemire float parsing
+ * mark: - eisel-lemire float parsing
  *============================================================================*/
 
 
@@ -3996,9 +4004,9 @@ static const int16_t cjsonx_eisel_lemire_exp[] = {
     1073,
 };
 
-#endif // CJSONX_EISEL_LEMIRE_H
+#endif // cjsonx_eisel_lemire_h
 
-// MSVC compatibility for __builtin_clzll
+// msvc compatibility for __builtin_clzll
 #if defined(_MSC_VER) && !defined(__clang__)
 static inline int cjsonx_clzll(uint64_t x) {
     unsigned long idx;
@@ -4038,6 +4046,7 @@ static inline uint64_t cjsonx_mul64_high(uint64_t a, uint64_t b) {
 // convert (mantissa × 10^exponent) to ieee-754 double using fast path or eisel-lemire
 static cjsonx_always_inline bool cjsonx_compute_float(uint64_t mantissa, int exponent, double* out) {
     if (CJSONX_UNLIKELY(mantissa == 0)) {
+        // zero is zero, no need to compute
         *out = 0.0;
         return true;
     }
@@ -4055,10 +4064,12 @@ static cjsonx_always_inline bool cjsonx_compute_float(uint64_t mantissa, int exp
     if (exponent < -348) { *out = 0.0; return true; }
     if (exponent > 342) { *out = 1e308 * 10; return true; } // infinity
     
+    // lookup precomputed powers of 10
     int index = exponent + 348;
     uint64_t table_m = cjsonx_eisel_lemire_mantissa[index];
     int16_t table_e = cjsonx_eisel_lemire_exp[index];
     
+    // normalize mantissa
     int lz = __builtin_clzll(mantissa);
     uint64_t w = mantissa << lz;
     
@@ -4073,9 +4084,11 @@ static cjsonx_always_inline bool cjsonx_compute_float(uint64_t mantissa, int exp
     uint64_t discarded = high & mask;
     
     if (discarded == 0 || discarded == (1ULL << (shift - 1))) {
-        return false; // tie-breaking required, fallback to strtod
+        // exactly halfway, need bignum tie-breaking (fallback to strtod)
+        return false;
     }
     
+    // round up if halfway or more
     if (discarded > (1ULL << (shift - 1))) {
         mantissa_53++;
     }
@@ -4168,7 +4181,7 @@ static cjsonx_always_inline bool cjsonx_parse_fast_float(const char* __restrict 
 }
 #endif
 
-#endif // CJSONX_FASTFLOAT_H
+#endif // cjsonx_fastfloat_h
 
 typedef enum {
     CJSONX_S_VAL     = 1,
@@ -4430,6 +4443,14 @@ static bool cjsonx_stage2_build(cjsonx_doc_t* doc, const char* json, cjsonx_tape
                     char buf[512];
                     memcpy(buf, json + pos, num_len);
                     buf[num_len] = '\0';
+                    
+                    // temporarily patch the decimal point to match host locale so strtod works correctly
+                    struct lconv* lc = localeconv();
+                    if (lc && lc->decimal_point && lc->decimal_point[0] != '.') {
+                        char* dot = strchr(buf, '.');
+                        if (dot) *dot = lc->decimal_point[0];
+                    }
+                    
                     val = strtod(buf, (char**)&end);
                     if (CJSONX_UNLIKELY(end == buf)) goto fail;
                     end = (json + pos) + (end - buf);
@@ -4497,7 +4518,7 @@ cjsonx_doc_t* cjsonx_doc_new_ex(cjsonx_allocator_t* alloc) {
     doc->chunk_size = 4096;
     doc->chunk_used = 0;
 
-    // pre-allocate flat DOM node array starting with 16 nodes capacity
+    // pre-allocate flat dom node array starting with 16 nodes capacity
     cjsonx_node_t* nodes;
     if (doc->alloc.malloc_fn) {
         nodes = (cjsonx_node_t*)doc->alloc.malloc_fn(16 * sizeof(cjsonx_node_t), doc->alloc.user_data);
@@ -4864,10 +4885,10 @@ cjsonx_doc_t* cjsonx_parse_with_buffer(const char* json, size_t length, void* bu
     return doc;
 }
 
-#endif // CJSONX_STAGE2_H
+#endif // cjsonx_stage2_h
 #endif
 #endif
 
-#endif  // CJSONX_H
+#endif  // cjsonx_h
 
 #endif // CJSONX_SINGLE_HEADER_H
