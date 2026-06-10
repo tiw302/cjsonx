@@ -1,14 +1,14 @@
 /**
  * @file cjsonx_avx2.h
- * @brief Stage 1 structural indexer — AVX2 + PCLMULQDQ backend
+ * @brief stage 1 structural indexer — avx2 + pclmulqdq backend
  *
- * @note Architecture and coding style inspired by yyjson (https://github.com/ibireme/yyjson)
+ * @note architecture and coding style inspired by yyjson (https://github.com/ibireme/yyjson)
  */
 #ifndef CJSONX_AVX2_H
 #define CJSONX_AVX2_H
 
 /*==============================================================================
- * MARK: - avx2 backend
+ * mark: - avx2 backend
  *============================================================================*/
 
 
@@ -17,7 +17,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-// MSVC compatibility for gcc/clang builtins
+// msvc compatibility for gcc/clang builtins
 #if defined(_MSC_VER) && !defined(__clang__)
 #include <intrin.h>
 static inline uint32_t cjsonx_ctz32(uint32_t x) {
