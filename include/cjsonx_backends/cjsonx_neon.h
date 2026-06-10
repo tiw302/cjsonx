@@ -1,14 +1,14 @@
 /**
  * @file cjsonx_neon.h
- * @brief Stage 1 structural indexer — ARM NEON backend
+ * @brief stage 1 structural indexer — arm neon backend
  *
- * @note Architecture and coding style inspired by yyjson (https://github.com/ibireme/yyjson)
+ * @note architecture and coding style inspired by yyjson (https://github.com/ibireme/yyjson)
  */
 #ifndef CJSONX_NEON_H
 #define CJSONX_NEON_H
 
 /*==============================================================================
- * MARK: - neon backend
+ * mark: - neon backend
  *============================================================================*/
 
 
@@ -172,4 +172,4 @@ static inline bool cjsonx_stage1_neon(const char* json, size_t length, cjsonx_ta
     return true;
 }
 
-#endif // CJSONX_NEON_H
+#endif // cjsonx_neon_h
