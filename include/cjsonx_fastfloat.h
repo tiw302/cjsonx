@@ -1,14 +1,14 @@
 /**
  * @file cjsonx_fastfloat.h
- * @brief Fast float parser using Clinger and Eisel-Lemire
+ * @brief fast float parser using clinger and eisel-lemire
  *
- * @note Architecture and coding style inspired by yyjson (https://github.com/ibireme/yyjson)
+ * @note architecture and coding style inspired by yyjson (https://github.com/ibireme/yyjson)
  */
 #ifndef CJSONX_FASTFLOAT_H
 #define CJSONX_FASTFLOAT_H
 
 /*==============================================================================
- * MARK: - fast float parsing
+ * mark: - fast float parsing
  *============================================================================*/
 
 
@@ -17,7 +17,7 @@
 #include <string.h>
 #include "cjsonx_eisel_lemire.h"
 
-// MSVC compatibility for __builtin_clzll
+// msvc compatibility for __builtin_clzll
 #if defined(_MSC_VER) && !defined(__clang__)
 #include <intrin.h>
 static inline int cjsonx_clzll(uint64_t x) {
@@ -58,6 +58,7 @@ static inline uint64_t cjsonx_mul64_high(uint64_t a, uint64_t b) {
 // convert (mantissa × 10^exponent) to ieee-754 double using fast path or eisel-lemire
 static cjsonx_always_inline bool cjsonx_compute_float(uint64_t mantissa, int exponent, double* out) {
     if (CJSONX_UNLIKELY(mantissa == 0)) {
+        // zero is zero, no need to compute
         *out = 0.0;
         return true;
     }
@@ -75,10 +76,12 @@ static cjsonx_always_inline bool cjsonx_compute_float(uint64_t mantissa, int exp
     if (exponent < -348) { *out = 0.0; return true; }
     if (exponent > 342) { *out = 1e308 * 10; return true; } // infinity
     
+    // lookup precomputed powers of 10
     int index = exponent + 348;
     uint64_t table_m = cjsonx_eisel_lemire_mantissa[index];
     int16_t table_e = cjsonx_eisel_lemire_exp[index];
     
+    // normalize mantissa
     int lz = __builtin_clzll(mantissa);
     uint64_t w = mantissa << lz;
     
@@ -93,9 +96,11 @@ static cjsonx_always_inline bool cjsonx_compute_float(uint64_t mantissa, int exp
     uint64_t discarded = high & mask;
     
     if (discarded == 0 || discarded == (1ULL << (shift - 1))) {
-        return false; // tie-breaking required, fallback to strtod
+        // exactly halfway, need bignum tie-breaking (fallback to strtod)
+        return false;
     }
     
+    // round up if halfway or more
     if (discarded > (1ULL << (shift - 1))) {
         mantissa_53++;
     }
@@ -188,4 +193,4 @@ static cjsonx_always_inline bool cjsonx_parse_fast_float(const char* __restrict 
 }
 #endif
 
-#endif // CJSONX_FASTFLOAT_H
+#endif // cjsonx_fastfloat_h
