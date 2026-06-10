@@ -1,19 +1,19 @@
 /**
  * @file cjsonx_config.h
- * @brief Compile-time configuration constants
+ * @brief compile-time configuration constants
  *
- * @note Architecture and coding style inspired by yyjson (https://github.com/ibireme/yyjson)
+ * @note architecture and coding style inspired by yyjson (https://github.com/ibireme/yyjson)
  */
 #ifndef CJSONX_CONFIG_H
 #define CJSONX_CONFIG_H
 
 /*==============================================================================
- * MARK: - configuration
+ * mark: - configuration
  *============================================================================*/
 
 
 /*==============================================================================
- * MARK: - compiler hints
+ * mark: - compiler hints
  *============================================================================*/
 
 #if defined(__GNUC__) || defined(__clang__)
@@ -48,4 +48,4 @@
 #define CJSONX_ARENA_CHUNK_SIZE 4096
 #endif
 
-#endif // CJSONX_CONFIG_H
+#endif // cjsonx_config_h
