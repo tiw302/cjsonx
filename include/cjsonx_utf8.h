@@ -1,14 +1,14 @@
 /**
  * @file cjsonx_utf8.h
- * @brief UTF-8 streaming decoder (Hoehrmann DFA)
+ * @brief utf-8 streaming decoder (hoehrmann dfa)
  *
- * @note Architecture and coding style inspired by yyjson (https://github.com/ibireme/yyjson)
+ * @note architecture and coding style inspired by yyjson (https://github.com/ibireme/yyjson)
  */
 #ifndef CJSONX_UTF8_H
 #define CJSONX_UTF8_H
 
 /*==============================================================================
- * MARK: - utf-8 validation
+ * mark: - utf-8 validation
  *============================================================================*/
 
 
@@ -18,7 +18,7 @@
 extern "C" {
 #endif
 
-// Copyright (c) 2008-2009 Bjoern Hoehrmann <bjoern@hoehrmann.de>
+// copyright (c) 2008-2009 bjoern hoehrmann <bjoern@hoehrmann.de>
 // see http://bjoern.hoehrmann.de/utf-8/decoder/dfa/ for details.
 
 #define CJSONX_UTF8_ACCEPT 0
@@ -55,4 +55,4 @@ static inline uint32_t cjsonx_utf8_decode(uint32_t* state, uint32_t* codep, uint
 #ifdef __cplusplus
 }
 #endif
-#endif // CJSONX_UTF8_H
+#endif // cjsonx_utf8_h
