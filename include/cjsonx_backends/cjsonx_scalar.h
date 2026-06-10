@@ -1,14 +1,14 @@
 /**
  * @file cjsonx_scalar.h
- * @brief Stage 1 structural indexer — portable scalar fallback
+ * @brief stage 1 structural indexer — portable scalar fallback
  *
- * @note Architecture and coding style inspired by yyjson (https://github.com/ibireme/yyjson)
+ * @note architecture and coding style inspired by yyjson (https://github.com/ibireme/yyjson)
  */
 #ifndef CJSONX_SCALAR_H
 #define CJSONX_SCALAR_H
 
 /*==============================================================================
- * MARK: - scalar backend
+ * mark: - scalar backend
  *============================================================================*/
 
 
@@ -106,4 +106,4 @@ static inline bool cjsonx_stage1_scalar(const char* json, size_t length, cjsonx_
     return true;
 }
 
-#endif // CJSONX_SCALAR_H
+#endif // cjsonx_scalar_h
