@@ -16,7 +16,7 @@
 [![Header-Only](https://img.shields.io/badge/Library-Header--Only-brightgreen.svg)](#installation)
 [![Dependencies](https://img.shields.io/badge/Dependencies-None-blueviolet.svg)](#introduction)
 
-**[Read the Official Documentation: docs/index.md](docs/index.md)**<br>
+**[Read the Official Documentation: docs/index.md](https://tiw302.github.io/cjsonx/)**<br>
 **[Try the Live WebAssembly Demo: https://tiw302.github.io/cjsonx/demo/](https://tiw302.github.io/cjsonx/demo/)**
 
 > **Verified Compatibility — Cross-Platform Passing**
