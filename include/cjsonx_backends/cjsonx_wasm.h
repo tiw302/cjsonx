@@ -1,14 +1,14 @@
 /**
  * @file cjsonx_wasm.h
- * @brief Stage 1 structural indexer — WebAssembly SIMD128 backend
+ * @brief stage 1 structural indexer — webassembly simd128 backend
  *
- * @note Architecture and coding style inspired by yyjson (https://github.com/ibireme/yyjson)
+ * @note architecture and coding style inspired by yyjson (https://github.com/ibireme/yyjson)
  */
 #ifndef CJSONX_WASM_H
 #define CJSONX_WASM_H
 
 /*==============================================================================
- * MARK: - wasm simd backend
+ * mark: - wasm simd backend
  *============================================================================*/
 
 
@@ -158,4 +158,4 @@ static inline bool cjsonx_stage1_wasm(const char* json, size_t length, cjsonx_ta
     return true;
 }
 
-#endif // CJSONX_WASM_H
+#endif // cjsonx_wasm_h
