@@ -131,3 +131,7 @@ GEMINI.md
 # c++ tools
 .cache/
 .clangd/
+
+# mkdocs
+site/
+
