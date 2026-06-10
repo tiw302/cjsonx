@@ -1,14 +1,14 @@
 /**
  * @file cjsonx_eisel_lemire.h
- * @brief Precomputed tables for Eisel-Lemire float conversion
+ * @brief precomputed tables for eisel-lemire float conversion
  *
- * @note Architecture and coding style inspired by yyjson (https://github.com/ibireme/yyjson)
+ * @note architecture and coding style inspired by yyjson (https://github.com/ibireme/yyjson)
  */
 #ifndef CJSONX_EISEL_LEMIRE_H
 #define CJSONX_EISEL_LEMIRE_H
 
 /*==============================================================================
- * MARK: - eisel-lemire float parsing
+ * mark: - eisel-lemire float parsing
  *============================================================================*/
 
 
@@ -1402,4 +1402,4 @@ static const int16_t cjsonx_eisel_lemire_exp[] = {
     1073,
 };
 
-#endif // CJSONX_EISEL_LEMIRE_H
+#endif // cjsonx_eisel_lemire_h
