@@ -1,19 +1,20 @@
 /**
  * @file cjsonx_stage2.h
- * @brief Stage 2 DOM builder and public API implementation
+ * @brief stage 2 dom builder and public api implementation
  *
- * @note Architecture and coding style inspired by yyjson (https://github.com/ibireme/yyjson)
+ * @note architecture and coding style inspired by yyjson (https://github.com/ibireme/yyjson)
  */
 #ifndef CJSONX_STAGE2_H
 #define CJSONX_STAGE2_H
 
 /*==============================================================================
- * MARK: - stage 2 (dom building)
+ * mark: - stage 2 (dom building)
  *============================================================================*/
 
 
 #include <stdlib.h>
 #include <string.h>
+#include <locale.h>
 
 #include "cjsonx_string.h"
 
@@ -279,6 +280,14 @@ static bool cjsonx_stage2_build(cjsonx_doc_t* doc, const char* json, cjsonx_tape
                     char buf[512];
                     memcpy(buf, json + pos, num_len);
                     buf[num_len] = '\0';
+                    
+                    // temporarily patch the decimal point to match host locale so strtod works correctly
+                    struct lconv* lc = localeconv();
+                    if (lc && lc->decimal_point && lc->decimal_point[0] != '.') {
+                        char* dot = strchr(buf, '.');
+                        if (dot) *dot = lc->decimal_point[0];
+                    }
+                    
                     val = strtod(buf, (char**)&end);
                     if (CJSONX_UNLIKELY(end == buf)) goto fail;
                     end = (json + pos) + (end - buf);
@@ -346,7 +355,7 @@ cjsonx_doc_t* cjsonx_doc_new_ex(cjsonx_allocator_t* alloc) {
     doc->chunk_size = 4096;
     doc->chunk_used = 0;
 
-    // pre-allocate flat DOM node array starting with 16 nodes capacity
+    // pre-allocate flat dom node array starting with 16 nodes capacity
     cjsonx_node_t* nodes;
     if (doc->alloc.malloc_fn) {
         nodes = (cjsonx_node_t*)doc->alloc.malloc_fn(16 * sizeof(cjsonx_node_t), doc->alloc.user_data);
@@ -713,4 +722,4 @@ cjsonx_doc_t* cjsonx_parse_with_buffer(const char* json, size_t length, void* bu
     return doc;
 }
 
-#endif // CJSONX_STAGE2_H
+#endif // cjsonx_stage2_h
