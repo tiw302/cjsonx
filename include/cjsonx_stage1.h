@@ -1,14 +1,14 @@
 /**
  * @file cjsonx_stage1.h
- * @brief Stage 1 backend dispatcher (AVX2 / NEON / WASM / scalar)
+ * @brief stage 1 backend dispatcher (avx2 / neon / wasm / scalar)
  *
- * @note Architecture and coding style inspired by yyjson (https://github.com/ibireme/yyjson)
+ * @note architecture and coding style inspired by yyjson (https://github.com/ibireme/yyjson)
  */
 #ifndef CJSONX_STAGE1_H
 #define CJSONX_STAGE1_H
 
 /*==============================================================================
- * MARK: - stage 1 (structural indexing)
+ * mark: - stage 1 (structural indexing)
  *============================================================================*/
 
 
@@ -39,4 +39,4 @@ bool cjsonx_stage1_build_tape(const char* json, size_t length, cjsonx_tape_t* ta
 }
 #endif
 
-#endif  // CJSONX_STAGE1_H
+#endif  // cjsonx_stage1_h
