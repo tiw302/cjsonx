@@ -1,14 +1,14 @@
 /**
  * @file cjsonx_arena.h
- * @brief Arena allocator for document-scoped memory
+ * @brief arena allocator for document-scoped memory
  *
- * @note Architecture and coding style inspired by yyjson (https://github.com/ibireme/yyjson)
+ * @note architecture and coding style inspired by yyjson (https://github.com/ibireme/yyjson)
  */
 #ifndef CJSONX_ARENA_H
 #define CJSONX_ARENA_H
 
 /*==============================================================================
- * MARK: - memory arena
+ * mark: - memory arena
  *============================================================================*/
 
 
@@ -71,4 +71,4 @@ static cjsonx_always_inline void* cjsonx_arena_alloc(cjsonx_doc_t* __restrict do
 }
 #endif
 
-#endif // CJSONX_ARENA_H
+#endif // cjsonx_arena_h
