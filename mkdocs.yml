@@ -1,0 +1,17 @@
+site_name: cjsonx
+site_description: High-performance C11 JSON parser using SIMD and Flat Arena DOM
+repo_url: https://github.com/tiw302/cjsonx
+theme:
+  name: material
+  features:
+    - navigation.tabs
+    - navigation.sections
+  palette:
+    scheme: slate
+    primary: indigo
+    accent: indigo
+nav:
+  - Home: index.md
+  - API Reference: api_reference.md
+  - Algorithm Deep-Dive: algorithm.md
+  - Live Demo: demo/index.html
