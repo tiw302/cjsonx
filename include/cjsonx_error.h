@@ -1,14 +1,14 @@
 /**
  * @file cjsonx_error.h
- * @brief Error codes and error-to-string conversion
+ * @brief error codes and error-to-string conversion
  *
- * @note Architecture and coding style inspired by yyjson (https://github.com/ibireme/yyjson)
+ * @note architecture and coding style inspired by yyjson (https://github.com/ibireme/yyjson)
  */
 #ifndef CJSONX_ERROR_H
 #define CJSONX_ERROR_H
 
 /*==============================================================================
- * MARK: - error handling
+ * mark: - error handling
  *============================================================================*/
 
 
@@ -73,4 +73,4 @@ static inline const char* cjsonx_error_string(cjsonx_error_t err) {
     }
 }
 
-#endif // CJSONX_ERROR_H
+#endif // cjsonx_error_h
