@@ -1,14 +1,14 @@
 /**
  * @file cjsonx_tape.h
- * @brief Structural token tape for stage 1 output
+ * @brief structural token tape for stage 1 output
  *
- * @note Architecture and coding style inspired by yyjson (https://github.com/ibireme/yyjson)
+ * @note architecture and coding style inspired by yyjson (https://github.com/ibireme/yyjson)
  */
 #ifndef CJSONX_TAPE_H
 #define CJSONX_TAPE_H
 
 /*==============================================================================
- * MARK: - parsing tape
+ * mark: - parsing tape
  *============================================================================*/
 
 
@@ -24,17 +24,17 @@ extern "C" {
 // stores index offsets of all structural characters like { } [ ] : , "
 // helps stage 2 parser skip whitespace and parse faster
 //
-// NOTE: Using uint32_t for index offsets limits the maximum supported JSON input
-// size to 4 GiB (UINT32_MAX).
+// note: using uint32_t for index offsets limits the maximum supported json input
+// size to 4 gib (uint32_max).
 typedef struct {
-    uint32_t* indices;   // array of 32-bit index offsets (limits input size to 4 GiB)
+    uint32_t* indices;   // array of 32-bit index offsets (limits input size to 4 gib)
     size_t count;        // number of indices inside the tape
     size_t capacity;     // capacity of the indices array
     bool is_static;      // if true, do not free or realloc
     cjsonx_allocator_t* alloc; // optional custom allocator
 } cjsonx_tape_t;
 
-// alias for compatibility with non-t API
+// alias for compatibility with non-t api
 typedef cjsonx_tape_t cjsonx_tape;
 
 // init tape with pre-alloc cap, false on oom
@@ -101,4 +101,4 @@ static cjsonx_always_inline bool cjsonx_tape_push(cjsonx_tape_t* tape, uint32_t 
 }
 #endif
 
-#endif // CJSONX_TAPE_H
+#endif // cjsonx_tape_h
