@@ -1,14 +1,14 @@
 /**
  * @file cjsonx_dom.h
- * @brief DOM node types, document structure, and accessor declarations
+ * @brief dom node types, document structure, and accessor declarations
  *
- * @note Architecture and coding style inspired by yyjson (https://github.com/ibireme/yyjson)
+ * @note architecture and coding style inspired by yyjson (https://github.com/ibireme/yyjson)
  */
 #ifndef CJSONX_DOM_H
 #define CJSONX_DOM_H
 
 /*==============================================================================
- * MARK: - dom (document object model)
+ * mark: - dom (document object model)
  *============================================================================*/
 
 
@@ -38,7 +38,7 @@ typedef enum {
 } cjsonx_type_t;
 
 // 16-byte flat node, packed for cache efficiency.
-// Max length/count supported per node is 16,777,215 (24-bit).
+// max length/count supported per node is 16,777,215 (24-bit).
 typedef struct {
     uint32_t type_and_length;  // 8-bit type | 24-bit length (max 16,777,215)
     uint32_t next_sibling;     // next sibling index for fast skipping
@@ -63,8 +63,8 @@ static cjsonx_always_inline uint32_t cjsonx_node_length(const cjsonx_node_t* n) 
 }
 
 static cjsonx_always_inline void cjsonx_node_set_type_len(cjsonx_node_t* __restrict n, cjsonx_type_t type, uint32_t length) {
-    // Silently clamp length to 24-bit maximum (16,777,215).
-    // Strings longer than 16MB or collections with more than 16M elements will be capped.
+    // silently clamp length to 24-bit maximum (16,777,215).
+    // strings longer than 16mb or collections with more than 16m elements will be capped.
     if (CJSONX_UNLIKELY(length > 0xFFFFFF)) length = 0xFFFFFF;
     n->type_and_length = ((uint32_t)type) | (length << 8);
 }
@@ -157,7 +157,7 @@ static inline cjsonx_val_t cjsonx_make_null_handle(void) {
     return v;
 }
 
-// type and function aliases for compatibility with non-t API
+// type and function aliases for compatibility with non-t api
 typedef cjsonx_doc_t cjsonx_doc;
 typedef cjsonx_val_t cjsonx_val;
 typedef cjsonx_iter_t cjsonx_iter;
@@ -168,4 +168,4 @@ typedef cjsonx_allocator_t cjsonx_alc;
 }
 #endif
 
-#endif  // CJSONX_DOM_H
+#endif  // cjsonx_dom_h
