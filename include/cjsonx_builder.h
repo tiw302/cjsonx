@@ -1,14 +1,14 @@
 /**
  * @file cjsonx_builder.h
- * @brief DOM mutation API and JSON stringify
+ * @brief dom mutation api and json stringify
  *
- * @note Architecture and coding style inspired by yyjson (https://github.com/ibireme/yyjson)
+ * @note architecture and coding style inspired by yyjson (https://github.com/ibireme/yyjson)
  */
 #ifndef CJSONX_BUILDER_H
 #define CJSONX_BUILDER_H
 
 /*==============================================================================
- * MARK: - builder api
+ * mark: - builder api
  *============================================================================*/
 
 
@@ -129,6 +129,10 @@ static inline bool cjsonx_object_set(cjsonx_val_t obj_handle, const char* key, c
         curr = v_node->next_sibling;
     }
     
+    // guard against maximum length limit for 24-bit field
+    size_t len = cjsonx_node_length(obj);
+    if (CJSONX_UNLIKELY(len >= 0xFFFFFF)) return false;
+
     // allocate key node
     uint32_t key_idx = cjsonx_builder_alloc_node(obj_handle.doc);
     if (key_idx == UINT32_MAX) return false;
@@ -145,10 +149,9 @@ static inline bool cjsonx_object_set(cjsonx_val_t obj_handle, const char* key, c
     obj = &obj_handle.doc->nodes[obj_handle.node_idx];
     key_node = &obj_handle.doc->nodes[key_idx];
     
-    // link
+    // link key and value into object
     key_node->next_sibling = val_handle.node_idx;
     
-    size_t len = cjsonx_node_length(obj);
     if (len == 0) {
         obj->val.first_child = key_idx;
     } else {
@@ -168,15 +171,17 @@ static inline bool cjsonx_object_set(cjsonx_val_t obj_handle, const char* key, c
     return true;
 }
 
-// note: each push traverses the child list to find the last element (O(n)),
-// so repeated pushes to the same array are O(n²). this is fine for small
+// note: each push traverses the child list to find the last element (o(n)),
+// so repeated pushes to the same array are o(n²). this is fine for small
 // builder workloads but not suitable for bulk construction of large arrays.
 static inline bool cjsonx_array_push(cjsonx_val_t arr_handle, cjsonx_val_t val_handle) {
     if (!arr_handle.doc || !val_handle.doc || arr_handle.doc != val_handle.doc) return false;
     cjsonx_node_t* arr = &arr_handle.doc->nodes[arr_handle.node_idx];
     if (cjsonx_node_type(arr) != CJSONX_ARRAY) return false;
     
+    // guard against maximum length limit for 24-bit field
     size_t len = cjsonx_node_length(arr);
+    if (CJSONX_UNLIKELY(len >= 0xFFFFFF)) return false;
     
     if (len == 0) {
         arr->val.first_child = val_handle.node_idx;
@@ -1095,13 +1100,15 @@ cjsonx_val_t cjsonx_clone_val(cjsonx_doc_t* dest_doc, cjsonx_val_t src_val) {
             return cjsonx_create_number(dest_doc, src_node->val.f64);
         case CJSONX_STRING: {
             uint32_t len = cjsonx_node_length(src_node);
+            // save pointer before allocation, as reallocation might invalidate src_node
+            const char* src_str = src_node->val.str;
             uint32_t idx = cjsonx_builder_alloc_node(dest_doc);
             if (idx == UINT32_MAX) return cjsonx_make_null_handle();
             cjsonx_node_set_type_len(&dest_doc->nodes[idx], CJSONX_STRING, len);
             dest_doc->nodes[idx].next_sibling = idx + 1;
             char* s = (char*)cjsonx_arena_alloc(dest_doc, len + 1);
             if (!s) return cjsonx_make_null_handle();
-            memcpy(s, src_node->val.str, len + 1);
+            memcpy(s, src_str, len + 1);
             dest_doc->nodes[idx].val.str = s;
             return (cjsonx_val_t){dest_doc, idx};
         }
