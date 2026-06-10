@@ -1,27 +1,27 @@
 /**
  * @file cjsonx.h
- * @brief Public API and single-header entry point
+ * @brief public api and single-header entry point
  *
- * @note I'm just a kid building projects as a hobby. Thank you for showing interest in my little library! It really means a lot to me. :)
- * @note Architecture and coding style inspired by yyjson (https://github.com/ibireme/yyjson)
+ * @note i'm just a kid building projects as a hobby. thank you for showing interest in my little library! it really means a lot to me. :)
+ * @note architecture and coding style inspired by yyjson (https://github.com/ibireme/yyjson)
  */
 /*
- * cjsonx.h -- Extreme performance JSON parser for C11/C++
- * Project URL: https://github.com/tiw302/cjsonx
+ * cjsonx.h -- extreme performance json parser for c11/c++
+ * project url: https://github.com/tiw302/cjsonx
  *
- * How to use:
- * 1. Include this file normally in headers to get types and API declarations.
- * 2. In exactly one C/C++ source file, define the implementation macro:
+ * how to use:
+ * 1. include this file normally in headers to get types and api declarations.
+ * 2. in exactly one c/c++ source file, define the implementation macro:
  *    #define cjsonx_implementation
  *    #include <cjsonx.h>
  *
- * Technical background:
- * - Two-stage parsing algorithm inspired by simdjson.
- *   - Stage 1: Structural indexing (finding {}[]:,")
- *   - Stage 2: Recursive descent parsing (building DOM via arena allocator)
+ * technical background:
+ * - two-stage parsing algorithm inspired by simdjson.
+ *   - stage 1: structural indexing (finding {}[]:,")
+ *   - stage 2: recursive descent parsing (building dom via arena allocator)
  *
- * MIT License
- * Copyright (c) 2026 Jirawat Siripuk
+ * mit license
+ * copyright (c) 2026 jirawat siripuk
  */
 
 #ifndef CJSONX_H
@@ -32,7 +32,7 @@
 #include <stdint.h>
 #include <string.h>
 
-// Version macros
+// version macros
 #define CJSONX_VERSION_MAJOR 1
 #define CJSONX_VERSION_MINOR 0
 #define CJSONX_VERSION_PATCH 0
@@ -72,4 +72,4 @@ cjsonx_doc_t* cjsonx_parse_ex(const char* json, size_t length, cjsonx_allocator_
 #endif
 #endif
 
-#endif  // CJSONX_H
+#endif  // cjsonx_h
