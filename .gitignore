@@ -64,10 +64,6 @@ examples/error_handling
 examples/float128_precision
 examples/simple_parse
 
-# wasm build artifacts
-docs/demo/cjsonx_wasm.js
-docs/demo/cjsonx_wasm.wasm
-
 # submodules / test suites
 tests/JSONTestSuite
 /JSONTestSuite/
