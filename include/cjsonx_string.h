@@ -1,14 +1,14 @@
 /**
  * @file cjsonx_string.h
- * @brief JSON string parser with escape and UTF-8 handling
+ * @brief json string parser with escape and utf-8 handling
  *
- * @note Architecture and coding style inspired by yyjson (https://github.com/ibireme/yyjson)
+ * @note architecture and coding style inspired by yyjson (https://github.com/ibireme/yyjson)
  */
 #ifndef CJSONX_STRING_H
 #define CJSONX_STRING_H
 
 /*==============================================================================
- * MARK: - string processing
+ * mark: - string processing
  *============================================================================*/
 
 
@@ -97,7 +97,7 @@ static cjsonx_always_inline bool cjsonx_parse_string_impl(cjsonx_doc_t* doc, cjs
         
         uint8x16_t bad = vorrq_u8(cmp_esc, cmp_ctrl);
         
-        // bitwise OR across vector to check if any condition matched
+        // bitwise or across vector to check if any condition matched
         uint32x4_t bad_u32 = vreinterpretq_u32_u8(bad);
         uint32x4_t non_ascii_u32 = vreinterpretq_u32_u8(non_ascii);
         
@@ -245,4 +245,4 @@ static cjsonx_always_inline bool cjsonx_parse_string_impl(cjsonx_doc_t* doc, cjs
 }
 #endif
 
-#endif // CJSONX_STRING_H
+#endif // cjsonx_string_h
