@@ -90,6 +90,8 @@ static inline cjsonx_val_t cjsonx_create_string(cjsonx_doc_t* doc, const char* s
 static inline cjsonx_val_t cjsonx_create_object(cjsonx_doc_t* doc) {
     uint32_t idx = cjsonx_builder_alloc_node(doc);
     if (idx == UINT32_MAX) return cjsonx_make_null_handle();
+    // zero the whole node — realloc doesn't clear, first_child would be garbage
+    memset(&doc->nodes[idx], 0, sizeof(cjsonx_node_t));
     cjsonx_node_set_type_len(&doc->nodes[idx], CJSONX_OBJECT, 0);
     doc->nodes[idx].next_sibling = idx + 1;
     cjsonx_val_t v = {doc, idx};
@@ -99,6 +101,8 @@ static inline cjsonx_val_t cjsonx_create_object(cjsonx_doc_t* doc) {
 static inline cjsonx_val_t cjsonx_create_array(cjsonx_doc_t* doc) {
     uint32_t idx = cjsonx_builder_alloc_node(doc);
     if (idx == UINT32_MAX) return cjsonx_make_null_handle();
+    // same as object: zero before use so first_child isn't garbage from realloc
+    memset(&doc->nodes[idx], 0, sizeof(cjsonx_node_t));
     cjsonx_node_set_type_len(&doc->nodes[idx], CJSONX_ARRAY, 0);
     doc->nodes[idx].next_sibling = idx + 1;
     cjsonx_val_t v = {doc, idx};
@@ -115,6 +119,7 @@ static inline bool cjsonx_object_set(cjsonx_val_t obj_handle, const char* key, c
     size_t k_len = strlen(key);
     uint32_t curr = obj->val.first_child;
     size_t obj_len = cjsonx_node_length(obj);
+    uint32_t last_val_idx = UINT32_MAX;
     for (size_t i = 0; i < obj_len; i++) {
         cjsonx_node_t* k_node = &obj_handle.doc->nodes[curr];
         uint32_t val_idx = k_node->next_sibling;
@@ -126,6 +131,7 @@ static inline bool cjsonx_object_set(cjsonx_val_t obj_handle, const char* key, c
             new_v_node->next_sibling = next_key_idx;
             return true;
         }
+        last_val_idx = val_idx;
         curr = v_node->next_sibling;
     }
     
@@ -155,15 +161,7 @@ static inline bool cjsonx_object_set(cjsonx_val_t obj_handle, const char* key, c
     if (len == 0) {
         obj->val.first_child = key_idx;
     } else {
-        // find last value node
-        uint32_t curr = obj->val.first_child;
-        for (size_t i = 0; i < len - 1; i++) {
-            uint32_t val_idx = obj_handle.doc->nodes[curr].next_sibling;
-            curr = obj_handle.doc->nodes[val_idx].next_sibling;
-        }
-        uint32_t last_val_idx = obj_handle.doc->nodes[curr].next_sibling;
         cjsonx_node_t* last_val = &obj_handle.doc->nodes[last_val_idx];
-        
         last_val->next_sibling = key_idx;
     }
     
@@ -193,7 +191,9 @@ static inline bool cjsonx_array_push(cjsonx_val_t arr_handle, cjsonx_val_t val_h
         cjsonx_node_t* last_val = &arr_handle.doc->nodes[curr];
         last_val->next_sibling = val_handle.node_idx;
     }
-    
+
+    // re-fetch arr: alloc_node at entry may have reallocated doc->nodes
+    arr = &arr_handle.doc->nodes[arr_handle.node_idx];
     cjsonx_node_set_type_len(arr, CJSONX_ARRAY, len + 1);
     return true;
 }
@@ -258,16 +258,16 @@ static inline bool cjsonx_array_remove(cjsonx_val_t arr_handle, size_t index) {
 }
 
 // stringify and utility declarations
-char* cjsonx_stringify(cjsonx_doc_t* doc);
-char* cjsonx_stringify_format(cjsonx_doc_t* doc, int indent_spaces);
-char* cjsonx_stringify_val(cjsonx_val_t val);
-char* cjsonx_stringify_val_format(cjsonx_val_t val, int indent_spaces);
-cjsonx_doc_t* cjsonx_read_file(const char* path);
-cjsonx_doc_t* cjsonx_read_file_ex(const char* path, cjsonx_allocator_t* alloc);
-bool cjsonx_write_file(const char* path, cjsonx_doc_t* doc);
-bool cjsonx_write_file_format(const char* path, cjsonx_doc_t* doc, int indent_spaces);
-cjsonx_val_t cjsonx_clone_val(cjsonx_doc_t* dest_doc, cjsonx_val_t src_val);
-cjsonx_val_t cjsonx_merge_patch(cjsonx_val_t target, cjsonx_val_t patch);
+CJSONX_API char* cjsonx_stringify(cjsonx_doc_t* doc);
+CJSONX_API char* cjsonx_stringify_format(cjsonx_doc_t* doc, int indent_spaces);
+CJSONX_API char* cjsonx_stringify_val(cjsonx_val_t val);
+CJSONX_API char* cjsonx_stringify_val_format(cjsonx_val_t val, int indent_spaces);
+CJSONX_API CJSONX_NODISCARD cjsonx_doc_t* cjsonx_read_file(const char* path);
+CJSONX_API CJSONX_NODISCARD cjsonx_doc_t* cjsonx_read_file_ex(const char* path, cjsonx_allocator_t* alloc);
+CJSONX_API bool cjsonx_write_file(const char* path, cjsonx_doc_t* doc);
+CJSONX_API bool cjsonx_write_file_format(const char* path, cjsonx_doc_t* doc, int indent_spaces);
+CJSONX_API cjsonx_val_t cjsonx_clone_val(cjsonx_doc_t* dest_doc, cjsonx_val_t src_val);
+CJSONX_API cjsonx_val_t cjsonx_merge_patch(cjsonx_val_t target, cjsonx_val_t patch);
 
 #ifdef CJSONX_IMPLEMENTATION
 
@@ -920,6 +920,7 @@ static void cjsonx_stringify_node(cjsonx_strbuf_t* sb, cjsonx_val_t val, int ind
 
 char* cjsonx_stringify_val(cjsonx_val_t val) {
     if (!val.doc) return NULL;
+    // estimate size based on parsed json length or node count with a 2kb floor
     size_t initial_cap = val.doc->json_len > 0 ? val.doc->json_len : val.doc->node_count * 16;
     if (initial_cap < 2048) initial_cap = 2048;
 
@@ -949,6 +950,7 @@ char* cjsonx_stringify_val(cjsonx_val_t val) {
 
 char* cjsonx_stringify_val_format(cjsonx_val_t val, int indent_spaces) {
     if (!val.doc) return NULL;
+    // estimate size based on parsed json length or node count with a 2kb floor
     size_t initial_cap = val.doc->json_len > 0 ? val.doc->json_len : val.doc->node_count * 16;
     if (indent_spaces > 0) initial_cap += initial_cap / 2;
     if (initial_cap < 2048) initial_cap = 2048;
@@ -997,7 +999,9 @@ cjsonx_doc_t* cjsonx_read_file_ex(const char* path, cjsonx_allocator_t* alloc) {
     long fsize = ftell(fp);
     fseek(fp, 0, SEEK_SET);
 
-    if (fsize < 0 || (unsigned long)fsize >= (size_t)-1) {
+    // ftell returns long, which caps file size at 2gb on 32-bit platforms.
+    // also reject files larger than 4gb to prevent tape index overflow.
+    if (fsize < 0 || (unsigned long)fsize > UINT32_MAX || (unsigned long)fsize >= (size_t)-1) {
         fclose(fp);
         return NULL;
     }
@@ -1108,7 +1112,10 @@ cjsonx_val_t cjsonx_clone_val(cjsonx_doc_t* dest_doc, cjsonx_val_t src_val) {
             dest_doc->nodes[idx].next_sibling = idx + 1;
             char* s = (char*)cjsonx_arena_alloc(dest_doc, len + 1);
             if (!s) return cjsonx_make_null_handle();
-            memcpy(s, src_str, len + 1);
+            // don't use len+1: zero-copy strings point into the json buffer where
+            // src_str[len] is the closing '"', not '\0'. write NUL explicitly.
+            memcpy(s, src_str, len);
+            s[len] = '\0';
             dest_doc->nodes[idx].val.str = s;
             return (cjsonx_val_t){dest_doc, idx};
         }
@@ -1171,6 +1178,7 @@ cjsonx_val_t cjsonx_merge_patch(cjsonx_val_t target, cjsonx_val_t patch) {
                     } else {
                         new_val = patch_val;
                     }
+                    // clone value if it belongs to a different document to ensure proper arena ownership
                     if (target.doc != new_val.doc) {
                         new_val = cjsonx_clone_val(target.doc, new_val);
                     }
