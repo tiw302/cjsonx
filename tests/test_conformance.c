@@ -26,7 +26,7 @@ static void run_test_file(const char* dir_path, const char* file_name,
     long len = ftell(f);
     fseek(f, 0, SEEK_SET);
 
-    char* buf = (char*)malloc(len + 1);
+    char* buf = (char*)malloc((size_t)len + 1);
     if (!buf) {
         fclose(f);
         return;
