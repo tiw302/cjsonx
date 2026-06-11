@@ -36,9 +36,8 @@
 #define CJSONX_VERSION_MAJOR 1
 #define CJSONX_VERSION_MINOR 0
 #define CJSONX_VERSION_PATCH 0
+#define CJSONX_VERSION_STRING "1.0.0"
 
-// convenience macro for parsing null-terminated strings without specifying length
-#define cjsonx_parse_str(json) cjsonx_parse((json), strlen(json))
 
 // internal headers (order matters: config → error → dom → tape → arena)
 #include "cjsonx_config.h"
@@ -46,22 +45,31 @@
 #include "cjsonx_dom.h"
 #include "cjsonx_tape.h"
 #include "cjsonx_arena.h"
-#include "cjsonx_builder.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 // stage 1: scan json to build structural token tape
-bool cjsonx_stage1_build_tape(const char* json, size_t length, cjsonx_tape_t* tape);
+CJSONX_API bool cjsonx_stage1_build_tape(const char* json, size_t length, cjsonx_tape_t* tape);
 
 // main parser entry point
-cjsonx_doc_t* cjsonx_parse(const char* json, size_t length);
-cjsonx_doc_t* cjsonx_parse_ex(const char* json, size_t length, cjsonx_allocator_t* alloc);
+// warning: the input json buffer must outlive the returned document (zero-copy string references).
+CJSONX_API CJSONX_NODISCARD cjsonx_doc_t* cjsonx_parse(const char* json, size_t length);
+CJSONX_API CJSONX_NODISCARD cjsonx_doc_t* cjsonx_parse_ex(const char* json, size_t length, cjsonx_allocator_t* alloc);
+
+// parse a null-terminated string safely without double evaluation
+static inline CJSONX_NODISCARD cjsonx_doc_t* cjsonx_parse_cstr(const char* json) {
+    return cjsonx_parse(json, json ? strlen(json) : 0);
+}
+#define cjsonx_parse_str(json) cjsonx_parse_cstr(json)
 
 #ifdef __cplusplus
 }
 #endif
+
+// builder included last so it can see cjsonx_parse_ex declarations
+#include "cjsonx_builder.h"
 
 // implementation guard: include stage1 & stage2 source only once
 #ifdef CJSONX_IMPLEMENTATION
