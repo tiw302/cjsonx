@@ -5,28 +5,55 @@
 
 #include "cjsonx.h"
 
-// mock allocator that tracks allocations
-static size_t g_alloc_count = 0;
-static size_t g_free_count = 0;
+// tracks active allocations to check for leaks and double-frees
+#define MAX_TRACKED_ALLOCS 1024
+static void* g_tracked_ptrs[MAX_TRACKED_ALLOCS];
+static size_t g_tracked_count = 0;
+static size_t g_total_allocs = 0;
+static size_t g_total_frees = 0;
+
+static void track_alloc(void* ptr) {
+    if (!ptr) return;
+    g_total_allocs++;
+    if (g_tracked_count < MAX_TRACKED_ALLOCS) {
+        g_tracked_ptrs[g_tracked_count++] = ptr;
+    } else {
+        printf("FAIL: Exceeded max tracked allocations capacity\n");
+        exit(1);
+    }
+}
+
+static void track_free(void* ptr) {
+    if (!ptr) return;
+    g_total_frees++;
+    for (size_t i = 0; i < g_tracked_count; i++) {
+        if (g_tracked_ptrs[i] == ptr) {
+            g_tracked_ptrs[i] = g_tracked_ptrs[--g_tracked_count];
+            return;
+        }
+    }
+    printf("FAIL: Double free or untracked pointer free detected: %p\n", ptr);
+    exit(1);
+}
 
 void* my_malloc(size_t size, void* user_data) {
     (void)user_data;
-    g_alloc_count++;
-    return malloc(size);
+    void* ptr = malloc(size);
+    track_alloc(ptr);
+    return ptr;
 }
 
 void* my_realloc(void* ptr, size_t size, void* user_data) {
     (void)user_data;
-    // realloc always produces a (possibly new) allocation.
-    // if ptr is non-null the old block is conceptually freed.
-    g_alloc_count++;
-    if (ptr) g_free_count++;
-    return realloc(ptr, size);
+    if (ptr) track_free(ptr);
+    void* new_ptr = realloc(ptr, size);
+    if (new_ptr) track_alloc(new_ptr);
+    return new_ptr;
 }
 
 void my_free(void* ptr, void* user_data) {
     (void)user_data;
-    g_free_count++;
+    if (ptr) track_free(ptr);
     free(ptr);
 }
 
@@ -67,15 +94,15 @@ int main() {
     alloc.free_fn(str, alloc.user_data);
     cjsonx_doc_free(doc);
     
-    printf("Allocator Hook Trace: %zu allocs, %zu frees\n", g_alloc_count, g_free_count);
+    printf("Allocator Hook Trace: %zu allocs, %zu frees, %zu active\n", g_total_allocs, g_total_frees, g_tracked_count);
     
-    if (g_alloc_count == 0 || g_free_count == 0) {
+    if (g_total_allocs == 0 || g_total_frees == 0) {
         printf("FAIL: Hooks were not called!\n");
         return 1;
     }
     
-    if (g_alloc_count != g_free_count) {
-        printf("FAIL: Memory leak detected through allocator hook!\n");
+    if (g_tracked_count > 0) {
+        printf("FAIL: Memory leak detected! %zu allocations were not freed\n", g_tracked_count);
         return 1;
     }
     
