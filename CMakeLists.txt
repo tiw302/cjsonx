@@ -16,9 +16,10 @@ if(MSVC)
     add_compile_options(/arch:AVX2)
 else()
     add_compile_options(-Wall -Wextra -O3)
-    # enable avx2 by default for performance testing on gcc/clang (x86_64)
+    # avx2 + pclmul: pclmulqdq is required for the string-in-quote bitmask trick
+    # -march=native usually enables it but explicit is safer for non-native builds
     if(CMAKE_SYSTEM_PROCESSOR MATCHES "(x86_64|AMD64)")
-        add_compile_options(-march=native -mavx2)
+        add_compile_options(-march=native -mavx2 -mpclmul)
     endif()
     if(NOT WIN32)
         link_libraries(m)
