@@ -75,24 +75,26 @@ static bool cjsonx_stage2_build(cjsonx_doc_t* doc, const char* json, cjsonx_tape
     
     // skip allocation if nodes were already pre-allocated (e.g. static buffer)
     if (!doc->nodes) {
-        if (CJSONX_UNLIKELY(tape->count > (size_t)-1 / sizeof(cjsonx_node_t))) {
+        size_t alloc_count = tape->count / 2 + 1;
+        if (CJSONX_UNLIKELY(alloc_count > (size_t)-1 / sizeof(cjsonx_node_t))) {
             doc->error = CJSONX_ERROR_OOM;
             return false;
         }
         if (doc->alloc.malloc_fn) {
-            doc->nodes = (cjsonx_node_t*)doc->alloc.malloc_fn(tape->count * sizeof(cjsonx_node_t), doc->alloc.user_data);
+            doc->nodes = (cjsonx_node_t*)doc->alloc.malloc_fn(alloc_count * sizeof(cjsonx_node_t), doc->alloc.user_data);
         } else {
-            doc->nodes = (cjsonx_node_t*)malloc(tape->count * sizeof(cjsonx_node_t));
+            doc->nodes = (cjsonx_node_t*)malloc(alloc_count * sizeof(cjsonx_node_t));
         }
         if (!doc->nodes) {
             doc->error = CJSONX_ERROR_OOM;
             return false;
         }
-        doc->node_capacity = tape->count;
+        doc->node_capacity = alloc_count;
     }
     
     size_t node_idx = 0;
     size_t tape_idx = 0;
+    size_t err_tape_idx = 0;
     
     uint32_t parent_stack[CJSONX_MAX_DEPTH];
     uint8_t parent_type_stack[CJSONX_MAX_DEPTH];
@@ -137,6 +139,7 @@ static bool cjsonx_stage2_build(cjsonx_doc_t* doc, const char* json, cjsonx_tape
     
     #define CJSONX_NEXT_TOKEN() do { \
         if (CJSONX_UNLIKELY(tape_idx >= tape->count)) goto end_loop; \
+        err_tape_idx = tape_idx; \
         pos = tape->indices[tape_idx]; \
         c = json[pos]; \
         node = &doc->nodes[node_idx]; \
@@ -155,6 +158,7 @@ static bool cjsonx_stage2_build(cjsonx_doc_t* doc, const char* json, cjsonx_tape
     #define CJSONX_CASE_DEFAULT() default:
     
     while (tape_idx < tape->count) {
+        err_tape_idx = tape_idx;
         pos = tape->indices[tape_idx];
         c = json[pos];
         node = &doc->nodes[node_idx];
@@ -166,7 +170,7 @@ static bool cjsonx_stage2_build(cjsonx_doc_t* doc, const char* json, cjsonx_tape
                 if (CJSONX_UNLIKELY(tape_idx >= tape->count)) goto fail;
                 uint32_t end_pos = tape->indices[tape_idx];
                 if (CJSONX_UNLIKELY(!cjsonx_parse_string_impl(doc, node, json, pos, end_pos))) goto fail;
-                node->next_sibling = node_idx + 1;
+                node->next_sibling = (uint32_t)(node_idx + 1);
                 if (parent_depth > 0) count_stack[parent_depth - 1]++;
                 node_idx++;
                 tape_idx++;
@@ -179,9 +183,9 @@ static bool cjsonx_stage2_build(cjsonx_doc_t* doc, const char* json, cjsonx_tape
                 if (CJSONX_UNLIKELY(parent_depth >= CJSONX_MAX_DEPTH)) goto fail;
                 cjsonx_type_t t = (c == '{') ? CJSONX_OBJECT : CJSONX_ARRAY;
                 cjsonx_node_set_type_len(node, t, 0); // temp length
-                node->val.first_child = node_idx + 1; // set first child
+                node->val.first_child = (uint32_t)(node_idx + 1); // set first child
                 if (parent_depth > 0) count_stack[parent_depth - 1]++;
-                parent_stack[parent_depth] = node_idx;
+                parent_stack[parent_depth] = (uint32_t)node_idx;
                 parent_type_stack[parent_depth] = t;
                 count_stack[parent_depth] = 0;
                 parent_depth++;
@@ -199,7 +203,7 @@ static bool cjsonx_stage2_build(cjsonx_doc_t* doc, const char* json, cjsonx_tape
                 cjsonx_node_t* pnode = &doc->nodes[parent];
                 cjsonx_type_t ptype = cjsonx_node_type(pnode);
                 if (CJSONX_UNLIKELY((c == '}' && ptype != CJSONX_OBJECT) || (c == ']' && ptype != CJSONX_ARRAY))) goto fail;
-                pnode->next_sibling = node_idx;
+                pnode->next_sibling = (uint32_t)node_idx;
                 if (ptype == CJSONX_OBJECT) count /= 2;
                 cjsonx_node_set_type_len(pnode, ptype, count);
                 tape_idx++;
@@ -214,6 +218,8 @@ static bool cjsonx_stage2_build(cjsonx_doc_t* doc, const char* json, cjsonx_tape
             }
             CJSONX_CASE(comma, ',') {
                 if (CJSONX_UNLIKELY(!(allowed_mask & CJSONX_S_COM))) goto fail;
+                // parent_depth should never be 0 here, but guard defensively
+                if (CJSONX_UNLIKELY(parent_depth == 0)) goto fail;
                 tape_idx++;
                 cjsonx_type_t ptype = cjsonx_node_type(&doc->nodes[parent_stack[parent_depth - 1]]);
                 allowed_mask = (ptype == CJSONX_OBJECT) ? CJSONX_S_KEY : CJSONX_S_VAL;
@@ -225,7 +231,7 @@ static bool cjsonx_stage2_build(cjsonx_doc_t* doc, const char* json, cjsonx_tape
                 if (CJSONX_UNLIKELY(memcmp(json + pos, "true", 4) != 0)) goto fail;
                 cjsonx_node_set_type_len(node, CJSONX_BOOL, 0);
                 node->val.b = true;
-                node->next_sibling = node_idx + 1;
+                node->next_sibling = (uint32_t)(node_idx + 1);
                 if (parent_depth > 0) count_stack[parent_depth - 1]++;
                 node_idx++;
                 tape_idx++;
@@ -238,7 +244,7 @@ static bool cjsonx_stage2_build(cjsonx_doc_t* doc, const char* json, cjsonx_tape
                 if (CJSONX_UNLIKELY(memcmp(json + pos, "false", 5) != 0)) goto fail;
                 cjsonx_node_set_type_len(node, CJSONX_BOOL, 0);
                 node->val.b = false;
-                node->next_sibling = node_idx + 1;
+                node->next_sibling = (uint32_t)(node_idx + 1);
                 if (parent_depth > 0) count_stack[parent_depth - 1]++;
                 node_idx++;
                 tape_idx++;
@@ -250,7 +256,7 @@ static bool cjsonx_stage2_build(cjsonx_doc_t* doc, const char* json, cjsonx_tape
                 if (CJSONX_UNLIKELY(doc->json_len - pos < 4)) goto fail;
                 if (CJSONX_UNLIKELY(memcmp(json + pos, "null", 4) != 0)) goto fail;
                 cjsonx_node_set_type_len(node, CJSONX_NULL, 0);
-                node->next_sibling = node_idx + 1;
+                node->next_sibling = (uint32_t)(node_idx + 1);
                 if (parent_depth > 0) count_stack[parent_depth - 1]++;
                 node_idx++;
                 tape_idx++;
@@ -275,8 +281,10 @@ static bool cjsonx_stage2_build(cjsonx_doc_t* doc, const char* json, cjsonx_tape
                     )) {
                         num_end++;
                     }
-                    size_t num_len = num_end - (json + pos);
-                    if (CJSONX_UNLIKELY(num_len > 511)) goto fail;
+                    ptrdiff_t raw_len = num_end - (json + pos);
+                    // ptrdiff sanity: reject if somehow pointer went backward or is way too long
+                    if (CJSONX_UNLIKELY(raw_len <= 0 || raw_len > 511)) goto fail;
+                    size_t num_len = (size_t)raw_len;
                     char buf[512];
                     memcpy(buf, json + pos, num_len);
                     buf[num_len] = '\0';
@@ -295,7 +303,7 @@ static bool cjsonx_stage2_build(cjsonx_doc_t* doc, const char* json, cjsonx_tape
                 while (end < limit && (*end == ' ' || *end == '\n' || *end == '\r' || *end == '\t')) end++;
                 if (CJSONX_UNLIKELY(end != limit)) goto fail;
                 node->val.f64 = val;
-                node->next_sibling = node_idx + 1;
+                node->next_sibling = (uint32_t)(node_idx + 1);
                 if (parent_depth > 0) count_stack[parent_depth - 1]++;
                 node_idx++;
                 tape_idx++;
@@ -311,6 +319,22 @@ end_loop:
     if (parent_depth != 0 || allowed_mask != CJSONX_S_EOF) goto fail;
     
     doc->node_count = node_idx;
+    // shrink nodes array to actual parsed node count if dynamically allocated
+    if (doc->node_capacity > node_idx && !doc->is_static && node_idx > 0) {
+        if (doc->alloc.realloc_fn) {
+            cjsonx_node_t* new_nodes = (cjsonx_node_t*)doc->alloc.realloc_fn(doc->nodes, node_idx * sizeof(cjsonx_node_t), doc->alloc.user_data);
+            if (new_nodes) {
+                doc->nodes = new_nodes;
+                doc->node_capacity = node_idx;
+            }
+        } else {
+            cjsonx_node_t* new_nodes = (cjsonx_node_t*)realloc(doc->nodes, node_idx * sizeof(cjsonx_node_t));
+            if (new_nodes) {
+                doc->nodes = new_nodes;
+                doc->node_capacity = node_idx;
+            }
+        }
+    }
     doc->is_valid = true;
     doc->root.doc = doc;
     doc->root.node_idx = 0;
@@ -321,7 +345,7 @@ fail:
     if (doc->error == CJSONX_SUCCESS) {
         doc->error = (parent_depth >= CJSONX_MAX_DEPTH) ? CJSONX_ERROR_MAX_DEPTH : CJSONX_ERROR_UNEXPECTED_TOKEN;
     }
-    doc->error_offset = (tape_idx < tape->count) ? tape->indices[tape_idx] : doc->json_len;
+    doc->error_offset = (tape_idx < tape->count) ? tape->indices[err_tape_idx] : doc->json_len;
     return false;
 }
 
@@ -340,9 +364,9 @@ cjsonx_doc_t* cjsonx_doc_new_ex(cjsonx_allocator_t* alloc) {
 
     cjsonx_arena_node_t* init_node;
     if (doc->alloc.malloc_fn) {
-        init_node = (cjsonx_arena_node_t*)doc->alloc.malloc_fn(sizeof(cjsonx_arena_node_t) + 4096, doc->alloc.user_data);
+        init_node = (cjsonx_arena_node_t*)doc->alloc.malloc_fn(sizeof(cjsonx_arena_node_t) + CJSONX_ARENA_CHUNK_SIZE, doc->alloc.user_data);
     } else {
-        init_node = (cjsonx_arena_node_t*)malloc(sizeof(cjsonx_arena_node_t) + 4096);
+        init_node = (cjsonx_arena_node_t*)malloc(sizeof(cjsonx_arena_node_t) + CJSONX_ARENA_CHUNK_SIZE);
     }
     if (!init_node) {
         if (doc->alloc.free_fn) doc->alloc.free_fn(doc, doc->alloc.user_data);
@@ -352,7 +376,7 @@ cjsonx_doc_t* cjsonx_doc_new_ex(cjsonx_allocator_t* alloc) {
     init_node->next = NULL;
     doc->head = init_node;
     doc->current_chunk = (uint8_t*)(init_node + 1);
-    doc->chunk_size = 4096;
+    doc->chunk_size = CJSONX_ARENA_CHUNK_SIZE;
     doc->chunk_used = 0;
 
     // pre-allocate flat dom node array starting with 16 nodes capacity
@@ -632,15 +656,15 @@ cjsonx_doc_t* cjsonx_parse_ex(const char* json, size_t length, cjsonx_allocator_
     
     cjsonx_arena_node_t* init_node;
     if (doc->alloc.malloc_fn) {
-        init_node = (cjsonx_arena_node_t*)doc->alloc.malloc_fn(sizeof(cjsonx_arena_node_t) + 4096, doc->alloc.user_data);
+        init_node = (cjsonx_arena_node_t*)doc->alloc.malloc_fn(sizeof(cjsonx_arena_node_t) + CJSONX_ARENA_CHUNK_SIZE, doc->alloc.user_data);
     } else {
-        init_node = (cjsonx_arena_node_t*)malloc(sizeof(cjsonx_arena_node_t) + 4096);
+        init_node = (cjsonx_arena_node_t*)malloc(sizeof(cjsonx_arena_node_t) + CJSONX_ARENA_CHUNK_SIZE);
     }
     if (!init_node) { cjsonx_doc_free(doc); return NULL; }
     init_node->next = NULL;
     doc->head = init_node;
     doc->current_chunk = (uint8_t*)(init_node + 1);
-    doc->chunk_size = 4096;
+    doc->chunk_size = CJSONX_ARENA_CHUNK_SIZE;
     doc->chunk_used = 0;
     
     cjsonx_tape_t tape;
@@ -697,9 +721,11 @@ cjsonx_doc_t* cjsonx_parse_with_buffer(const char* json, size_t length, void* bu
     }
     
     offset += tape.count * sizeof(uint32_t);
-    offset = (offset + 7) & ~7;
+    // explicit size_t mask: ~7 is signed int which sign-extends on 64-bit
+    offset = (offset + 7u) & ~(size_t)7;
     
-    size_t nodes_size = tape.count * sizeof(cjsonx_node_t);
+    size_t alloc_count = tape.count / 2 + 1;
+    size_t nodes_size = alloc_count * sizeof(cjsonx_node_t);
     if (offset + nodes_size > buffer_size) {
         doc->is_valid = false;
         doc->error = CJSONX_ERROR_OOM;
@@ -707,6 +733,7 @@ cjsonx_doc_t* cjsonx_parse_with_buffer(const char* json, size_t length, void* bu
     }
     
     doc->nodes = (cjsonx_node_t*)(ptr + offset);
+    doc->node_capacity = alloc_count;
     offset += nodes_size;
     
     if (offset + sizeof(cjsonx_arena_node_t) <= buffer_size) {
