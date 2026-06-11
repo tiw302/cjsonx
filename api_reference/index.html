@@ -1,0 +1,1863 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="High-performance C11 JSON parser using SIMD and Flat Arena DOM">
+      
+      
+      
+      
+        <link rel="prev" href="..">
+      
+      
+        <link rel="next" href="../algorithm/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+    
+    
+      
+        <title>API Reference - cjsonx</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#api-reference" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="cjsonx" class="md-header__button md-logo" aria-label="cjsonx" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            cjsonx
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              API Reference
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+    
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/tiw302/cjsonx" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href=".." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    <li class="md-tabs__item md-tabs__item--active">
+      <a href="./" class="md-tabs__link">
+        
+  
+  
+    
+  
+  API Reference
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../algorithm/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Algorithm Deep-Dive
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../demo/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Live Demo
+
+      </a>
+    </li>
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="cjsonx" class="md-nav__button md-logo" aria-label="cjsonx" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    cjsonx
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/tiw302/cjsonx" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API Reference
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#core-types" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Core Types
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Core Types">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#cjsonx_doc_t" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        cjsonx_doc_t
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cjsonx_val_t" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        cjsonx_val_t
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cjsonx_type_t" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        cjsonx_type_t
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#parsing-memory-management" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Parsing &amp; Memory Management
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Parsing &amp; Memory Management">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#cjsonx_parse" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        cjsonx_parse
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cjsonx_parse_with_buffer-zero-allocation-mode" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        cjsonx_parse_with_buffer (Zero-Allocation Mode)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cjsonx_doc_free" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        cjsonx_doc_free
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#dom-access" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        DOM Access
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="DOM Access">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#cjsonx_get_type" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        cjsonx_get_type
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cjsonx_get" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        cjsonx_get
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cjsonx_get_index" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        cjsonx_get_index
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#value-retrieval" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Value Retrieval
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Value Retrieval">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#cjsonx_str" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        cjsonx_str
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cjsonx_str_len" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        cjsonx_str_len
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cjsonx_num" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        cjsonx_num
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cjsonx_int" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        cjsonx_int
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cjsonx_bool" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        cjsonx_bool
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cjsonx_size" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        cjsonx_size
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cjsonx_is_null" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        cjsonx_is_null
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#iteration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Iteration
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Iteration">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#cjsonx_iter_t" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        cjsonx_iter_t
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cjsonx_iter_init-cjsonx_iter_next" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        cjsonx_iter_init &amp; cjsonx_iter_next
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#error-handling" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Error Handling
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Error Handling">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#cjsonx_error_string" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        cjsonx_error_string
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#builder-api-stringification" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Builder API &amp; Stringification
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Builder API &amp; Stringification">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#creating-values" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Creating Values
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#mutating-structures" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Mutating Structures
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#stringification" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Stringification
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#json-pointer-rfc-6901" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        JSON Pointer (RFC 6901)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#custom-allocator-injection" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Custom Allocator Injection
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Custom Allocator Injection">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#cjsonx_allocator_t" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        cjsonx_allocator_t
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#cloning-and-patching" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Cloning and Patching
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Cloning and Patching">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#cjsonx_clone_val" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        cjsonx_clone_val
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cjsonx_merge_patch" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        cjsonx_merge_patch
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#file-io-utilities" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        File I/O Utilities
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="File I/O Utilities">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#cjsonx_read_file-cjsonx_read_file_ex" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        cjsonx_read_file &amp; cjsonx_read_file_ex
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cjsonx_write_file-cjsonx_write_file_format" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        cjsonx_write_file &amp; cjsonx_write_file_format
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#limits-warnings" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Limits &amp; Warnings
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../algorithm/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Algorithm Deep-Dive
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../demo/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Live Demo
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#core-types" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Core Types
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Core Types">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#cjsonx_doc_t" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        cjsonx_doc_t
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cjsonx_val_t" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        cjsonx_val_t
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cjsonx_type_t" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        cjsonx_type_t
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#parsing-memory-management" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Parsing &amp; Memory Management
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Parsing &amp; Memory Management">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#cjsonx_parse" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        cjsonx_parse
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cjsonx_parse_with_buffer-zero-allocation-mode" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        cjsonx_parse_with_buffer (Zero-Allocation Mode)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cjsonx_doc_free" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        cjsonx_doc_free
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#dom-access" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        DOM Access
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="DOM Access">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#cjsonx_get_type" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        cjsonx_get_type
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cjsonx_get" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        cjsonx_get
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cjsonx_get_index" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        cjsonx_get_index
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#value-retrieval" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Value Retrieval
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Value Retrieval">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#cjsonx_str" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        cjsonx_str
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cjsonx_str_len" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        cjsonx_str_len
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cjsonx_num" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        cjsonx_num
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cjsonx_int" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        cjsonx_int
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cjsonx_bool" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        cjsonx_bool
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cjsonx_size" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        cjsonx_size
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cjsonx_is_null" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        cjsonx_is_null
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#iteration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Iteration
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Iteration">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#cjsonx_iter_t" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        cjsonx_iter_t
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cjsonx_iter_init-cjsonx_iter_next" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        cjsonx_iter_init &amp; cjsonx_iter_next
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#error-handling" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Error Handling
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Error Handling">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#cjsonx_error_string" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        cjsonx_error_string
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#builder-api-stringification" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Builder API &amp; Stringification
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Builder API &amp; Stringification">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#creating-values" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Creating Values
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#mutating-structures" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Mutating Structures
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#stringification" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Stringification
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#json-pointer-rfc-6901" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        JSON Pointer (RFC 6901)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#custom-allocator-injection" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Custom Allocator Injection
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Custom Allocator Injection">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#cjsonx_allocator_t" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        cjsonx_allocator_t
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#cloning-and-patching" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Cloning and Patching
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Cloning and Patching">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#cjsonx_clone_val" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        cjsonx_clone_val
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cjsonx_merge_patch" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        cjsonx_merge_patch
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#file-io-utilities" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        File I/O Utilities
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="File I/O Utilities">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#cjsonx_read_file-cjsonx_read_file_ex" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        cjsonx_read_file &amp; cjsonx_read_file_ex
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cjsonx_write_file-cjsonx_write_file_format" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        cjsonx_write_file &amp; cjsonx_write_file_format
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#limits-warnings" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Limits &amp; Warnings
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="api-reference">API Reference</h1>
+<p>The <code>cjsonx</code> API is designed to be minimalistic, safe, and intuitive. It uses opaque 16-byte handles (<code>cjsonx_val_t</code>) to interact with the underlying DOM arena, ensuring type safety and preventing use-after-free errors.</p>
+<hr />
+<h2 id="core-types">Core Types</h2>
+<h3 id="cjsonx_doc_t"><code>cjsonx_doc_t</code></h3>
+<p>The main document container. It holds the flat DOM arena, the structural tape, and the original JSON string.</p>
+<pre><code class="language-c">typedef struct {
+    bool is_valid;             // True if parsing succeeded
+    cjsonx_error_t error;      // Error code if parsing failed
+    size_t error_offset;       // Byte offset of the syntax error
+    cjsonx_val_t root;         // The root value handle
+    // ... internal fields ...
+} cjsonx_doc_t;
+</code></pre>
+<h3 id="cjsonx_val_t"><code>cjsonx_val_t</code></h3>
+<p>A lightweight 16-byte handle representing a JSON node (Object, Array, String, Number, Boolean, or Null). Passed by value.</p>
+<pre><code class="language-c">typedef struct {
+    const cjsonx_doc_t* doc;
+    uint32_t node_idx;
+} cjsonx_val_t;
+</code></pre>
+<h3 id="cjsonx_type_t"><code>cjsonx_type_t</code></h3>
+<p>Enumeration of possible JSON types.</p>
+<pre><code class="language-c">typedef enum {
+    CJSONX_NULL = 0,
+    CJSONX_BOOL,
+    CJSONX_NUMBER,
+    CJSONX_STRING,
+    CJSONX_ARRAY,
+    CJSONX_OBJECT
+} cjsonx_type_t;
+</code></pre>
+<hr />
+<h2 id="parsing-memory-management">Parsing &amp; Memory Management</h2>
+<h3 id="cjsonx_parse"><code>cjsonx_parse</code></h3>
+<pre><code class="language-c">cjsonx_doc_t* cjsonx_parse(const char* json, size_t length);
+</code></pre>
+<p>Parses a JSON string.</p>
+<ul>
+<li><strong><code>json</code></strong>: The UTF-8 JSON payload. Does not need to be null-terminated.</li>
+<li><strong><code>length</code></strong>: The byte length of the payload.</li>
+<li><strong>Returns</strong>: A dynamically allocated document. Returns <code>NULL</code> if <code>malloc</code> fails internally. You must check <code>doc-&gt;is_valid</code> to ensure syntax correctness.</li>
+</ul>
+<h3 id="cjsonx_parse_with_buffer-zero-allocation-mode"><code>cjsonx_parse_with_buffer</code> (Zero-Allocation Mode)</h3>
+<pre><code class="language-c">cjsonx_doc_t* cjsonx_parse_with_buffer(const char* json, size_t length, void* buffer, size_t buffer_size);
+</code></pre>
+<p>Parses a JSON string using entirely user-provided memory. This avoids <code>malloc</code> entirely, making it perfect for embedded systems or RTOS environments.</p>
+<ul>
+<li><strong><code>buffer</code></strong>: A static byte array or memory pool.</li>
+<li><strong><code>buffer_size</code></strong>: The size of the buffer. If parsing exhausts this size, the parser fails with <code>CJSONX_ERROR_OOM</code>.</li>
+</ul>
+<h3 id="cjsonx_doc_free"><code>cjsonx_doc_free</code></h3>
+<pre><code class="language-c">void cjsonx_doc_free(cjsonx_doc_t* doc);
+</code></pre>
+<p>Frees the entire document and its internal arenas. Any <code>cjsonx_val_t</code> handles associated with this document become invalid.</p>
+<hr />
+<h2 id="dom-access">DOM Access</h2>
+<h3 id="cjsonx_get_type"><code>cjsonx_get_type</code></h3>
+<pre><code class="language-c">cjsonx_type_t cjsonx_get_type(cjsonx_val_t val);
+</code></pre>
+<p>Returns the type of the value. If the handle is invalid or null, returns <code>CJSONX_NULL</code>.</p>
+<h3 id="cjsonx_get"><code>cjsonx_get</code></h3>
+<pre><code class="language-c">cjsonx_val_t cjsonx_get(cjsonx_val_t obj, const char* key);
+</code></pre>
+<p>Retrieves a child value from a JSON Object by its string key.</p>
+<ul>
+<li>Returns a null handle if the key is not found, or if <code>obj</code> is not an Object.</li>
+</ul>
+<h3 id="cjsonx_get_index"><code>cjsonx_get_index</code></h3>
+<pre><code class="language-c">cjsonx_val_t cjsonx_get_index(cjsonx_val_t arr, size_t index);
+</code></pre>
+<p>Retrieves a child value from a JSON Array by its zero-based index.</p>
+<ul>
+<li>Returns a null handle if the index is out of bounds, or if <code>arr</code> is not an Array.</li>
+</ul>
+<hr />
+<h2 id="value-retrieval">Value Retrieval</h2>
+<h3 id="cjsonx_str"><code>cjsonx_str</code></h3>
+<pre><code class="language-c">const char* cjsonx_str(cjsonx_val_t val);
+</code></pre>
+<p>Retrieves the string pointer.
+<strong>Warning:</strong> <code>cjsonx</code> is a zero-copy parser. The returned string points directly into the original JSON payload and is <strong>not null-terminated</strong>. You must use <code>cjsonx_str_len</code> to read it safely.</p>
+<h3 id="cjsonx_str_len"><code>cjsonx_str_len</code></h3>
+<pre><code class="language-c">size_t cjsonx_str_len(cjsonx_val_t val);
+</code></pre>
+<p>Returns the exact byte length of the string.</p>
+<h3 id="cjsonx_num"><code>cjsonx_num</code></h3>
+<pre><code class="language-c">double cjsonx_num(cjsonx_val_t val);
+</code></pre>
+<p>Retrieves the 64-bit double precision representation of a JSON number.</p>
+<h3 id="cjsonx_int"><code>cjsonx_int</code></h3>
+<pre><code class="language-c">int64_t cjsonx_int(cjsonx_val_t val);
+</code></pre>
+<p>Retrieves the numerical value as a strict 64-bit integer. Useful for parsing large IDs.</p>
+<h3 id="cjsonx_bool"><code>cjsonx_bool</code></h3>
+<pre><code class="language-c">bool cjsonx_bool(cjsonx_val_t val);
+</code></pre>
+<p>Returns <code>true</code> or <code>false</code> for boolean nodes.</p>
+<h3 id="cjsonx_size"><code>cjsonx_size</code></h3>
+<pre><code class="language-c">size_t cjsonx_size(cjsonx_val_t val);
+</code></pre>
+<p>Returns the number of elements inside an Array or the number of key-value pairs inside an Object.</p>
+<h3 id="cjsonx_is_null"><code>cjsonx_is_null</code></h3>
+<pre><code class="language-c">bool cjsonx_is_null(cjsonx_val_t val);
+</code></pre>
+<p>Returns <code>true</code> if the value is explicitly a JSON <code>null</code>, or if the handle itself is invalid/empty.</p>
+<hr />
+<h2 id="iteration">Iteration</h2>
+<h3 id="cjsonx_iter_t"><code>cjsonx_iter_t</code></h3>
+<p>A lightweight iterator struct for walking through Arrays and Objects.</p>
+<pre><code class="language-c">typedef struct {
+    cjsonx_val_t key;   // Populated if iterating an Object
+    cjsonx_val_t value; // The child value (Array element or Object value)
+    bool is_object;
+    bool valid;
+    // ... internal fields ...
+} cjsonx_iter_t;
+</code></pre>
+<h3 id="cjsonx_iter_init-cjsonx_iter_next"><code>cjsonx_iter_init</code> &amp; <code>cjsonx_iter_next</code></h3>
+<pre><code class="language-c">cjsonx_iter_t cjsonx_iter_init(cjsonx_val_t val);
+bool cjsonx_iter_next(cjsonx_iter_t* iter);
+</code></pre>
+<p>Creates an iterator for an Array or Object and advances it.</p>
+<p><strong>Example: Iterating an Array</strong></p>
+<pre><code class="language-c">cjsonx_iter_t it = cjsonx_iter_init(my_array);
+while (cjsonx_iter_next(&amp;it)) {
+    double n = cjsonx_num(it.value);
+}
+</code></pre>
+<p><strong>Example: Iterating an Object</strong></p>
+<pre><code class="language-c">cjsonx_iter_t it = cjsonx_iter_init(my_object);
+while (cjsonx_iter_next(&amp;it)) {
+    printf(&quot;Key: %s\n&quot;, cjsonx_str(it.key));
+}
+</code></pre>
+<hr />
+<h2 id="error-handling">Error Handling</h2>
+<h3 id="cjsonx_error_string"><code>cjsonx_error_string</code></h3>
+<pre><code class="language-c">const char* cjsonx_error_string(cjsonx_error_t err);
+</code></pre>
+<p>Converts a <code>cjsonx_error_t</code> enum into a human-readable string (e.g., <code>"Invalid structural character"</code>, <code>"Unterminated string"</code>).</p>
+<hr />
+<h2 id="builder-api-stringification">Builder API &amp; Stringification</h2>
+<p><code>cjsonx</code> allows you to create and mutate JSON documents dynamically, and convert them back into JSON strings.</p>
+<h3 id="creating-values">Creating Values</h3>
+<table>
+<thead>
+<tr>
+<th>Function</th>
+<th>Signature</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>cjsonx_create_null</code></td>
+<td><code>cjsonx_val_t cjsonx_create_null(cjsonx_doc_t* doc)</code></td>
+<td>Creates a <code>null</code> node in the document.</td>
+</tr>
+<tr>
+<td><code>cjsonx_create_bool</code></td>
+<td><code>cjsonx_val_t cjsonx_create_bool(cjsonx_doc_t* doc, bool val)</code></td>
+<td>Creates a boolean node.</td>
+</tr>
+<tr>
+<td><code>cjsonx_create_number</code></td>
+<td><code>cjsonx_val_t cjsonx_create_number(cjsonx_doc_t* doc, double val)</code></td>
+<td>Creates a number node.</td>
+</tr>
+<tr>
+<td><code>cjsonx_create_string</code></td>
+<td><code>cjsonx_val_t cjsonx_create_string(cjsonx_doc_t* doc, const char* str)</code></td>
+<td>Creates a string node. The string is copied into the document arena.</td>
+</tr>
+<tr>
+<td><code>cjsonx_create_object</code></td>
+<td><code>cjsonx_val_t cjsonx_create_object(cjsonx_doc_t* doc)</code></td>
+<td>Creates an empty JSON Object.</td>
+</tr>
+<tr>
+<td><code>cjsonx_create_array</code></td>
+<td><code>cjsonx_val_t cjsonx_create_array(cjsonx_doc_t* doc)</code></td>
+<td>Creates an empty JSON Array.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="mutating-structures">Mutating Structures</h3>
+<table>
+<thead>
+<tr>
+<th>Function</th>
+<th>Signature</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>cjsonx_object_set</code></td>
+<td><code>bool cjsonx_object_set(cjsonx_val_t obj, const char* key, cjsonx_val_t val)</code></td>
+<td>Inserts or appends a key-value pair into an Object.</td>
+</tr>
+<tr>
+<td><code>cjsonx_array_push</code></td>
+<td><code>bool cjsonx_array_push(cjsonx_val_t arr, cjsonx_val_t val)</code></td>
+<td>Appends a value to the end of an Array.</td>
+</tr>
+<tr>
+<td><code>cjsonx_object_remove</code></td>
+<td><code>bool cjsonx_object_remove(cjsonx_val_t obj, const char* key)</code></td>
+<td>Removes a key-value pair from an Object.</td>
+</tr>
+<tr>
+<td><code>cjsonx_array_remove</code></td>
+<td><code>bool cjsonx_array_remove(cjsonx_val_t arr, size_t index)</code></td>
+<td>Removes a value at the given index from an Array.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="stringification">Stringification</h3>
+<table>
+<thead>
+<tr>
+<th>Function</th>
+<th>Signature</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>cjsonx_stringify</code></td>
+<td><code>char* cjsonx_stringify(cjsonx_doc_t* doc)</code></td>
+<td>Converts the entire document into a minified, null-terminated JSON string. The returned string is <code>malloc</code>'d and must be freed by the caller.</td>
+</tr>
+<tr>
+<td><code>cjsonx_stringify_format</code></td>
+<td><code>char* cjsonx_stringify_format(cjsonx_doc_t* doc, int indent)</code></td>
+<td>Same as <code>stringify</code>, but pretty-prints the JSON with <code>indent</code> spaces per level.</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="json-pointer-rfc-6901">JSON Pointer (RFC 6901)</h2>
+<p>You can query deeply nested JSON structures using a single path string.</p>
+<table>
+<thead>
+<tr>
+<th>Function</th>
+<th>Signature</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>cjsonx_pointer_get</code></td>
+<td><code>cjsonx_val_t cjsonx_pointer_get(cjsonx_val_t root, const char* path)</code></td>
+<td>Retrieves a node using a JSON Pointer path (e.g. <code>"/user/profile/age"</code>). Returns a <code>null</code> handle if the path is invalid or not found. Properly unescapes <code>~1</code> to <code>/</code> and <code>~0</code> to <code>~</code>.</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="custom-allocator-injection">Custom Allocator Injection</h2>
+<p>For strict memory environments (e.g., game engines, custom OS kernels), you can override the standard <code>&lt;stdlib.h&gt;</code> allocation functions using <code>cjsonx_parse_ex</code>.</p>
+<h3 id="cjsonx_allocator_t"><code>cjsonx_allocator_t</code></h3>
+<pre><code class="language-c">typedef struct {
+    void* (*malloc_fn)(size_t size, void* user_data);
+    void* (*realloc_fn)(void* ptr, size_t size, void* user_data);
+    void  (*free_fn)(void* ptr, void* user_data);
+    void* user_data;
+} cjsonx_allocator_t;
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Function</th>
+<th>Signature</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>cjsonx_parse_ex</code></td>
+<td><code>cjsonx_doc_t* cjsonx_parse_ex(const char* json, size_t len, cjsonx_allocator_t* alloc)</code></td>
+<td>Parses the JSON document using the provided allocator functions. If <code>alloc</code> is <code>NULL</code>, it falls back to standard <code>malloc</code> and <code>free</code>.</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="cloning-and-patching">Cloning and Patching</h2>
+<h3 id="cjsonx_clone_val"><code>cjsonx_clone_val</code></h3>
+<pre><code class="language-c">cjsonx_val_t cjsonx_clone_val(cjsonx_doc_t* dest_doc, cjsonx_val_t src_val);
+</code></pre>
+<p>Recursively clones a value node and all of its children into the destination document's arena. Returns the cloned node handle.</p>
+<h3 id="cjsonx_merge_patch"><code>cjsonx_merge_patch</code></h3>
+<pre><code class="language-c">cjsonx_val_t cjsonx_merge_patch(cjsonx_val_t target, cjsonx_val_t patch);
+</code></pre>
+<p>Applies a JSON Merge Patch (RFC 7396) to a target node. Returns the modified node handle.</p>
+<hr />
+<h2 id="file-io-utilities">File I/O Utilities</h2>
+<h3 id="cjsonx_read_file-cjsonx_read_file_ex"><code>cjsonx_read_file</code> &amp; <code>cjsonx_read_file_ex</code></h3>
+<pre><code class="language-c">cjsonx_doc_t* cjsonx_read_file(const char* path);
+cjsonx_doc_t* cjsonx_read_file_ex(const char* path, cjsonx_allocator_t* alloc);
+</code></pre>
+<p>Reads the JSON file from the filesystem path and parses it. Returns the parsed document handle, or <code>NULL</code> if opening/reading fails.</p>
+<h3 id="cjsonx_write_file-cjsonx_write_file_format"><code>cjsonx_write_file</code> &amp; <code>cjsonx_write_file_format</code></h3>
+<pre><code class="language-c">bool cjsonx_write_file(const char* path, cjsonx_doc_t* doc);
+bool cjsonx_write_file_format(const char* path, cjsonx_doc_t* doc, int indent);
+</code></pre>
+<p>Serializes the document into a JSON file at the specified path. Returns <code>true</code> on success, or <code>false</code> on file writing failure.</p>
+<hr />
+<h2 id="limits-warnings">Limits &amp; Warnings</h2>
+<ul>
+<li><strong>16MB Node Size Limit:</strong> The 16-byte DOM node packs its type and length field into a single <code>uint32_t</code> (8 bits for type, 24 bits for length). This limits the maximum length of any single string or serialized container to <code>16,777,215</code> bytes.</li>
+<li><strong>O(N) Array Push Complexity:</strong> Pushing an element to an array via <code>cjsonx_array_push</code> traverses the list of siblings to find the end. Building large arrays sequentially through push operations results in O(N^2) complexity.</li>
+<li><strong>Stringify Depth Guard:</strong> To prevent stack overflows on deeply nested JSON inputs during serialization, <code>cjsonx_stringify</code> and <code>cjsonx_stringify_format</code> enforce a nesting depth limit of 512 (<code>CJSONX_MAX_DEPTH</code>).</li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.tabs", "navigation.sections"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>
