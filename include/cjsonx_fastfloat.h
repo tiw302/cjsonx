@@ -15,9 +15,10 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <string.h>
+#include <math.h>
 #include "cjsonx_eisel_lemire.h"
 
-// msvc compatibility for __builtin_clzll
+// msvc compat: wrap clzll so we don't touch reserved __builtin_* names (c11 §7.1.3)
 #if defined(_MSC_VER) && !defined(__clang__)
 #include <intrin.h>
 static inline int cjsonx_clzll(uint64_t x) {
@@ -25,7 +26,9 @@ static inline int cjsonx_clzll(uint64_t x) {
     _BitScanReverse64(&idx, x);
     return 63 - (int)idx;
 }
-#define __builtin_clzll cjsonx_clzll
+#define CJSONX_CLZLL(x) cjsonx_clzll(x)
+#else
+#define CJSONX_CLZLL(x) __builtin_clzll(x)
 #endif
 
 #ifdef __cplusplus
@@ -74,7 +77,8 @@ static cjsonx_always_inline bool cjsonx_compute_float(uint64_t mantissa, int exp
     
     // eisel-lemire algorithm
     if (exponent < -348) { *out = 0.0; return true; }
-    if (exponent > 342) { *out = 1e308 * 10; return true; } // infinity
+    // use INFINITY constant — 1e308*10 is UB under -ffast-math / -ffinite-math-only
+    if (exponent > 342) { *out = INFINITY; return true; }
     
     // lookup precomputed powers of 10
     int index = exponent + 348;
@@ -82,7 +86,7 @@ static cjsonx_always_inline bool cjsonx_compute_float(uint64_t mantissa, int exp
     int16_t table_e = cjsonx_eisel_lemire_exp[index];
     
     // normalize mantissa
-    int lz = __builtin_clzll(mantissa);
+    int lz = CJSONX_CLZLL(mantissa);
     uint64_t w = mantissa << lz;
     
     uint64_t high = cjsonx_mul64_high(w, table_m);
