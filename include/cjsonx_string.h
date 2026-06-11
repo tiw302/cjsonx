@@ -86,7 +86,7 @@ static cjsonx_always_inline bool cjsonx_parse_string_impl(cjsonx_doc_t* doc, cjs
     for (; i + 16 <= len; i += 16) {
         uint8x16_t chunk = vld1q_u8((const uint8_t*)(str_start + i));
         
-        // check for non-ascii (signed < 0)
+        // bytes >= 0x80 have bit 7 set, which makes them negative as signed int8 — clean trick
         uint8x16_t non_ascii = vcltq_s8(vreinterpretq_s8_u8(chunk), vdupq_n_s8(0));
         
         // check for escape character
@@ -136,7 +136,8 @@ static cjsonx_always_inline bool cjsonx_parse_string_impl(cjsonx_doc_t* doc, cjs
     }
 #endif
 
-    // scalar fallback for remaining bytes or if simd is disabled
+    // scalar fallback for remaining bytes or to re-scan the failed simd chunk.
+    // control and non-ascii flags from previous chunks are preserved.
     uint64_t mask = 0;
     for (; i + 8 <= len; i += 8) {
         uint64_t chunk;
@@ -188,7 +189,10 @@ static cjsonx_always_inline bool cjsonx_parse_string_impl(cjsonx_doc_t* doc, cjs
 
     // slow path with arena allocation
     char* out = (char*)cjsonx_arena_alloc(doc, len + 1);
-    if (!out) return false;
+    if (!out) {
+        doc->error = CJSONX_ERROR_OOM;
+        return false;
+    }
 
     const char* p = str_start;
     const char* end = str_start + len;
@@ -197,7 +201,10 @@ static cjsonx_always_inline bool cjsonx_parse_string_impl(cjsonx_doc_t* doc, cjs
     while (p < end) {
         if (*p == '\\') {
             p++;
-            if (p >= end) return false;
+            if (p >= end) {
+                doc->error = CJSONX_ERROR_INVALID_ESCAPE;
+                return false;
+            }
             switch (*p) {
                 case '"': *d++ = '"'; p++; break;
                 case '\\': *d++ = '\\'; p++; break;
@@ -209,27 +216,49 @@ static cjsonx_always_inline bool cjsonx_parse_string_impl(cjsonx_doc_t* doc, cjs
                 case 't': *d++ = '\t'; p++; break;
                 case 'u': {
                     p++;
-                    if (p + 4 > end) return false;
+                    if (p + 4 > end) {
+                        doc->error = CJSONX_ERROR_INVALID_ESCAPE;
+                        return false;
+                    }
                     uint32_t cp = 0;
-                    if (!cjsonx_parse_hex4(p, &cp)) return false;
+                    if (!cjsonx_parse_hex4(p, &cp)) {
+                        doc->error = CJSONX_ERROR_INVALID_ESCAPE;
+                        return false;
+                    }
                     p += 4;
                     if (cp >= 0xD800 && cp <= 0xDBFF) {
-                        if (p + 6 > end || p[0] != '\\' || p[1] != 'u') return false;
+                        if (p + 6 > end || p[0] != '\\' || p[1] != 'u') {
+                            doc->error = CJSONX_ERROR_INVALID_ESCAPE;
+                            return false;
+                        }
                         uint32_t cp2 = 0;
-                        if (!cjsonx_parse_hex4(p + 2, &cp2)) return false;
-                        if (cp2 < 0xDC00 || cp2 > 0xDFFF) return false;
+                        if (!cjsonx_parse_hex4(p + 2, &cp2)) {
+                            doc->error = CJSONX_ERROR_INVALID_ESCAPE;
+                            return false;
+                        }
+                        if (cp2 < 0xDC00 || cp2 > 0xDFFF) {
+                            doc->error = CJSONX_ERROR_INVALID_ESCAPE;
+                            return false;
+                        }
                         cp = (((cp - 0xD800) << 10) | (cp2 - 0xDC00)) + 0x10000;
                         p += 6;
                     } else if (cp >= 0xDC00 && cp <= 0xDFFF) {
                         // lone low surrogate is invalid
+                        doc->error = CJSONX_ERROR_INVALID_ESCAPE;
                         return false;
                     }
                     size_t enc_len = cjsonx_encode_utf8(cp, d);
-                    if (enc_len == 0) return false;
+                    if (enc_len == 0) {
+                        doc->error = CJSONX_ERROR_INVALID_UTF8;
+                        return false;
+                    }
                     d += enc_len;
                     break;
                 }
-                default: return false;
+                default: {
+                    doc->error = CJSONX_ERROR_INVALID_ESCAPE;
+                    return false;
+                }
             }
         } else {
             *d++ = *p++;
