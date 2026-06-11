@@ -16,6 +16,12 @@
 #include <stdint.h>
 #include <stdbool.h>
 
+// msvc compat: neon doesn't have __builtin_prefetch, mirror the avx2 shim
+#if defined(_MSC_VER) && !defined(__clang__)
+#include <intrin.h>
+#define __builtin_prefetch(addr, ...) (void)(addr)
+#endif
+
 // neon specific scanner utilizing 16-byte vectors unrolled to 32 bytes per iteration
 static inline uint16_t neon_movemask_u8(uint8x16_t v) {
     const uint8x16_t bitmask = {0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80,
