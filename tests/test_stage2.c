@@ -45,6 +45,28 @@ void test_dom(const char* json) {
     cjsonx_doc_free(doc);
 }
 
+void test_error(const char* json, cjsonx_error_t expected_error, size_t expected_offset) {
+    cjsonx_doc* doc = cjsonx_parse(json, strlen(json));
+    if (!doc) {
+        printf("Failed to parse JSON (doc was null)\n");
+        exit(1);
+    }
+    if (doc->is_valid) {
+        printf("FAIL: Expected invalid JSON for '%s' but parsed successfully\n", json);
+        exit(1);
+    }
+    if (doc->error != expected_error) {
+        printf("FAIL: Expected error %d, got %d for '%s'\n", (int)expected_error, (int)doc->error, json);
+        exit(1);
+    }
+    if (doc->error_offset != expected_offset) {
+        printf("FAIL: Expected error offset %zu, got %zu for '%s'\n", expected_offset, doc->error_offset, json);
+        exit(1);
+    }
+    printf("PASS error: '%s' failed at offset %zu with correct error code\n", json, doc->error_offset);
+    cjsonx_doc_free(doc);
+}
+
 int main(void) {
     printf("--- cjsonx Stage 2 Test ---\n");
 
@@ -56,6 +78,13 @@ int main(void) {
 
     // escape sequences + utf-16 surrogate pair (rocket emoji u+1f680)
     test_dom("{\"escape\": \"Hello\\nWorld! \\u2764\\ufe0f\", \"emoji\": \"\\ud83d\\ude80\"}");
+
+    printf("\n--- Running Error Offset and Correctness Tests ---\n");
+    test_error("{\"key\" 30}", CJSONX_ERROR_UNEXPECTED_TOKEN, 7);
+    test_error("{\"key\": }", CJSONX_ERROR_UNEXPECTED_TOKEN, 8);
+    test_error("{\"key\": \"val\",}", CJSONX_ERROR_UNEXPECTED_TOKEN, 14);
+    test_error("[1, 2, ]", CJSONX_ERROR_UNEXPECTED_TOKEN, 7);
+    test_error("{\"key\": \"abc\\x\"}", CJSONX_ERROR_INVALID_ESCAPE, 8);
 
     return 0;
 }
