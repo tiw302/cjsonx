@@ -20,10 +20,17 @@
 #define CJSONX_LIKELY(x) __builtin_expect(!!(x), 1)
 #define CJSONX_UNLIKELY(x) __builtin_expect(!!(x), 0)
 #define cjsonx_always_inline __attribute__((always_inline)) inline
+#define CJSONX_NODISCARD __attribute__((warn_unused_result))
 #else
 #define CJSONX_LIKELY(x) (x)
 #define CJSONX_UNLIKELY(x) (x)
 #define cjsonx_always_inline inline
+#define CJSONX_NODISCARD
+#endif
+
+// export macro for dynamic link libraries
+#ifndef CJSONX_API
+#define CJSONX_API
 #endif
 
 // configuration constants
