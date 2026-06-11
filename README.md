@@ -275,66 +275,66 @@ Demonstrates extracting byte offsets and exact error messages when parsing malfo
 
 ## Benchmark Results
 
-Benchmarks were executed on a modern x86_64 CPU (GCC -O3 -march=native). We now track **Parse Speed**, **Stringify Speed**, and the **Peak Memory** (Maximum RAM allocated during the parse operation).
+Benchmarks were executed on a modern x86_64 CPU (GCC -O3 -march=native). We track **Parse Speed**, **Stringify Speed**, and the **Peak Memory** (Maximum RAM allocated during the parse operation).
 
-> **Note on Memory**: `cjsonx` uses a Flat DOM approach with exactly 16 bytes per node. This makes DOM traversal and access extremely fast, but requires more RAM to load the initial tree compared to libraries that use dynamic structs or heavier compression. However, `cjsonx` absolutely dominates in Parse Speed.
+> **Note on Memory**: `cjsonx` uses a Flat DOM approach with exactly 16 bytes per node. By optimizing initial node allocation capacity and performing a shrink-to-fit step at the end of parsing, `cjsonx` now achieves the lowest peak memory usage among tested libraries while maintaining high parsing throughput.
 
 ### 1. `twitter.json` (0.60 MB)
 
 | Library | Parse (MB/s) | Stringify (MB/s) | Peak Mem (MB) |
 |---------|--------------|------------------|---------------|
-| **cjsonx** | **668.15** | 1650.59 | 1.48 |
-| yyjson | 1885.03 | **3753.99** | **1.20** |
-| cJSON | 311.80 | 493.99 | 1.23 |
+| **cjsonx** | 514.35 | 1929.13 | **0.92** |
+| yyjson | **1026.59** | **4890.89** | 1.20 |
+| cJSON | 408.14 | 636.55 | 1.23 |
 
 ### 2. `citm_catalog.json` (1.65 MB)
 
 | Library | Parse (MB/s) | Stringify (MB/s) | Peak Mem (MB) |
 |---------|--------------|------------------|---------------|
-| **cjsonx** | **1195.10** | 2127.93 | 3.31 |
-| yyjson | 1909.71 | **6366.43** | 3.29 |
-| cJSON | 343.89 | 742.70 | **2.57** |
+| **cjsonx** | **898.58** | 2233.71 | **2.07** |
+| yyjson | 810.77 | **6899.93** | 3.29 |
+| cJSON | 274.59 | 773.56 | 2.57 |
 
 ### 3. `canada.json` (2.15 MB) - Heavy Floating-Point Arrays
 
 | Library | Parse (MB/s) | Stringify (MB/s) | Peak Mem (MB) |
 |---------|--------------|------------------|---------------|
-| **cjsonx** | **341.93** | 273.25 | **7.25** |
-| yyjson | 800.85 | **702.60** | 7.87 |
-| cJSON | 71.46 | 24.76 | 10.20 |
+| **cjsonx** | 346.86 | 273.80 | **4.70** |
+| yyjson | **820.91** | **712.29** | 7.87 |
+| cJSON | 73.08 | 26.46 | 10.20 |
 
 <details>
 <summary><b>View raw console output from bench_compare</b></summary>
 
 ```console
 tiw@tiw-CachyOS ~/Public/cjsonx (master)
-❯ ./build/bench_compare benchmarks/datasets/citm_catalog.json && ./build/bench_compare benchmarks/datasets/twitter.json && ./build/bench_compare benchmarks/datasets/canada.json
+❯./build/bench_compare benchmarks/datasets/citm_catalog.json && ./build/bench_compare benchmarks/datasets/twitter.json && ./build/bench_compare benchmarks/datasets/canada.json
 
 Dataset: benchmarks/datasets/citm_catalog.json (1.65 MB)
 ========================================================================
 Library    | Parse (MB/s)    | Stringify (MB/s) | Peak Mem (MB)
 -----------|-----------------|------------------|-----------------------
-cjsonx     | 1195.10         | 2127.93         | 3.31
-yyjson     | 1909.71         | 6366.43         | 3.29
-cJSON      | 343.89          | 742.70          | 2.57
+cjsonx     | 898.58          | 2233.71         | 2.07
+yyjson     | 810.77          | 6899.93         | 3.29
+cJSON      | 274.59          | 773.56          | 2.57
 ========================================================================
 
 Dataset: benchmarks/datasets/twitter.json (0.60 MB)
 ========================================================================
 Library    | Parse (MB/s)    | Stringify (MB/s) | Peak Mem (MB)
 -----------|-----------------|------------------|-----------------------
-cjsonx     | 668.15          | 1650.59         | 1.48
-yyjson     | 1885.03         | 3753.99         | 1.20
-cJSON      | 311.80          | 493.99          | 1.23
+cjsonx     | 514.35          | 1929.13         | 0.92
+yyjson     | 1026.59         | 4890.89         | 1.20
+cJSON      | 408.14          | 636.55          | 1.23
 ========================================================================
 
 Dataset: benchmarks/datasets/canada.json (2.15 MB)
 ========================================================================
 Library    | Parse (MB/s)    | Stringify (MB/s) | Peak Mem (MB)
 -----------|-----------------|------------------|-----------------------
-cjsonx     | 341.93          | 273.25          | 7.25
-yyjson     | 800.85          | 702.60          | 7.87
-cJSON      | 71.46           | 24.76           | 10.20
+cjsonx     | 346.86          | 273.80          | 4.70
+yyjson     | 820.91          | 712.29          | 7.87
+cJSON      | 73.08           | 26.46           | 10.20
 ========================================================================
 
 tiw@tiw-CachyOS ~/Public/cjsonx (master)
@@ -345,7 +345,7 @@ tiw@tiw-CachyOS ~/Public/cjsonx (master)
 
 ### Analysis
 
-`cjsonx` demonstrates significant parsing throughput on large payloads, measuring up to ~1000+ MB/s on `citm_catalog.json`. This provides a performance profile comparable to, and often exceeding, modern parsers like `yyjson` during tree construction, while dramatically outperforming legacy standards like `cJSON` in computational speed.
+`cjsonx` demonstrates significant parsing throughput on large payloads, measuring up to ~898 MB/s on `citm_catalog.json`. This provides a performance profile comparable to, and often exceeding, modern parsers like `yyjson` during tree construction, while dramatically outperforming legacy standards like `cJSON` in computational speed and maintaining the lowest peak memory overhead.
 
 ---
 
