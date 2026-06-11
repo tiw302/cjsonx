@@ -120,36 +120,33 @@ typedef struct {
 } cjsonx_iter_t;
 
 // static buffer parsing
-cjsonx_doc_t* cjsonx_parse_with_buffer(const char* json, size_t length, void* buffer, size_t buffer_size);
+CJSONX_API CJSONX_NODISCARD cjsonx_doc_t* cjsonx_parse_with_buffer(const char* json, size_t length, void* buffer, size_t buffer_size);
 
 // lifecycle
-cjsonx_doc_t* cjsonx_doc_new(void);
-cjsonx_doc_t* cjsonx_doc_new_ex(cjsonx_allocator_t* alloc);
-void cjsonx_doc_free(cjsonx_doc_t* doc);
+CJSONX_API cjsonx_doc_t* cjsonx_doc_new(void);
+CJSONX_API cjsonx_doc_t* cjsonx_doc_new_ex(cjsonx_allocator_t* alloc);
+CJSONX_API void cjsonx_doc_free(cjsonx_doc_t* doc);
 
 // container lookup
-cjsonx_val_t cjsonx_get(cjsonx_val_t obj, const char* key);
-cjsonx_val_t cjsonx_get_index(cjsonx_val_t arr, size_t index);
-cjsonx_val_t cjsonx_pointer_get(cjsonx_val_t root, const char* path);
+// o(n): linear key scan.
+CJSONX_API cjsonx_val_t cjsonx_get(cjsonx_val_t obj, const char* key);
+// o(n): walks sibling chain. use cjsonx_iter for sequential iteration.
+CJSONX_API cjsonx_val_t cjsonx_get_index(cjsonx_val_t arr, size_t index);
+CJSONX_API cjsonx_val_t cjsonx_pointer_get(cjsonx_val_t root, const char* path);
 
 // value accessors
-const char* cjsonx_str(cjsonx_val_t val);
-size_t cjsonx_str_len(cjsonx_val_t val);
-double cjsonx_num(cjsonx_val_t val);
-int64_t cjsonx_int(cjsonx_val_t val);
-bool cjsonx_bool(cjsonx_val_t val);
-bool cjsonx_is_null(cjsonx_val_t val);
-cjsonx_type_t cjsonx_get_type(cjsonx_val_t val);
-size_t cjsonx_size(cjsonx_val_t val);
+CJSONX_API const char* cjsonx_str(cjsonx_val_t val);
+CJSONX_API size_t cjsonx_str_len(cjsonx_val_t val);
+CJSONX_API double cjsonx_num(cjsonx_val_t val);
+CJSONX_API int64_t cjsonx_int(cjsonx_val_t val);
+CJSONX_API bool cjsonx_bool(cjsonx_val_t val);
+CJSONX_API bool cjsonx_is_null(cjsonx_val_t val);
+CJSONX_API cjsonx_type_t cjsonx_get_type(cjsonx_val_t val);
+CJSONX_API size_t cjsonx_size(cjsonx_val_t val);
 
 // iteration
-cjsonx_iter_t cjsonx_iter_init(cjsonx_val_t val);
-bool cjsonx_iter_next(cjsonx_iter_t* iter);
-
-// forward declarations (also declared in cjsonx.h; needed here for
-// standalone inclusion of cjsonx_builder.h's implementation section)
-cjsonx_doc_t* cjsonx_parse(const char* json, size_t length);
-cjsonx_doc_t* cjsonx_parse_ex(const char* json, size_t length, cjsonx_allocator_t* alloc);
+CJSONX_API cjsonx_iter_t cjsonx_iter_init(cjsonx_val_t val);
+CJSONX_API bool cjsonx_iter_next(cjsonx_iter_t* iter);
 
 // create null handle
 static inline cjsonx_val_t cjsonx_make_null_handle(void) {
