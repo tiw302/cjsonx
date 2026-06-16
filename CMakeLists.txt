@@ -1,12 +1,19 @@
+# =========================================================================
+# CMakeLists.txt -- build orchestration for cjsonx
+# project url: https://github.com/tiw302/cjsonx
+#
+# this file handles the compilation of tests, benchmarks, and examples.
+# =========================================================================
+
 cmake_minimum_required(VERSION 3.21)
 project(cjsonx VERSION 1.0.0 LANGUAGES C)
 
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 
-# -----------------------------------------------------------------------
+# =========================================================================
 # options
-# -----------------------------------------------------------------------
+# =========================================================================
 option(CJSONX_ENABLE_SANITIZERS "Enable AddressSanitizer and UndefinedBehaviorSanitizer" OFF)
 option(CJSONX_ENABLE_COVERAGE "Enable gcov code coverage generation" OFF)
 
@@ -36,7 +43,9 @@ else()
     endif()
 endif()
 
+# =========================================================================
 # library target
+# =========================================================================
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/src/cjsonx.c")
 add_library(cjsonx STATIC src/cjsonx.c)
 target_include_directories(cjsonx PUBLIC
@@ -45,7 +54,9 @@ target_include_directories(cjsonx PUBLIC
 
 endif()
 
+# =========================================================================
 # examples
+# =========================================================================
 if(TARGET cjsonx AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/examples/dom_access.c")
     add_executable(example_dom_access examples/dom_access.c)
     target_link_libraries(example_dom_access PRIVATE cjsonx)
@@ -61,7 +72,9 @@ endif()
 
 enable_testing()
 
+# =========================================================================
 # tests
+# =========================================================================
 if(TARGET cjsonx AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_suite.c")
     add_executable(test_suite tests/test_suite.c)
     target_link_libraries(test_suite PRIVATE cjsonx)
@@ -122,8 +135,15 @@ if(TARGET cjsonx AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_utf8.c")
     target_link_libraries(test_utf8 PRIVATE cjsonx)
     add_test(NAME test_utf8 COMMAND test_utf8)
 endif()
+if(TARGET cjsonx AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_precision.c")
+    add_executable(test_precision tests/test_precision.c)
+    target_link_libraries(test_precision PRIVATE cjsonx)
+    add_test(NAME test_precision COMMAND test_precision)
+endif()
 
+# =========================================================================
 # benchmark
+# =========================================================================
 # note: bench_compare requires third_party libraries (yyjson, cjson, jsmn)
 # to be downloaded into benchmarks/third_party/
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/benchmarks/third_party/yyjson.c")
