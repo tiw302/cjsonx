@@ -1,15 +1,16 @@
-/**
- * @file cjsonx_stage1.h
- * @brief stage 1 backend dispatcher (avx2 / neon / wasm / scalar)
- *
- * @note architecture and coding style inspired by yyjson (https://github.com/ibireme/yyjson)
- */
+// updated 2026-06-13
+// spdx-license-identifier: mit
+// copyright (c) 2026 jirawat siripuk
 #ifndef CJSONX_STAGE1_H
 #define CJSONX_STAGE1_H
 
-/*==============================================================================
- * mark: - stage 1 (structural indexing)
- *============================================================================*/
+// ███████ ████████  █████   ██████  ███████      ██
+// ██         ██    ██   ██ ██       ██          ███
+// ███████    ██    ███████ ██   ███ █████        ██
+//      ██    ██    ██   ██ ██    ██ ██           ██
+// ███████    ██    ██   ██  ██████  ███████      ██
+//
+// >>stage 1 structural indexing
 
 
 #include <stdlib.h>
