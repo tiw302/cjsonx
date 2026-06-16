@@ -1,15 +1,16 @@
-/**
- * @file cjsonx_dom.h
- * @brief dom node types, document structure, and accessor declarations
- *
- * @note architecture and coding style inspired by yyjson (https://github.com/ibireme/yyjson)
- */
+// updated 2026-06-13
+// spdx-license-identifier: mit
+// copyright (c) 2026 jirawat siripuk
 #ifndef CJSONX_DOM_H
 #define CJSONX_DOM_H
 
-/*==============================================================================
- * mark: - dom (document object model)
- *============================================================================*/
+// ██████   ██████  ███    ███
+// ██   ██ ██    ██ ████  ████
+// ██   ██ ██    ██ ██ ████ ██
+// ██   ██ ██    ██ ██  ██  ██
+// ██████   ██████  ██      ██
+//
+// >>dom document object model
 
 
 #include <stdbool.h>
@@ -21,12 +22,31 @@
 extern "C" {
 #endif
 
+#include <stdlib.h>
+#include <string.h>
+
 typedef struct {
     void* (*malloc_fn)(size_t size, void* user_data);
     void* (*realloc_fn)(void* ptr, size_t size, void* user_data);
     void  (*free_fn)(void* ptr, void* user_data);
     void* user_data;
 } cjsonx_allocator_t;
+
+// reallocate memory safely supporting custom/standard fallback
+static inline void* cjsonx_realloc(cjsonx_allocator_t* alloc, void* ptr, size_t old_size, size_t new_size) {
+    if (alloc && alloc->realloc_fn) {
+        return alloc->realloc_fn(ptr, new_size, alloc->user_data);
+    }
+    if (alloc && alloc->malloc_fn) {
+        void* new_ptr = alloc->malloc_fn(new_size, alloc->user_data);
+        if (new_ptr && ptr) {
+            memcpy(new_ptr, ptr, old_size < new_size ? old_size : new_size);
+            if (alloc->free_fn) alloc->free_fn(ptr, alloc->user_data);
+        }
+        return new_ptr;
+    }
+    return realloc(ptr, new_size);
+}
 
 typedef enum {
     CJSONX_NULL,
@@ -37,8 +57,18 @@ typedef enum {
     CJSONX_OBJECT
 } cjsonx_type_t;
 
-// 16-byte flat node, packed for cache efficiency.
-// max length/count supported per node is 16,777,215 (24-bit).
+/*
+ * 16-byte flat node, packed for cache efficiency.
+ * we pack each node into exactly 16 bytes. this means 4 nodes fit perfectly inside a
+ * 64-byte cpu cache line, which greatly increases performance during dom walks by minimizing
+ * l1/l2 cache misses.
+ * - type_and_length: packs the 8-bit node type and a 24-bit length/count (max 16,777,215).
+ * - next_sibling: stores the index of the next sibling node in the flat array. this is a
+ *   critical performance feature; it allows us to skip an entire subtree (e.g. a large nested
+ *   object or array) in o(1) time without recursively visiting its children.
+ * - val: a union that overlaps type-specific payloads (double float, string pointer, bool, or
+ *   first child index) to keep the memory size constrained to 16 bytes.
+ */
 typedef struct {
     uint32_t type_and_length;  // 8-bit type | 24-bit length (max 16,777,215)
     uint32_t next_sibling;     // next sibling index for fast skipping
@@ -109,6 +139,11 @@ struct cjsonx_doc {
     char* owned_json;           // owned copy of json buffer (set by cjsonx_read_file)
 };
 
+/*
+ * container iterator:
+ * enables zero-allocation, non-recursive traversal of elements inside
+ * an array or key-value pairs inside an object.
+ */
 typedef struct {
     cjsonx_doc_t* doc;
     cjsonx_val_t key;
