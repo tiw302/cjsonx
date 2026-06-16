@@ -4577,7 +4577,19 @@ static cjsonx_always_inline bool cjsonx_is_valid_number(const char* __restrict s
     return cjsonx_is_all_whitespace(str, limit);
 }
 
-
+// grow nodes array dynamically when capacity is exceeded due to invalid json structures
+static inline bool cjsonx_grow_nodes(cjsonx_doc_t* doc, size_t required) {
+    if (required <= doc->node_capacity) return true;
+    if (doc->is_static) return false;
+    size_t new_cap = doc->node_capacity == 0 ? 128 : doc->node_capacity * 2;
+    if (new_cap < required) new_cap = required;
+    if (CJSONX_UNLIKELY(new_cap > (size_t)-1 / sizeof(cjsonx_node_t))) return false;
+    cjsonx_node_t* new_nodes = (cjsonx_node_t*)cjsonx_realloc(&doc->alloc, doc->nodes, doc->node_capacity * sizeof(cjsonx_node_t), new_cap * sizeof(cjsonx_node_t));
+    if (!new_nodes) return false;
+    doc->nodes = new_nodes;
+    doc->node_capacity = new_cap;
+    return true;
+}
 
 // non-recursive flat dom parsing engine - strict grammar edition
 static bool cjsonx_stage2_build(cjsonx_doc_t* doc, const char* json, cjsonx_tape_t* tape) {
@@ -4680,6 +4692,12 @@ static bool cjsonx_stage2_build(cjsonx_doc_t* doc, const char* json, cjsonx_tape
         err_tape_idx = tape_idx; \
         pos = tape->indices[tape_idx]; \
         c = json[pos]; \
+        if (CJSONX_UNLIKELY(node_idx >= doc->node_capacity)) { \
+            if (CJSONX_UNLIKELY(!cjsonx_grow_nodes(doc, node_idx + 1))) { \
+                doc->error = CJSONX_ERROR_OOM; \
+                goto fail; \
+            } \
+        } \
         node = &doc->nodes[node_idx]; \
         goto *dispatch_table[(uint8_t)c]; \
     } while (0)
@@ -4699,6 +4717,12 @@ static bool cjsonx_stage2_build(cjsonx_doc_t* doc, const char* json, cjsonx_tape
         err_tape_idx = tape_idx;
         pos = tape->indices[tape_idx];
         c = json[pos];
+        if (CJSONX_UNLIKELY(node_idx >= doc->node_capacity)) {
+            if (CJSONX_UNLIKELY(!cjsonx_grow_nodes(doc, node_idx + 1))) {
+                doc->error = CJSONX_ERROR_OOM;
+                goto fail;
+            }
+        }
         node = &doc->nodes[node_idx];
         switch (c) {
 #endif
