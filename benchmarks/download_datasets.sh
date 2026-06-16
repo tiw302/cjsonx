@@ -7,12 +7,12 @@ mkdir -p "$DIR/datasets"
 cd "$DIR/datasets"
 
 echo "Downloading twitter.json..."
-curl -L -O https://raw.githubusercontent.com/simdjson/simdjson/master/jsonexamples/twitter.json
+curl -L -O https://raw.githubusercontent.com/simdjson/simdjson-data/master/jsonexamples/twitter.json
 
 echo "Downloading canada.json..."
 curl -L -O https://raw.githubusercontent.com/miloyip/nativejson-benchmark/master/data/canada.json
 
 echo "Downloading citm_catalog.json..."
-curl -L -O https://raw.githubusercontent.com/simdjson/simdjson/master/jsonexamples/citm_catalog.json
+curl -L -O https://raw.githubusercontent.com/simdjson/simdjson-data/master/jsonexamples/citm_catalog.json
 
 echo "Done."
