@@ -80,11 +80,13 @@ int main(void) {
     test_dom("{\"escape\": \"Hello\\nWorld! \\u2764\\ufe0f\", \"emoji\": \"\\ud83d\\ude80\"}");
 
     printf("\n--- Running Error Offset and Correctness Tests ---\n");
-    test_error("{\"key\" 30}", CJSONX_ERROR_UNEXPECTED_TOKEN, 7);
+    test_error("{\"key\" 30}", CJSONX_ERROR_MISSING_COLON, 7);
     test_error("{\"key\": }", CJSONX_ERROR_UNEXPECTED_TOKEN, 8);
-    test_error("{\"key\": \"val\",}", CJSONX_ERROR_UNEXPECTED_TOKEN, 14);
-    test_error("[1, 2, ]", CJSONX_ERROR_UNEXPECTED_TOKEN, 7);
+    test_error("{\"key\": \"val\",}", CJSONX_ERROR_TRAILING_COMMA, 14);
+    test_error("[1, 2, ]", CJSONX_ERROR_TRAILING_COMMA, 7);
     test_error("{\"key\": \"abc\\x\"}", CJSONX_ERROR_INVALID_ESCAPE, 8);
+    test_error("", CJSONX_ERROR_EMPTY_INPUT, 0);
+    test_error("   ", CJSONX_ERROR_EMPTY_INPUT, 3);
 
     return 0;
 }
