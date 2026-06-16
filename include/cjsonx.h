@@ -1,25 +1,34 @@
-/**
- * @file cjsonx.h
- * @brief public api and single-header entry point
- *
- * @note i'm just a kid building projects as a hobby. thank you for showing interest in my little library! it really means a lot to me. :)
- * @note architecture and coding style inspired by yyjson (https://github.com/ibireme/yyjson)
- */
 /*
- * cjsonx.h -- extreme performance json parser for c11/c++
+ * cjsonx.h -- high-performance json parser for c11.
  * project url: https://github.com/tiw302/cjsonx
- *
- * how to use:
- * 1. include this file normally in headers to get types and api declarations.
- * 2. in exactly one c/c++ source file, define the implementation macro:
- *    #define cjsonx_implementation
- *    #include <cjsonx.h>
- *
+ * do this:
+ * #define CJSONX_IMPLEMENTATION
+ * before you include this file in *one* c or c++ file to create the
+ * implementation.
  * technical background:
- * - two-stage parsing algorithm inspired by simdjson.
- *   - stage 1: structural indexing (finding {}[]:,")
- *   - stage 2: recursive descent parsing (building dom via arena allocator)
- *
+ * ---------------------
+ * this library uses a two-stage parsing algorithm inspired by simdjson.
+ * stage 1 builds the tape (indices) via simd structure scan, and stage 2
+ * parses into a 16-byte fixed node arena dom.
+ * memory:
+ * -------
+ * uses cjsonx_arena. for real zero-alloc, use cjsonx_parse_with_buffer.
+ * performance:
+ * ------------
+ * cjsonx_array_push is o(n) because it walks the siblings.
+ * use the builder api for large arrays.
+ * conformance:
+ * ------------
+ * keep JSONTestSuite passing. don't break it.
+ * simd optimization:
+ * ------------------
+ * we've got backends for pretty much everything:
+ * - avx2:     x86_64 modern (haswell+, ryzen+)
+ * - neon:     arm64 (apple silicon, graviton, android)
+ * - wasm:     webassembly with simd128
+ * - scalar:   fallback for everything else (risc-v, ppc, etc.)
+ * license:
+ * --------
  * mit license
  * copyright (c) 2026 jirawat siripuk
  */
