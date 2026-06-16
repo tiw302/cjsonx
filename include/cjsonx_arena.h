@@ -1,15 +1,16 @@
-/**
- * @file cjsonx_arena.h
- * @brief arena allocator for document-scoped memory
- *
- * @note architecture and coding style inspired by yyjson (https://github.com/ibireme/yyjson)
- */
+// updated 2026-06-13
+// spdx-license-identifier: mit
+// copyright (c) 2026 jirawat siripuk
 #ifndef CJSONX_ARENA_H
 #define CJSONX_ARENA_H
 
-/*==============================================================================
- * mark: - memory arena
- *============================================================================*/
+//  █████  ██████  ███████ ███    ██  █████
+// ██   ██ ██   ██ ██      ████   ██ ██   ██
+// ███████ ██████  █████   ██ ██  ██ ███████
+// ██   ██ ██   ██ ██      ██  ██ ██ ██   ██
+// ██   ██ ██   ██ ███████ ██   ████ ██   ██
+//
+// >>memory arena
 
 
 #include <stdlib.h>
@@ -22,10 +23,13 @@ extern "C" {
 #endif
 
 /*
- * arena allocator: allocate `size` bytes from the document's memory pool.
- *
- * returns an 8-byte aligned pointer, or null on oom.
- * all allocations are freed together when cjsonx_doc_free() is called.
+ * chunk-based arena allocator:
+ * allocations are made sequentially from contiguous chunks of memory to avoid the overhead and
+ * fragmentation associated with standard malloc/free.
+ * 1. sizes are rounded up to 8-byte alignment to prevent misaligned memory access faults on platforms like arm.
+ * 2. if the current chunk does not have enough remaining space (or is null), a new chunk of size max(needed, 2 * previous_size)
+ *    is allocated and linked to the head of the document head list (doc->head).
+ * 3. all chunks are cleaned up simultaneously in one o(1) loop when cjsonx_doc_free is called, avoiding tiny frees.
  */
 static cjsonx_always_inline void* cjsonx_arena_alloc(cjsonx_doc_t* __restrict doc, size_t size) {
     if (CJSONX_UNLIKELY(size > (size_t) - 8)) return NULL;
