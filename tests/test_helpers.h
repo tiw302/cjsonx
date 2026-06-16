@@ -36,4 +36,4 @@ static inline char* test_read_file(const char* path, size_t* out_len) {
     return buf;
 }
 
-#endif // TEST_HELPERS_H
+#endif // test_helpers_h
