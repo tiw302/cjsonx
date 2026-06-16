@@ -1,15 +1,16 @@
-/**
- * @file cjsonx_eisel_lemire.h
- * @brief precomputed tables for eisel-lemire float conversion
- *
- * @note architecture and coding style inspired by yyjson (https://github.com/ibireme/yyjson)
- */
+// updated 2026-06-13
+// spdx-license-identifier: mit
+// copyright (c) 2026 jirawat siripuk
 #ifndef CJSONX_EISEL_LEMIRE_H
 #define CJSONX_EISEL_LEMIRE_H
 
-/*==============================================================================
- * mark: - eisel-lemire float parsing
- *============================================================================*/
+// ███████ ██ ███████ ███████ ██          ██      ███████ ███    ███ ██ ██████  ███████
+// ██      ██ ██      ██      ██          ██      ██      ████  ████ ██ ██   ██ ██
+// █████   ██ ███████ █████   ██          ██      █████   ██ ████ ██ ██ ██████  █████
+// ██      ██      ██ ██      ██          ██      ██      ██  ██  ██ ██ ██   ██ ██
+// ███████ ██ ███████ ███████ ███████     ███████ ███████ ██      ██ ██ ██   ██ ███████
+//
+// >>eisel-lemire float parsing
 
 
 #include <stdint.h>
