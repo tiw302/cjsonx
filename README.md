@@ -33,13 +33,30 @@
 
 ## Table of Contents
 
-| Introduction | Setup & Build | Docs & Metrics |
-|---|---|---|
-| [Overview](#introduction) | [Requirements](#requirements) | [API Reference](#api-reference) |
-| [Why cjsonx?](#why-cjsonx) | [Toolchains](#verified-toolchains) | [Documentation](#documentation) |
-| [Philosophy](#design-philosophy) | [Installation](#build-and-installation) | [Examples](#examples) |
-| [Limits & Guarantees](#limits--guarantees) | [AI Methodology](#development-methodology--ai-assistance) | [Benchmarks](#benchmark-results) |
-| [License](#license) | | |
+- [Introduction](#introduction)
+  - [Why cjsonx?](#why-cjsonx)
+  - [Trade-offs & Alternatives](#trade-offs--alternatives-when-not-to-use-cjsonx)
+  - [Design Philosophy](#design-philosophy)
+- [Limits & Guarantees](#limits--guarantees)
+- [Requirements](#requirements)
+  - [Verified Toolchains](#verified-toolchains)
+- [Build and Installation](#build-and-installation)
+  - [Single-Header Distribution](#single-header-distribution-recommended)
+  - [CMake (System Install)](#cmake-system-install)
+- [API Reference](#api-reference)
+  - [Core Parsing](#core-parsing)
+  - [DOM Access](#dom-access)
+  - [Iteration](#iteration)
+  - [Mutation & Builder API](#mutation--builder-api)
+  - [File I/O Utilities](#file-io-utilities)
+- [Documentation](#documentation)
+- [Examples](#examples)
+  - [Quick Start: Basic Parsing & Iteration](#quick-start-basic-parsing--iteration)
+  - [Quick Start: Zero-Allocation Mode](#quick-start-zero-allocation-mode-embeddedrtos)
+- [Benchmark Results](#benchmark-results)
+- [Development Methodology & AI Assistance](#development-methodology--ai-assistance)
+- [Author's Note](#authors-note)
+- [License](#license)
 
 ---
 
@@ -242,10 +259,15 @@ Check out the `docs/` directory for deep-dives into the architecture and API:
 
 ## Examples
 
-Runnable examples are provided in the `examples/` directory.
+Runnable examples are provided in the `examples/` directory:
 
-**`dom_access.c`**
-Demonstrates basic file loading, parsing, and retrieving keys from the root object.
+- **[simple_parse.c](file:///home/tiw/Public/cjsonx/examples/simple_parse.c)** — Demonstrates standard parsing, key retrieval, array iteration, and type checking using the iterator API.
+- **[dom_access.c](file:///home/tiw/Public/cjsonx/examples/dom_access.c)** — Demonstrates basic JSON object parsing and index-based array access.
+- **[embedded_noalloc.c](file:///home/tiw/Public/cjsonx/examples/embedded_noalloc.c)** — Demonstrates zero-allocation memory parsing using a pre-allocated static stack buffer (true zero `malloc`).
+- **[error_handling.c](file:///home/tiw/Public/cjsonx/examples/error_handling.c)** — Demonstrates detailed parse error diagnostics, showing how to extract byte offset and display a code pointer to the error source.
+- **[float128_precision.c](file:///home/tiw/Public/cjsonx/examples/float128_precision.c)** — Demonstrates parsing extreme, high-precision float and massive integer formats safely.
+
+### Quick Start: Basic Parsing & Iteration
 
 ```c
 #define CJSONX_IMPLEMENTATION
@@ -253,23 +275,60 @@ Demonstrates basic file loading, parsing, and retrieving keys from the root obje
 #include <stdio.h>
 #include <string.h>
 
-int main() {
-    const char* json = "{\"name\": \"cjsonx\", \"speed\": \"insane\"}";
+int main(void) {
+    const char* json = "{\"name\": \"Alice\", \"skills\": [\"C\", \"SIMD\"]}";
 
-    cjsonx_doc_t* doc = cjsonx_parse(json, strlen(json));
-    if (doc && doc->is_valid) {
-        cjsonx_val_t name = cjsonx_get(doc->root, "name");
-        if (cjsonx_get_type(name) == CJSONX_STRING) {
-            printf("Parsed name: %.*s\n", (int)cjsonx_str_len(name), cjsonx_str(name));
-        }
-        cjsonx_doc_free(doc);
+    // Parse the JSON string
+    cjsonx_doc* doc = cjsonx_parse(json, strlen(json));
+    if (!doc || !doc->is_valid) {
+        printf("Failed to parse JSON!\n");
+        return 1;
     }
+
+    // Retrieve name and skills
+    cjsonx_val name = cjsonx_get(doc->root, "name");
+    cjsonx_val skills = cjsonx_get(doc->root, "skills");
+
+    printf("Name: %.*s\n", (int)cjsonx_str_len(name), cjsonx_str(name));
+
+    // Iterate array using flat DOM iterator
+    if (cjsonx_get_type(skills) == CJSONX_ARRAY) {
+        printf("Skills:\n");
+        cjsonx_iter iter = cjsonx_iter_init(skills);
+        while (cjsonx_iter_next(&iter)) {
+            printf("  - %.*s\n", (int)cjsonx_str_len(iter.value), cjsonx_str(iter.value));
+        }
+    }
+
+    cjsonx_doc_free(doc);
     return 0;
 }
 ```
 
-**`error_handling.c`**
-Demonstrates extracting byte offsets and exact error messages when parsing malformed JSON payloads.
+### Quick Start: Zero-Allocation Mode (Embedded/RTOS)
+
+```c
+#define CJSONX_IMPLEMENTATION
+#include "cjsonx.h"
+#include <stdio.h>
+#include <string.h>
+
+int main(void) {
+    const char* json = "{\"sensor\": \"temp\", \"value\": 24.5}";
+    uint8_t static_buffer[4096]; // Static buffer on the stack (zero malloc!)
+
+    cjsonx_doc* doc = cjsonx_parse_with_buffer(json, strlen(json), static_buffer, sizeof(static_buffer));
+    if (doc && doc->is_valid) {
+        cjsonx_val sensor = cjsonx_get(doc->root, "sensor");
+        cjsonx_val value = cjsonx_get(doc->root, "value");
+
+        printf("Sensor: %.*s, Value: %.1f\n", (int)cjsonx_str_len(sensor), cjsonx_str(sensor), cjsonx_num(value));
+    }
+
+    cjsonx_doc_free(doc); // No-op since we used static buffer
+    return 0;
+}
+```
 
 ---
 
@@ -283,25 +342,25 @@ Benchmarks were executed on a modern x86_64 CPU (GCC -O3 -march=native). We trac
 
 | Library | Parse (MB/s) | Stringify (MB/s) | Peak Mem (MB) |
 |---------|--------------|------------------|---------------|
-| **cjsonx** | 514.35 | 1929.13 | **0.92** |
-| yyjson | **1026.59** | **4890.89** | 1.20 |
-| cJSON | 408.14 | 636.55 | 1.23 |
+| **cjsonx** | 665.37 | 1752.71 | **0.92** |
+| yyjson | **813.62** | **3971.40** | 1.20 |
+| cJSON | 334.94 | 494.68 | 1.23 |
 
 ### 2. `citm_catalog.json` (1.65 MB)
 
 | Library | Parse (MB/s) | Stringify (MB/s) | Peak Mem (MB) |
 |---------|--------------|------------------|---------------|
-| **cjsonx** | **898.58** | 2233.71 | **2.07** |
-| yyjson | 810.77 | **6899.93** | 3.29 |
-| cJSON | 274.59 | 773.56 | 2.57 |
+| **cjsonx** | **1178.33** | 2715.24 | **2.07** |
+| yyjson | 1045.79 | **8428.06** | 3.29 |
+| cJSON | 363.15 | 1014.22 | 2.57 |
 
 ### 3. `canada.json` (2.15 MB) - Heavy Floating-Point Arrays
 
 | Library | Parse (MB/s) | Stringify (MB/s) | Peak Mem (MB) |
 |---------|--------------|------------------|---------------|
-| **cjsonx** | 346.86 | 273.80 | **4.70** |
-| yyjson | **820.91** | **712.29** | 7.87 |
-| cJSON | 73.08 | 26.46 | 10.20 |
+| **cjsonx** | 366.70 | 279.78 | **4.70** |
+| yyjson | **812.55** | **618.04** | 7.87 |
+| cJSON | 71.50 | 26.52 | 10.20 |
 
 <details>
 <summary><b>View raw console output from bench_compare</b></summary>
@@ -314,27 +373,25 @@ Dataset: benchmarks/datasets/citm_catalog.json (1.65 MB)
 ========================================================================
 Library    | Parse (MB/s)    | Stringify (MB/s) | Peak Mem (MB)
 -----------|-----------------|------------------|-----------------------
-cjsonx     | 898.58          | 2233.71         | 2.07
-yyjson     | 810.77          | 6899.93         | 3.29
-cJSON      | 274.59          | 773.56          | 2.57
+cjsonx     | 1178.33         | 2715.24         | 2.07
+yyjson     | 1045.79         | 8428.06         | 3.29
+cJSON      | 363.15          | 1014.22         | 2.57
 ========================================================================
-
 Dataset: benchmarks/datasets/twitter.json (0.60 MB)
 ========================================================================
 Library    | Parse (MB/s)    | Stringify (MB/s) | Peak Mem (MB)
 -----------|-----------------|------------------|-----------------------
-cjsonx     | 514.35          | 1929.13         | 0.92
-yyjson     | 1026.59         | 4890.89         | 1.20
-cJSON      | 408.14          | 636.55          | 1.23
+cjsonx     | 665.37          | 1752.71         | 0.92
+yyjson     | 813.62          | 3971.40         | 1.20
+cJSON      | 334.94          | 494.68          | 1.23
 ========================================================================
-
 Dataset: benchmarks/datasets/canada.json (2.15 MB)
 ========================================================================
 Library    | Parse (MB/s)    | Stringify (MB/s) | Peak Mem (MB)
 -----------|-----------------|------------------|-----------------------
-cjsonx     | 346.86          | 273.80          | 4.70
-yyjson     | 820.91          | 712.29          | 7.87
-cJSON      | 73.08           | 26.46           | 10.20
+cjsonx     | 366.70          | 279.78          | 4.70
+yyjson     | 812.55          | 618.04          | 7.87
+cJSON      | 71.50           | 26.52           | 10.20
 ========================================================================
 
 tiw@tiw-CachyOS ~/Public/cjsonx (master)
