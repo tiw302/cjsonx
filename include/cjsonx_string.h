@@ -1,15 +1,16 @@
-/**
- * @file cjsonx_string.h
- * @brief json string parser with escape and utf-8 handling
- *
- * @note architecture and coding style inspired by yyjson (https://github.com/ibireme/yyjson)
- */
+// updated 2026-06-13
+// spdx-license-identifier: mit
+// copyright (c) 2026 jirawat siripuk
 #ifndef CJSONX_STRING_H
 #define CJSONX_STRING_H
 
-/*==============================================================================
- * mark: - string processing
- *============================================================================*/
+// ███████ ████████ ██████  ██ ███    ██  ██████
+// ██         ██    ██   ██ ██ ████   ██ ██
+// ███████    ██    ██████  ██ ██ ██  ██ ██   ███
+//      ██    ██    ██   ██ ██ ██  ██ ██ ██    ██
+// ███████    ██    ██   ██ ██ ██   ████  ██████
+//
+// >>string processing
 
 
 #include <stdbool.h>
@@ -144,11 +145,24 @@ static cjsonx_always_inline bool cjsonx_parse_string_impl(cjsonx_doc_t* doc, cjs
         memcpy(&chunk, str_start + i, 8);
         mask |= chunk;
         if (!has_escape) {
+            /*
+             * bitwise swar (simd within a register) scanning for backslash and control characters:
+             * 
+             * 1. backslash search:
+             *    - xor'ing the chunk with 0x5c (backslash ascii value) turns any backslash byte to 0x00.
+             *    - subtracting 0x01 from every byte and checking if the high bit is set (under ~x)
+             *      determines if any byte in the xor product was 0x00 (classic null byte test).
+             * 
+             * 2. control character search (< 0x20):
+             *    - any control byte has the msb (bit 7) clear.
+             *    - adding 0x60 to the 7-bit value of each byte causes a carry-out to the msb (bit 7)
+             *      if and only if the byte was >= 0x20. if it was < 0x20, no carry occurs, leaving the msb clear.
+             *    - checking (~t & ~msb) finds if the msb remains clear, indicating a control character.
+             */
             uint64_t x = chunk ^ 0x5C5C5C5C5C5C5C5CULL;
             if (CJSONX_UNLIKELY((x - 0x0101010101010101ULL) & ~x & 0x8080808080808080ULL)) {
                 has_escape = true;
             }
-            // check for control char (< 0x20)
             uint64_t msb = chunk & 0x8080808080808080ULL;
             uint64_t no_msb = chunk ^ msb;
             uint64_t t = no_msb + 0x6060606060606060ULL;
@@ -226,6 +240,13 @@ static cjsonx_always_inline bool cjsonx_parse_string_impl(cjsonx_doc_t* doc, cjs
                         return false;
                     }
                     p += 4;
+                    /*
+                     * decode utf-16 surrogate pairs (rfc8259 section 7):
+                     * json represents characters outside the basic multilingual plane (bmp) using a surrogate pair.
+                     * - cp (high surrogate): must be in the range 0xd800 to 0xdbff.
+                     * - cp2 (low surrogate): must immediately follow as \uXXXX and be in the range 0xdc00 to 0xdfff.
+                     * - combining the pair: (((high - 0xd800) << 10) | (low - 0xdc00)) + 0x10000.
+                     */
                     if (cp >= 0xD800 && cp <= 0xDBFF) {
                         if (p + 6 > end || p[0] != '\\' || p[1] != 'u') {
                             doc->error = CJSONX_ERROR_INVALID_ESCAPE;
