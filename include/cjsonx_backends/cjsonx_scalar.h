@@ -1,15 +1,16 @@
-/**
- * @file cjsonx_scalar.h
- * @brief stage 1 structural indexer — portable scalar fallback
- *
- * @note architecture and coding style inspired by yyjson (https://github.com/ibireme/yyjson)
- */
+// updated 2026-06-13
+// spdx-license-identifier: mit
+// copyright (c) 2026 jirawat siripuk
 #ifndef CJSONX_SCALAR_H
 #define CJSONX_SCALAR_H
 
-/*==============================================================================
- * mark: - scalar backend
- *============================================================================*/
+// ███████  ██████  █████  ██       █████  ██████
+// ██      ██      ██   ██ ██      ██   ██ ██   ██
+// ███████ ██      ███████ ██      ███████ ██████
+//      ██ ██      ██   ██ ██      ██   ██ ██   ██
+// ███████  ██████ ██   ██ ███████ ██   ██ ██   ██
+//
+// >>scalar backend
 
 
 #include <stdint.h>
