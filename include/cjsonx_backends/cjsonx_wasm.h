@@ -1,22 +1,32 @@
-/**
- * @file cjsonx_wasm.h
- * @brief stage 1 structural indexer — webassembly simd128 backend
- *
- * @note architecture and coding style inspired by yyjson (https://github.com/ibireme/yyjson)
- */
+// updated 2026-06-13
+// spdx-license-identifier: mit
+// copyright (c) 2026 jirawat siripuk
 #ifndef CJSONX_WASM_H
 #define CJSONX_WASM_H
 
-/*==============================================================================
- * mark: - wasm simd backend
- *============================================================================*/
+// ██     ██  █████  ███████ ███    ███
+// ██     ██ ██   ██ ██      ████  ████
+// ██  █  ██ ███████ ███████ ██ ████ ██
+// ██ ███ ██ ██   ██      ██ ██  ██  ██
+//  ███ ███  ██   ██ ███████ ██      ██
+//
+// >>wasm simd backend
 
 
 #include <wasm_simd128.h>
 #include <stdint.h>
 #include <stdbool.h>
 
-// wasm simd128 specific scanner utilizing 16-byte vectors unrolled to 32 bytes per iteration
+/*
+ * stage 1 webassembly simd128 scanner:
+ * processes 32 bytes of json input per iteration using two 16-byte v128_t vectors.
+ * 
+ * 1. character comparison: uses wasm_i8x16_eq to compare lanes in parallel for
+ *    structural and whitespace characters.
+ * 2. mask extraction: uses wasm_i8x16_bitmask, which extracts the high bit of
+ *    each of the 16 lanes into a 16-bit integer mask. this acts as the native
+ *    wasm equivalent of x86 _mm_movemask_epi8, avoiding slow scalar processing.
+ */
 static inline bool cjsonx_stage1_wasm(const char* json, size_t length, cjsonx_tape_t* tape) {
     uint32_t prev_in_string = 0; // 0 or 0xffffffff
     bool escaped = false;
