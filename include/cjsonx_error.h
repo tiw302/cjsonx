@@ -1,15 +1,16 @@
-/**
- * @file cjsonx_error.h
- * @brief error codes and error-to-string conversion
- *
- * @note architecture and coding style inspired by yyjson (https://github.com/ibireme/yyjson)
- */
+// updated 2026-06-13
+// spdx-license-identifier: mit
+// copyright (c) 2026 jirawat siripuk
 #ifndef CJSONX_ERROR_H
 #define CJSONX_ERROR_H
 
-/*==============================================================================
- * mark: - error handling
- *============================================================================*/
+// ███████ ██████  ██████   ██████  ██████
+// ██      ██   ██ ██   ██ ██    ██ ██   ██
+// █████   ██████  ██████  ██    ██ ██████
+// ██      ██   ██ ██   ██ ██    ██ ██   ██
+// ███████ ██   ██ ██   ██  ██████  ██   ██
+//
+// >>error handling
 
 
 // error codes
