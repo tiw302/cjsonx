@@ -1,15 +1,16 @@
-/**
- * @file cjsonx_fastfloat.h
- * @brief fast float parser using clinger and eisel-lemire
- *
- * @note architecture and coding style inspired by yyjson (https://github.com/ibireme/yyjson)
- */
+// updated 2026-06-13
+// spdx-license-identifier: mit
+// copyright (c) 2026 jirawat siripuk
 #ifndef CJSONX_FASTFLOAT_H
 #define CJSONX_FASTFLOAT_H
 
-/*==============================================================================
- * mark: - fast float parsing
- *============================================================================*/
+// ███████  █████  ███████ ████████     ███████ ██       ██████   █████  ████████
+// ██      ██   ██ ██         ██        ██      ██      ██    ██ ██   ██    ██
+// █████   ███████ ███████    ██        █████   ██      ██    ██ ███████    ██
+// ██      ██   ██      ██    ██        ██      ██      ██    ██ ██   ██    ██
+// ██      ██   ██ ███████    ██        ██      ███████  ██████  ██   ██    ██
+//
+// >>fast float parsing
 
 
 #include <stdint.h>
@@ -66,7 +67,12 @@ static cjsonx_always_inline bool cjsonx_compute_float(uint64_t mantissa, int exp
         return true;
     }
     
-    // clinger's fast path
+    /*
+     * clinger's fast path:
+     * if the parsed mantissa fits exactly inside 53 bits (ieee-754 mantissa size, max 9007199254740991)
+     * and the exponent is between -22 and 22, the conversion is mathematically exact using double multiplication or division.
+     * this avoids any rounding error estimation or multi-precision arithmetic.
+     */
     if (mantissa <= 9007199254740991ULL && exponent >= -22 && exponent <= 22) {
         double d = (double)mantissa;
         if (exponent < 0) d /= cjsonx_power_of_10[-exponent];
@@ -75,40 +81,52 @@ static cjsonx_always_inline bool cjsonx_compute_float(uint64_t mantissa, int exp
         return true;
     }
     
-    // eisel-lemire algorithm
+    /*
+     * eisel-lemire algorithm:
+     * used as an extremely fast fallback when clinger's fast path is not applicable but the value is still
+     * representable. it computes the double using a 128-bit multiplication of the normalized mantissa
+     * and precomputed powers of 10.
+     */
     if (exponent < -348) { *out = 0.0; return true; }
-    // use INFINITY constant — 1e308*10 is UB under -ffast-math / -ffinite-math-only
+    // use infinity constant — 1e308*10 is ub under -ffast-math / -ffinite-math-only
     if (exponent > 342) { *out = INFINITY; return true; }
     
-    // lookup precomputed powers of 10
+    // lookup precomputed powers of 10.
+    // cjsonx_eisel_lemire_mantissa stores the high 64 bits of 10^exponent scaled by 2^q.
     int index = exponent + 348;
     uint64_t table_m = cjsonx_eisel_lemire_mantissa[index];
     int16_t table_e = cjsonx_eisel_lemire_exp[index];
     
-    // normalize mantissa
+    // normalize mantissa: align it to the most significant bit to maximize precision
     int lz = CJSONX_CLZLL(mantissa);
     uint64_t w = mantissa << lz;
     
+    // perform 64x64 -> 128 bit multiplication, retaining the high 64 bits of the product
     uint64_t high = cjsonx_mul64_high(w, table_m);
     
+    // find the most significant bit of the product to determine the exponent shift
     int msb = (high >> 63) == 1 ? 63 : 62;
     int shift = msb - 52;
     
+    // extract the 53-bit significand for the double-precision float
     uint64_t mantissa_53 = high >> shift;
     
+    // check the discarded bits for rounding and exact halfway cases
     uint64_t mask = (1ULL << shift) - 1;
     uint64_t discarded = high & mask;
     
     if (discarded == 0 || discarded == (1ULL << (shift - 1))) {
-        // exactly halfway, need bignum tie-breaking (fallback to strtod)
+        // exactly halfway cases cannot be determined safely with 64-bit precision;
+        // we must return false to trigger the full multi-precision fallback (e.g. strtod).
         return false;
     }
     
-    // round up if halfway or more
+    // round up if the discarded bits are greater than the halfway point (round-to-nearest)
     if (discarded > (1ULL << (shift - 1))) {
         mantissa_53++;
     }
     
+    // handle potential carry overflow from rounding
     if (mantissa_53 >= (1ULL << 53)) {
         mantissa_53 >>= 1;
         shift++;
@@ -116,18 +134,35 @@ static cjsonx_always_inline bool cjsonx_compute_float(uint64_t mantissa, int exp
     
     int final_exp = table_e - lz + 116 + shift;
     
-    // subnormal numbers or extremely small numbers
+    // subnormal numbers or extremely small numbers go to fallback
     if (final_exp <= -1023) {
         return false;
     }
     
-    // note: the sign bit is intentionally not set here.
-    // the caller (cjsonx_parse_fast_float) applies the sign: `negative ? -val : val`
+    /*
+     * note: the sign bit is intentionally not set here.
+     * the caller (cjsonx_parse_fast_float) applies the sign: `negative ? -val : val`.
+     * assemble the bits directly: 52-bit mantissa + 11-bit biased exponent (final_exp + 1023) shifted by 52
+     */
     uint64_t d_bits = (mantissa_53 & 0xFFFFFFFFFFFFF) | ((uint64_t)(final_exp + 1023) << 52);
     memcpy(out, &d_bits, 8);
     return true;
 }
 
+/*
+ * fast float parser implementation:
+ * parses the input string into a mantissa (up to 19 digits to fit inside uint64_t)
+ * and an integer exponent, then invokes cjsonx_compute_float for conversion.
+ * 
+ * 1. sign: checks for leading '-' to determine positive/negative.
+ * 2. integer part: checks for leading zeros (which must not be followed by digits).
+ *    accumulates digits into mantissa, scaling by 10. if digits exceed 19, they
+ *    are discarded but increment the exponent to maintain scale.
+ * 3. fractional part: processes digits after the decimal point, decrementing the
+ *    exponent for each digit to shift the decimal point.
+ * 4. exponent suffix (e/E): parses the scientific notation suffix and adjusts
+ *    the exponent value accordingly.
+ */
 static cjsonx_always_inline bool cjsonx_parse_fast_float(const char* __restrict s, const char* __restrict limit, const char** __restrict out_end, double* __restrict out_val) {
     const char* p = s;
     if (CJSONX_UNLIKELY(p >= limit)) return false;
@@ -145,11 +180,10 @@ static cjsonx_always_inline bool cjsonx_parse_fast_float(const char* __restrict 
         if (CJSONX_UNLIKELY(p < limit && *p >= '0' && *p <= '9')) return false; 
     } else if (CJSONX_LIKELY(*p >= '1' && *p <= '9')) {
         while (p < limit && *p >= '0' && *p <= '9') {
-            if (CJSONX_LIKELY(digits < 19)) {
-                mantissa = mantissa * 10 + (*p - '0');
-            } else {
-                exponent++;
+            if (CJSONX_UNLIKELY(digits >= 19)) {
+                return false;
             }
+            mantissa = mantissa * 10 + (*p - '0');
             digits++; p++;
         }
     } else return false;
@@ -160,7 +194,10 @@ static cjsonx_always_inline bool cjsonx_parse_fast_float(const char* __restrict 
         while (p < limit && *p >= '0' && *p <= '9') {
             if (CJSONX_UNLIKELY(mantissa == 0 && *p == '0')) {
                 exponent--;
-            } else if (CJSONX_LIKELY(digits < 19)) {
+            } else {
+                if (CJSONX_UNLIKELY(digits >= 19)) {
+                    return false;
+                }
                 mantissa = mantissa * 10 + (*p - '0');
                 exponent--;
                 digits++;
