@@ -26,7 +26,7 @@ A lightweight 16-byte handle representing a JSON node (Object, Array, String, Nu
 
 ```c
 typedef struct {
-    const cjsonx_doc_t* doc;
+    cjsonx_doc_t* doc;
     uint32_t node_idx;
 } cjsonx_val_t;
 ```
@@ -215,7 +215,7 @@ while (cjsonx_iter_next(&it)) {
 ```c
 cjsonx_iter_t it = cjsonx_iter_init(my_object);
 while (cjsonx_iter_next(&it)) {
-    printf("Key: %s\n", cjsonx_str(it.key));
+    printf("Key: %.*s\n", (int)cjsonx_str_len(it.key), cjsonx_str(it.key));
 }
 ```
 
