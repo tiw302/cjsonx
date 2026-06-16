@@ -1,15 +1,16 @@
-/**
- * @file cjsonx_stage2.h
- * @brief stage 2 dom builder and public api implementation
- *
- * @note architecture and coding style inspired by yyjson (https://github.com/ibireme/yyjson)
- */
+// updated 2026-06-13
+// spdx-license-identifier: mit
+// copyright (c) 2026 jirawat siripuk
 #ifndef CJSONX_STAGE2_H
 #define CJSONX_STAGE2_H
 
-/*==============================================================================
- * mark: - stage 2 (dom building)
- *============================================================================*/
+// ███████ ████████  █████   ██████  ███████     ██████
+// ██         ██    ██   ██ ██       ██               ██
+// ███████    ██    ███████ ██   ███ █████        █████
+//      ██    ██    ██   ██ ██    ██ ██          ██
+// ███████    ██    ██   ██  ██████  ███████     ███████
+//
+// >>stage 2 dom building
 
 
 #include <stdlib.h>
@@ -35,6 +36,18 @@ static cjsonx_always_inline uint8_t cjsonx_get_next_mask(uint32_t parent_depth, 
     uint8_t ptype = parent_type_stack[parent_depth - 1];
     if (ptype == CJSONX_OBJECT) return CJSONX_S_COM | CJSONX_S_OBJ_END;
     return CJSONX_S_COM | CJSONX_S_ARR_END;
+}
+
+// check if the character range is only whitespace
+static cjsonx_always_inline bool cjsonx_is_all_whitespace(const char* str, const char* limit) {
+    while (str < limit) {
+        char c = *str;
+        if (c != ' ' && c != '\t' && c != '\n' && c != '\r') {
+            return false;
+        }
+        str++;
+    }
+    return true;
 }
 
 // validate json number grammar (no leading zeros, require digits after dot/exp)
@@ -66,13 +79,27 @@ static cjsonx_always_inline bool cjsonx_is_valid_number(const char* __restrict s
         while (str < limit && *str >= '0' && *str <= '9') str++;
     }
     
-    while (str < limit && (*str == ' ' || *str == '\n' || *str == '\r' || *str == '\t')) str++;
-    return str == limit;
+    return cjsonx_is_all_whitespace(str, limit);
 }
+
+
+
 // non-recursive flat dom parsing engine - strict grammar edition
 static bool cjsonx_stage2_build(cjsonx_doc_t* doc, const char* json, cjsonx_tape_t* tape) {
     if (tape->count == 0) return false;
     
+    /*
+     * helper to assign correct error based on allowed mask (all comments in lowercase only).
+     * if allowed mask has colons or commas, we assign the specific missing colon/comma errors,
+     * otherwise fallback to a generic unexpected token error.
+     */
+    #define CJSONX_PARSE_FAIL_EXPECTED(allowed) do { \
+        if ((allowed) & CJSONX_S_COL) doc->error = CJSONX_ERROR_MISSING_COLON; \
+        else if ((allowed) & CJSONX_S_COM) doc->error = CJSONX_ERROR_MISSING_COMMA; \
+        else doc->error = CJSONX_ERROR_UNEXPECTED_TOKEN; \
+        goto fail; \
+    } while (0)
+
     // skip allocation if nodes were already pre-allocated (e.g. static buffer)
     if (!doc->nodes) {
         size_t alloc_count = tape->count / 2 + 1;
@@ -96,6 +123,15 @@ static bool cjsonx_stage2_build(cjsonx_doc_t* doc, const char* json, cjsonx_tape
     size_t tape_idx = 0;
     size_t err_tape_idx = 0;
     
+    /*
+     * non-recursive parsing state tracking:
+     * instead of consuming stack frames via recursive function calls (which risks stack overflows on deeply nested json),
+     * we use a single, fast loop with a lightweight state machine.
+     * - parent_stack: holds the indices of active parent nodes (objects and arrays).
+     * - parent_type_stack: stores whether the parent is an object or array to enforce syntax rules.
+     * - count_stack: tracks the child count for the current container level.
+     * - parent_depth: tracks the current nesting depth, bounded by cjsonx_max_depth.
+     */
     uint32_t parent_stack[CJSONX_MAX_DEPTH];
     uint8_t parent_type_stack[CJSONX_MAX_DEPTH];
     uint32_t count_stack[CJSONX_MAX_DEPTH]; // l1 hot-stack for element counts
@@ -106,6 +142,13 @@ static bool cjsonx_stage2_build(cjsonx_doc_t* doc, const char* json, cjsonx_tape
     char c;
     cjsonx_node_t* node;
 
+    /*
+     * direct-threaded code (computed gotos):
+     * when compiled with gcc or clang, we use the labels-as-values extension (&&)
+     * to build a static dispatch table. this allows us to jump directly to the code handling
+     * the next token (cjsonx_next_token) without the overhead of switch-case statement routing.
+     * this maximizes instruction cache throughput and significantly improves branch prediction.
+     */
 #if defined(__GNUC__) || defined(__clang__)
     #define CJSONX_USE_GOTOS 1
 #endif
@@ -165,7 +208,9 @@ static bool cjsonx_stage2_build(cjsonx_doc_t* doc, const char* json, cjsonx_tape
         switch (c) {
 #endif
             CJSONX_CASE(string, '"') {
-                if (CJSONX_UNLIKELY(!(allowed_mask & (CJSONX_S_KEY | CJSONX_S_VAL)))) goto fail;
+                if (CJSONX_UNLIKELY(!(allowed_mask & (CJSONX_S_KEY | CJSONX_S_VAL)))) {
+                    CJSONX_PARSE_FAIL_EXPECTED(allowed_mask);
+                }
                 tape_idx++;
                 if (CJSONX_UNLIKELY(tape_idx >= tape->count)) goto fail;
                 uint32_t end_pos = tape->indices[tape_idx];
@@ -179,8 +224,13 @@ static bool cjsonx_stage2_build(cjsonx_doc_t* doc, const char* json, cjsonx_tape
                 CJSONX_NEXT_TOKEN();
             }
             CJSONX_CASE_MULTI(obj_arr_start, '{', '[') {
-                if (CJSONX_UNLIKELY(!(allowed_mask & CJSONX_S_VAL))) goto fail;
-                if (CJSONX_UNLIKELY(parent_depth >= CJSONX_MAX_DEPTH)) goto fail;
+                if (CJSONX_UNLIKELY(!(allowed_mask & CJSONX_S_VAL))) {
+                    CJSONX_PARSE_FAIL_EXPECTED(allowed_mask);
+                }
+                if (CJSONX_UNLIKELY(parent_depth >= CJSONX_MAX_DEPTH)) {
+                    doc->error = CJSONX_ERROR_MAX_DEPTH;
+                    goto fail;
+                }
                 cjsonx_type_t t = (c == '{') ? CJSONX_OBJECT : CJSONX_ARRAY;
                 cjsonx_node_set_type_len(node, t, 0); // temp length
                 node->val.first_child = (uint32_t)(node_idx + 1); // set first child
@@ -195,14 +245,28 @@ static bool cjsonx_stage2_build(cjsonx_doc_t* doc, const char* json, cjsonx_tape
                 CJSONX_NEXT_TOKEN();
             }
             CJSONX_CASE_MULTI(obj_arr_end, '}', ']') {
-                if (CJSONX_UNLIKELY(c == '}' && !(allowed_mask & CJSONX_S_OBJ_END))) goto fail;
-                if (CJSONX_UNLIKELY(c == ']' && !(allowed_mask & CJSONX_S_ARR_END))) goto fail;
-                if (CJSONX_UNLIKELY(parent_depth == 0)) goto fail;
+                if (CJSONX_UNLIKELY(c == '}' && !(allowed_mask & CJSONX_S_OBJ_END))) {
+                    if (allowed_mask & CJSONX_S_KEY) doc->error = CJSONX_ERROR_TRAILING_COMMA;
+                    else doc->error = CJSONX_ERROR_UNEXPECTED_TOKEN;
+                    goto fail;
+                }
+                if (CJSONX_UNLIKELY(c == ']' && !(allowed_mask & CJSONX_S_ARR_END))) {
+                    if (allowed_mask & CJSONX_S_VAL) doc->error = CJSONX_ERROR_TRAILING_COMMA;
+                    else doc->error = CJSONX_ERROR_UNEXPECTED_TOKEN;
+                    goto fail;
+                }
+                if (CJSONX_UNLIKELY(parent_depth == 0)) {
+                    doc->error = CJSONX_ERROR_UNEXPECTED_TOKEN;
+                    goto fail;
+                }
                 uint32_t parent = parent_stack[--parent_depth];
                 uint32_t count = count_stack[parent_depth];
                 cjsonx_node_t* pnode = &doc->nodes[parent];
                 cjsonx_type_t ptype = cjsonx_node_type(pnode);
-                if (CJSONX_UNLIKELY((c == '}' && ptype != CJSONX_OBJECT) || (c == ']' && ptype != CJSONX_ARRAY))) goto fail;
+                if (CJSONX_UNLIKELY((c == '}' && ptype != CJSONX_OBJECT) || (c == ']' && ptype != CJSONX_ARRAY))) {
+                    doc->error = CJSONX_ERROR_UNEXPECTED_TOKEN;
+                    goto fail;
+                }
                 pnode->next_sibling = (uint32_t)node_idx;
                 if (ptype == CJSONX_OBJECT) count /= 2;
                 cjsonx_node_set_type_len(pnode, ptype, count);
@@ -211,24 +275,35 @@ static bool cjsonx_stage2_build(cjsonx_doc_t* doc, const char* json, cjsonx_tape
                 CJSONX_NEXT_TOKEN();
             }
             CJSONX_CASE(colon, ':') {
-                if (CJSONX_UNLIKELY(!(allowed_mask & CJSONX_S_COL))) goto fail;
+                if (CJSONX_UNLIKELY(!(allowed_mask & CJSONX_S_COL))) {
+                    CJSONX_PARSE_FAIL_EXPECTED(allowed_mask);
+                }
                 tape_idx++;
                 allowed_mask = CJSONX_S_VAL;
                 CJSONX_NEXT_TOKEN();
             }
             CJSONX_CASE(comma, ',') {
-                if (CJSONX_UNLIKELY(!(allowed_mask & CJSONX_S_COM))) goto fail;
-                // parent_depth should never be 0 here, but guard defensively
-                if (CJSONX_UNLIKELY(parent_depth == 0)) goto fail;
+                if (CJSONX_UNLIKELY(!(allowed_mask & CJSONX_S_COM))) {
+                    CJSONX_PARSE_FAIL_EXPECTED(allowed_mask);
+                }
+                if (CJSONX_UNLIKELY(parent_depth == 0)) {
+                    doc->error = CJSONX_ERROR_UNEXPECTED_TOKEN;
+                    goto fail;
+                }
                 tape_idx++;
                 cjsonx_type_t ptype = cjsonx_node_type(&doc->nodes[parent_stack[parent_depth - 1]]);
                 allowed_mask = (ptype == CJSONX_OBJECT) ? CJSONX_S_KEY : CJSONX_S_VAL;
                 CJSONX_NEXT_TOKEN();
             }
             CJSONX_CASE(true, 't') {
-                if (CJSONX_UNLIKELY(!(allowed_mask & CJSONX_S_VAL))) goto fail;
-                if (CJSONX_UNLIKELY(doc->json_len - pos < 4)) goto fail;
-                if (CJSONX_UNLIKELY(memcmp(json + pos, "true", 4) != 0)) goto fail;
+                if (CJSONX_UNLIKELY(!(allowed_mask & CJSONX_S_VAL))) {
+                    CJSONX_PARSE_FAIL_EXPECTED(allowed_mask);
+                }
+                const char* limit = (tape_idx + 1 < tape->count) ? (json + tape->indices[tape_idx + 1]) : (json + doc->json_len);
+                if (CJSONX_UNLIKELY(limit - (json + pos) < 4 || memcmp(json + pos, "true", 4) != 0 || !cjsonx_is_all_whitespace(json + pos + 4, limit))) {
+                    doc->error = CJSONX_ERROR_INVALID_KEYWORD;
+                    goto fail;
+                }
                 cjsonx_node_set_type_len(node, CJSONX_BOOL, 0);
                 node->val.b = true;
                 node->next_sibling = (uint32_t)(node_idx + 1);
@@ -239,9 +314,14 @@ static bool cjsonx_stage2_build(cjsonx_doc_t* doc, const char* json, cjsonx_tape
                 CJSONX_NEXT_TOKEN();
             }
             CJSONX_CASE(false, 'f') {
-                if (CJSONX_UNLIKELY(!(allowed_mask & CJSONX_S_VAL))) goto fail;
-                if (CJSONX_UNLIKELY(doc->json_len - pos < 5)) goto fail;
-                if (CJSONX_UNLIKELY(memcmp(json + pos, "false", 5) != 0)) goto fail;
+                if (CJSONX_UNLIKELY(!(allowed_mask & CJSONX_S_VAL))) {
+                    CJSONX_PARSE_FAIL_EXPECTED(allowed_mask);
+                }
+                const char* limit = (tape_idx + 1 < tape->count) ? (json + tape->indices[tape_idx + 1]) : (json + doc->json_len);
+                if (CJSONX_UNLIKELY(limit - (json + pos) < 5 || memcmp(json + pos, "false", 5) != 0 || !cjsonx_is_all_whitespace(json + pos + 5, limit))) {
+                    doc->error = CJSONX_ERROR_INVALID_KEYWORD;
+                    goto fail;
+                }
                 cjsonx_node_set_type_len(node, CJSONX_BOOL, 0);
                 node->val.b = false;
                 node->next_sibling = (uint32_t)(node_idx + 1);
@@ -252,9 +332,14 @@ static bool cjsonx_stage2_build(cjsonx_doc_t* doc, const char* json, cjsonx_tape
                 CJSONX_NEXT_TOKEN();
             }
             CJSONX_CASE(null, 'n') {
-                if (CJSONX_UNLIKELY(!(allowed_mask & CJSONX_S_VAL))) goto fail;
-                if (CJSONX_UNLIKELY(doc->json_len - pos < 4)) goto fail;
-                if (CJSONX_UNLIKELY(memcmp(json + pos, "null", 4) != 0)) goto fail;
+                if (CJSONX_UNLIKELY(!(allowed_mask & CJSONX_S_VAL))) {
+                    CJSONX_PARSE_FAIL_EXPECTED(allowed_mask);
+                }
+                const char* limit = (tape_idx + 1 < tape->count) ? (json + tape->indices[tape_idx + 1]) : (json + doc->json_len);
+                if (CJSONX_UNLIKELY(limit - (json + pos) < 4 || memcmp(json + pos, "null", 4) != 0 || !cjsonx_is_all_whitespace(json + pos + 4, limit))) {
+                    doc->error = CJSONX_ERROR_INVALID_KEYWORD;
+                    goto fail;
+                }
                 cjsonx_node_set_type_len(node, CJSONX_NULL, 0);
                 node->next_sibling = (uint32_t)(node_idx + 1);
                 if (parent_depth > 0) count_stack[parent_depth - 1]++;
@@ -264,9 +349,14 @@ static bool cjsonx_stage2_build(cjsonx_doc_t* doc, const char* json, cjsonx_tape
                 CJSONX_NEXT_TOKEN();
             }
             CJSONX_CASE_DEFAULT() { // number
-                if (CJSONX_UNLIKELY(!(allowed_mask & CJSONX_S_VAL))) goto fail;
+                if (CJSONX_UNLIKELY(!(allowed_mask & CJSONX_S_VAL))) {
+                    CJSONX_PARSE_FAIL_EXPECTED(allowed_mask);
+                }
                 const char* limit = (tape_idx + 1 < tape->count) ? (json + tape->indices[tape_idx + 1]) : (json + doc->json_len);
-                if (CJSONX_UNLIKELY(!cjsonx_is_valid_number(json + pos, limit))) goto fail;
+                if (CJSONX_UNLIKELY(!cjsonx_is_valid_number(json + pos, limit))) {
+                    doc->error = CJSONX_ERROR_INVALID_NUMBER;
+                    goto fail;
+                }
                 cjsonx_node_set_type_len(node, CJSONX_NUMBER, 0);
                 
                 double val = 0;
@@ -282,10 +372,32 @@ static bool cjsonx_stage2_build(cjsonx_doc_t* doc, const char* json, cjsonx_tape
                         num_end++;
                     }
                     ptrdiff_t raw_len = num_end - (json + pos);
-                    // ptrdiff sanity: reject if somehow pointer went backward or is way too long
-                    if (CJSONX_UNLIKELY(raw_len <= 0 || raw_len > 511)) goto fail;
+                    if (CJSONX_UNLIKELY(raw_len <= 0)) {
+                        doc->error = CJSONX_ERROR_INVALID_NUMBER;
+                        goto fail;
+                    }
                     size_t num_len = (size_t)raw_len;
-                    char buf[512];
+                    
+                    /*
+                     * support arbitrarily long numbers in fallback float parsing:
+                     * usually, json numbers fit within 511 chars, so we use a stack buffer local_buf.
+                     * if the raw float string exceeds 511 chars (due to trailing zeros or extremely long decimals),
+                     * we allocate a dynamic buffer using the allocator hooks to prevent heap/stack overflows,
+                     * and safely free it after strtod parses the double.
+                     */
+                    char local_buf[512];
+                    char* buf = local_buf;
+                    if (CJSONX_UNLIKELY(num_len >= 512)) {
+                        if (doc->alloc.malloc_fn) {
+                            buf = (char*)doc->alloc.malloc_fn(num_len + 1, doc->alloc.user_data);
+                        } else {
+                            buf = (char*)malloc(num_len + 1);
+                        }
+                        if (!buf) {
+                            doc->error = CJSONX_ERROR_OOM;
+                            goto fail;
+                        }
+                    }
                     memcpy(buf, json + pos, num_len);
                     buf[num_len] = '\0';
                     
@@ -297,11 +409,22 @@ static bool cjsonx_stage2_build(cjsonx_doc_t* doc, const char* json, cjsonx_tape
                     }
                     
                     val = strtod(buf, (char**)&end);
-                    if (CJSONX_UNLIKELY(end == buf)) goto fail;
+                    bool parse_ok = (end != buf);
+                    if (CJSONX_UNLIKELY(num_len >= 512)) {
+                        if (doc->alloc.free_fn) doc->alloc.free_fn(buf, doc->alloc.user_data);
+                        else free(buf);
+                    }
+                    if (CJSONX_UNLIKELY(!parse_ok)) {
+                        doc->error = CJSONX_ERROR_INVALID_NUMBER;
+                        goto fail;
+                    }
                     end = (json + pos) + (end - buf);
                 }
                 while (end < limit && (*end == ' ' || *end == '\n' || *end == '\r' || *end == '\t')) end++;
-                if (CJSONX_UNLIKELY(end != limit)) goto fail;
+                if (CJSONX_UNLIKELY(end != limit)) {
+                    doc->error = CJSONX_ERROR_INVALID_NUMBER;
+                    goto fail;
+                }
                 node->val.f64 = val;
                 node->next_sibling = (uint32_t)(node_idx + 1);
                 if (parent_depth > 0) count_stack[parent_depth - 1]++;
@@ -316,23 +439,24 @@ static bool cjsonx_stage2_build(cjsonx_doc_t* doc, const char* json, cjsonx_tape
 #endif
 end_loop:
     
-    if (parent_depth != 0 || allowed_mask != CJSONX_S_EOF) goto fail;
+    if (parent_depth != 0) {
+        doc->error = CJSONX_ERROR_UNCLOSED_CONTAINER;
+        goto fail;
+    }
+    if (allowed_mask != CJSONX_S_EOF) {
+        if (allowed_mask & CJSONX_S_COL) doc->error = CJSONX_ERROR_MISSING_COLON;
+        else if (allowed_mask & CJSONX_S_COM) doc->error = CJSONX_ERROR_MISSING_COMMA;
+        else doc->error = CJSONX_ERROR_UNEXPECTED_TOKEN;
+        goto fail;
+    }
     
     doc->node_count = node_idx;
     // shrink nodes array to actual parsed node count if dynamically allocated
     if (doc->node_capacity > node_idx && !doc->is_static && node_idx > 0) {
-        if (doc->alloc.realloc_fn) {
-            cjsonx_node_t* new_nodes = (cjsonx_node_t*)doc->alloc.realloc_fn(doc->nodes, node_idx * sizeof(cjsonx_node_t), doc->alloc.user_data);
-            if (new_nodes) {
-                doc->nodes = new_nodes;
-                doc->node_capacity = node_idx;
-            }
-        } else {
-            cjsonx_node_t* new_nodes = (cjsonx_node_t*)realloc(doc->nodes, node_idx * sizeof(cjsonx_node_t));
-            if (new_nodes) {
-                doc->nodes = new_nodes;
-                doc->node_capacity = node_idx;
-            }
+        cjsonx_node_t* new_nodes = (cjsonx_node_t*)cjsonx_realloc(&doc->alloc, doc->nodes, doc->node_capacity * sizeof(cjsonx_node_t), node_idx * sizeof(cjsonx_node_t));
+        if (new_nodes) {
+            doc->nodes = new_nodes;
+            doc->node_capacity = node_idx;
         }
     }
     doc->is_valid = true;
@@ -477,9 +601,10 @@ cjsonx_val_t cjsonx_pointer_get(cjsonx_val_t root, const char* path) {
     if (path[0] != '/') return cjsonx_make_null_handle();
     
     cjsonx_val_t curr = root;
-    const char* p = path + 1;
+    const char* p = path;
     
-    while (*p) {
+    while (*p == '/') {
+        p++; // skip '/'
         const char* next_slash = strchr(p, '/');
         size_t token_len = next_slash ? (size_t)(next_slash - p) : strlen(p);
         
@@ -487,7 +612,11 @@ cjsonx_val_t cjsonx_pointer_get(cjsonx_val_t root, const char* path) {
         char* token = unescaped;
         bool needs_free = false;
         if (token_len >= sizeof(unescaped)) {
-            token = (char*)malloc(token_len + 1);
+            if (root.doc->alloc.malloc_fn) {
+                token = (char*)root.doc->alloc.malloc_fn(token_len + 1, root.doc->alloc.user_data);
+            } else {
+                token = (char*)malloc(token_len + 1);
+            }
             if (!token) return cjsonx_make_null_handle();
             needs_free = true;
         }
@@ -533,11 +662,16 @@ cjsonx_val_t cjsonx_pointer_get(cjsonx_val_t root, const char* path) {
             curr = cjsonx_make_null_handle();
         }
         
-        if (needs_free) free(token);
+        if (needs_free) {
+            if (root.doc->alloc.free_fn) {
+                root.doc->alloc.free_fn(token, root.doc->alloc.user_data);
+            } else {
+                free(token);
+            }
+        }
         if (!curr.doc) return cjsonx_make_null_handle();
         
         p += token_len;
-        if (*p == '/') p++;
     }
     
     return curr;
@@ -670,12 +804,25 @@ cjsonx_doc_t* cjsonx_parse_ex(const char* json, size_t length, cjsonx_allocator_
     cjsonx_tape_t tape;
     size_t initial_cap = length / 8;
     if (initial_cap < 256) initial_cap = 256;
-    cjsonx_tape_init(&tape, initial_cap, &doc->alloc);
+    if (!cjsonx_tape_init(&tape, initial_cap, &doc->alloc)) {
+        doc->is_valid = false;
+        doc->error = CJSONX_ERROR_OOM;
+        return doc;
+    }
     
     if (!cjsonx_stage1_build_tape(json, length, &tape)) {
         doc->is_valid = false;
+        doc->error_offset = length;
         if (doc->error == CJSONX_SUCCESS) {
-            doc->error = CJSONX_ERROR_UNEXPECTED_TOKEN;
+            bool is_empty = true;
+            for (size_t idx = 0; idx < length; idx++) {
+                char ch = json[idx];
+                if (ch != ' ' && ch != '\t' && ch != '\n' && ch != '\r') {
+                    is_empty = false;
+                    break;
+                }
+            }
+            doc->error = is_empty ? CJSONX_ERROR_EMPTY_INPUT : CJSONX_ERROR_UNEXPECTED_TOKEN;
         }
         cjsonx_tape_free(&tape);
         return doc;
@@ -716,7 +863,20 @@ cjsonx_doc_t* cjsonx_parse_with_buffer(const char* json, size_t length, void* bu
     
     if (!cjsonx_stage1_build_tape(json, length, &tape)) {
         doc->is_valid = false;
-        doc->error = tape.count >= tape.capacity ? CJSONX_ERROR_OOM : CJSONX_ERROR_UNEXPECTED_TOKEN;
+        doc->error_offset = length;
+        if (tape.count >= tape.capacity) {
+            doc->error = CJSONX_ERROR_OOM;
+        } else {
+            bool is_empty = true;
+            for (size_t idx = 0; idx < length; idx++) {
+                char ch = json[idx];
+                if (ch != ' ' && ch != '\t' && ch != '\n' && ch != '\r') {
+                    is_empty = false;
+                    break;
+                }
+            }
+            doc->error = is_empty ? CJSONX_ERROR_EMPTY_INPUT : CJSONX_ERROR_UNEXPECTED_TOKEN;
+        }
         return doc;
     }
     
