@@ -87,6 +87,9 @@ int main(void) {
     test_error("{\"key\": \"abc\\x\"}", CJSONX_ERROR_INVALID_ESCAPE, 8);
     test_error("", CJSONX_ERROR_EMPTY_INPUT, 0);
     test_error("   ", CJSONX_ERROR_EMPTY_INPUT, 3);
+    test_error("[[3", CJSONX_ERROR_UNCLOSED_CONTAINER, 3);
+    test_error("[", CJSONX_ERROR_UNCLOSED_CONTAINER, 1);
+    test_error("[[[3", CJSONX_ERROR_UNCLOSED_CONTAINER, 4);
 
     return 0;
 }
