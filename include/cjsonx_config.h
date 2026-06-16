@@ -1,20 +1,25 @@
-/**
- * @file cjsonx_config.h
- * @brief compile-time configuration constants
- *
- * @note architecture and coding style inspired by yyjson (https://github.com/ibireme/yyjson)
- */
+// updated 2026-06-13
+// spdx-license-identifier: mit
+// copyright (c) 2026 jirawat siripuk
 #ifndef CJSONX_CONFIG_H
 #define CJSONX_CONFIG_H
 
-/*==============================================================================
- * mark: - configuration
- *============================================================================*/
+//  ██████  ██████  ███    ██ ███████ ██  ██████
+// ██      ██    ██ ████   ██ ██      ██ ██
+// ██      ██    ██ ██ ██  ██ █████   ██ ██   ███
+// ██      ██    ██ ██  ██ ██ ██      ██ ██    ██
+//  ██████  ██████  ██   ████ ██      ██  ██████
+//
+// >>configuration
 
 
-/*==============================================================================
- * mark: - compiler hints
- *============================================================================*/
+// ██   ██ ██ ███    ██ ████████ ███████
+// ██   ██ ██ ████   ██    ██    ██
+// ███████ ██ ██ ██  ██    ██    ███████
+// ██   ██ ██ ██  ██ ██    ██         ██
+// ██   ██ ██ ██   ████    ██    ███████
+//
+// >>compiler hints
 
 #if defined(__GNUC__) || defined(__clang__)
 #define CJSONX_LIKELY(x) __builtin_expect(!!(x), 1)
