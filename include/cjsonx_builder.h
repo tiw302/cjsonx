@@ -1,15 +1,16 @@
-/**
- * @file cjsonx_builder.h
- * @brief dom mutation api and json stringify
- *
- * @note architecture and coding style inspired by yyjson (https://github.com/ibireme/yyjson)
- */
+// updated 2026-06-13
+// spdx-license-identifier: mit
+// copyright (c) 2026 jirawat siripuk
 #ifndef CJSONX_BUILDER_H
 #define CJSONX_BUILDER_H
 
-/*==============================================================================
- * mark: - builder api
- *============================================================================*/
+// ██████  ██    ██ ██ ██      ██████  ███████ ██████
+// ██   ██ ██    ██ ██ ██      ██   ██ ██      ██   ██
+// ██████  ██    ██ ██ ██      ██   ██ █████   ██████
+// ██   ██ ██    ██ ██ ██      ██   ██ ██      ██   ██
+// ██████   ██████  ██ ███████ ██████  ███████ ██   ██
+//
+// >>builder api
 
 
 #include "cjsonx_dom.h"
@@ -27,12 +28,7 @@ static inline uint32_t cjsonx_builder_alloc_node(cjsonx_doc_t* doc) {
     if (doc->node_count >= doc->node_capacity) {
         size_t new_cap = doc->node_capacity == 0 ? 128 : doc->node_capacity * 2;
         if (CJSONX_UNLIKELY(new_cap < doc->node_capacity || new_cap > (size_t)-1 / sizeof(cjsonx_node_t))) return UINT32_MAX;
-        cjsonx_node_t* new_nodes;
-        if (doc->alloc.realloc_fn) {
-            new_nodes = (cjsonx_node_t*)doc->alloc.realloc_fn(doc->nodes, new_cap * sizeof(cjsonx_node_t), doc->alloc.user_data);
-        } else {
-            new_nodes = (cjsonx_node_t*)realloc(doc->nodes, new_cap * sizeof(cjsonx_node_t));
-        }
+        cjsonx_node_t* new_nodes = (cjsonx_node_t*)cjsonx_realloc(&doc->alloc, doc->nodes, doc->node_capacity * sizeof(cjsonx_node_t), new_cap * sizeof(cjsonx_node_t));
         if (!new_nodes) return UINT32_MAX;
         doc->nodes = new_nodes;
         doc->node_capacity = new_cap;
@@ -169,9 +165,11 @@ static inline bool cjsonx_object_set(cjsonx_val_t obj_handle, const char* key, c
     return true;
 }
 
-// note: each push traverses the child list to find the last element (o(n)),
-// so repeated pushes to the same array are o(n²). this is fine for small
-// builder workloads but not suitable for bulk construction of large arrays.
+/*
+ * note: each push traverses the child list to find the last element (o(n)),
+ * so repeated pushes to the same array are o(n²). this is fine for small
+ * builder workloads but not suitable for bulk construction of large arrays.
+ */
 static inline bool cjsonx_array_push(cjsonx_val_t arr_handle, cjsonx_val_t val_handle) {
     if (!arr_handle.doc || !val_handle.doc || arr_handle.doc != val_handle.doc) return false;
     cjsonx_node_t* arr = &arr_handle.doc->nodes[arr_handle.node_idx];
@@ -491,6 +489,17 @@ static int cjsonx_generate_digits(cjsonx_fp_t* fp, cjsonx_fp_t* upper, cjsonx_fp
     }
 }
 
+/*
+ * grisu2 algorithm (florian loitsch):
+ * an extremely fast, high-precision double-to-string formatting algorithm.
+ * 
+ * 1. float decomposition: builds a custom floating-point struct (frac and exp)
+ *    and calculates the exact boundaries (lower and upper) of the float value.
+ * 2. scaling: multiplies the float and its boundaries by a cached power of 10
+ *    to align the exponent with a predefined boundary range.
+ * 3. digit generation: generates the shortest decimal representation by sequentially
+ *    extracting digits from the scaled fraction and rounding them.
+ */
 static int cjsonx_grisu2(double d, char* digits, int* K) {
     cjsonx_fp_t w = cjsonx_build_fp(d);
     cjsonx_fp_t lower, upper;
@@ -599,6 +608,13 @@ static const char cjsonx_digit_table[] =
     "6061626364656667686970717273747576777879"
     "8081828384858687888990919293949596979899";
 
+/*
+ * high-performance 64-bit integer formatter:
+ * writes digits 2-at-a-time using a precomputed two-digit lookup table
+ * (cjsonx_digit_table). this avoids half of the division/modulo operations
+ * compared to standard digit-by-digit loops, substantially improving
+ * stringification performance for integer values.
+ */
 static inline int cjsonx_write_i64(char* buf, int64_t val) {
     if (val == 0) {
         buf[0] = '0';
@@ -669,12 +685,7 @@ static cjsonx_always_inline void cjsonx_strbuf_append(cjsonx_strbuf_t* __restric
         size_t new_cap = sb->cap == 0 ? 2048 : sb->cap * 2;
         if (new_cap <= sb->len + len) new_cap = sb->len + len + 1024;
         if (CJSONX_UNLIKELY(new_cap < sb->len + len)) new_cap = sb->len + len; // clamp on overflow
-        char* new_buf;
-        if (sb->alloc && sb->alloc->realloc_fn) {
-            new_buf = (char*)sb->alloc->realloc_fn(sb->buf, new_cap, sb->alloc->user_data);
-        } else {
-            new_buf = (char*)realloc(sb->buf, new_cap);
-        }
+        char* new_buf = (char*)cjsonx_realloc(sb->alloc, sb->buf, sb->cap, new_cap);
         if (CJSONX_UNLIKELY(!new_buf)) {
             sb->oom = true;
             return;
@@ -695,12 +706,7 @@ static cjsonx_always_inline void cjsonx_strbuf_append_c(cjsonx_strbuf_t* __restr
     if (CJSONX_UNLIKELY(sb->len + 1 >= sb->cap)) {
         size_t new_cap = sb->cap == 0 ? 2048 : sb->cap * 2;
         if (CJSONX_UNLIKELY(new_cap < sb->cap)) new_cap = sb->len + 1; // clamp on overflow
-        char* new_buf;
-        if (sb->alloc && sb->alloc->realloc_fn) {
-            new_buf = (char*)sb->alloc->realloc_fn(sb->buf, new_cap, sb->alloc->user_data);
-        } else {
-            new_buf = (char*)realloc(sb->buf, new_cap);
-        }
+        char* new_buf = (char*)cjsonx_realloc(sb->alloc, sb->buf, sb->cap, new_cap);
         if (CJSONX_UNLIKELY(!new_buf)) {
             sb->oom = true;
             return;
@@ -1113,7 +1119,7 @@ cjsonx_val_t cjsonx_clone_val(cjsonx_doc_t* dest_doc, cjsonx_val_t src_val) {
             char* s = (char*)cjsonx_arena_alloc(dest_doc, len + 1);
             if (!s) return cjsonx_make_null_handle();
             // don't use len+1: zero-copy strings point into the json buffer where
-            // src_str[len] is the closing '"', not '\0'. write NUL explicitly.
+            // src_str[len] is the closing '"', not '\0'. write nul explicitly.
             memcpy(s, src_str, len);
             s[len] = '\0';
             dest_doc->nodes[idx].val.str = s;
@@ -1154,7 +1160,22 @@ cjsonx_val_t cjsonx_merge_patch(cjsonx_val_t target, cjsonx_val_t patch) {
 
         cjsonx_iter_t it = cjsonx_iter_init(patch);
         while (cjsonx_iter_next(&it)) {
-            const char* key = cjsonx_str(it.key);
+            size_t key_len = cjsonx_str_len(it.key);
+            char key_buf[256];
+            char* key_alloc = NULL;
+            char* key = key_buf;
+            if (key_len >= sizeof(key_buf)) {
+                if (target.doc->alloc.malloc_fn) {
+                    key_alloc = (char*)target.doc->alloc.malloc_fn(key_len + 1, target.doc->alloc.user_data);
+                } else {
+                    key_alloc = (char*)malloc(key_len + 1);
+                }
+                if (!key_alloc) continue;
+                key = key_alloc;
+            }
+            memcpy(key, cjsonx_str(it.key), key_len);
+            key[key_len] = '\0';
+
             cjsonx_val_t patch_val = it.value;
 
             if (cjsonx_is_null(patch_val)) {
@@ -1164,7 +1185,7 @@ cjsonx_val_t cjsonx_merge_patch(cjsonx_val_t target, cjsonx_val_t patch) {
                 cjsonx_val_t new_val;
                 if (target_val.doc) {
                     new_val = cjsonx_merge_patch(target_val, patch_val);
-                    if (target_val.node_idx != new_val.node_idx) {
+                    if (target_val.node_idx != new_val.node_idx || target_val.doc != new_val.doc) {
                         cjsonx_object_remove(target, key);
                         if (target.doc != new_val.doc) {
                             new_val = cjsonx_clone_val(target.doc, new_val);
@@ -1185,6 +1206,13 @@ cjsonx_val_t cjsonx_merge_patch(cjsonx_val_t target, cjsonx_val_t patch) {
                     cjsonx_object_set(target, key, new_val);
                 }
             }
+            if (key_alloc) {
+                if (target.doc->alloc.free_fn) {
+                    target.doc->alloc.free_fn(key_alloc, target.doc->alloc.user_data);
+                } else {
+                    free(key_alloc);
+                }
+            }
         }
         return target;
     } else {
@@ -1200,4 +1228,4 @@ cjsonx_val_t cjsonx_merge_patch(cjsonx_val_t target, cjsonx_val_t patch) {
 }
 #endif
 
-#endif // CJSONX_BUILDER_H
+#endif // cjsonx_builder_h
