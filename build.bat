@@ -1,5 +1,11 @@
 @echo off
-rem cjsonx helper build script for windows
+rem =========================================================================
+rem build.bat -- build helper script for cjsonx (windows)
+rem project url: https://github.com/tiw302/cjsonx
+rem
+rem this script compiles cjsonx and runs unit/conformance tests.
+rem usage: build.bat [--test] [--clean]
+rem =========================================================================
 setlocal enabledelayedexpansion
 
 rem define paths based on the script's location
