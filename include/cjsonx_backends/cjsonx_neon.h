@@ -1,15 +1,16 @@
-/**
- * @file cjsonx_neon.h
- * @brief stage 1 structural indexer — arm neon backend
- *
- * @note architecture and coding style inspired by yyjson (https://github.com/ibireme/yyjson)
- */
+// updated 2026-06-13
+// spdx-license-identifier: mit
+// copyright (c) 2026 jirawat siripuk
 #ifndef CJSONX_NEON_H
 #define CJSONX_NEON_H
 
-/*==============================================================================
- * mark: - neon backend
- *============================================================================*/
+// ███    ██ ███████  ██████  ███    ██
+// ████   ██ ██      ██    ██ ████   ██
+// ██ ██  ██ █████   ██    ██ ██ ██  ██
+// ██  ██ ██ ██      ██    ██ ██  ██ ██
+// ██   ████ ███████  ██████  ██   ████
+//
+// >>neon backend
 
 
 #include <arm_neon.h>
@@ -22,7 +23,15 @@
 #define __builtin_prefetch(addr, ...) (void)(addr)
 #endif
 
-// neon specific scanner utilizing 16-byte vectors unrolled to 32 bytes per iteration
+/*
+ * neon-based emulation of the x86 _mm_movemask_epi8 instruction.
+ * since arm neon lacks a direct movemask instruction, we achieve this by:
+ * 1. masking each byte with a specific power-of-two bit corresponding to its index (bitmask vector).
+ *    this maps each byte's boolean result (0x00 or 0xff) to a single unique bit (e.g. 0x01 for byte 0, 0x02 for byte 1, etc.).
+ * 2. performing three rounds of pairwise addition (vpaddq_u8). pairwise addition sums adjacent bytes,
+ *    accumulating the individual mapped bits from the lower and upper halves.
+ * 3. extracting the final combined 16-bit mask from the vector lane.
+ */
 static inline uint16_t neon_movemask_u8(uint8x16_t v) {
     const uint8x16_t bitmask = {0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80,
                                 0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80};
