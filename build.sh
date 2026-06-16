@@ -1,5 +1,11 @@
 #!/bin/bash
-# cjsonx helper build script
+# =========================================================================
+# build.sh -- build helper script for cjsonx
+# project url: https://github.com/tiw302/cjsonx
+#
+# this script compiles cjsonx and runs unit/conformance tests.
+# usage: ./build.sh [--test] [--clean]
+# =========================================================================
 set -euo pipefail
 
 # define paths based on the script's location
