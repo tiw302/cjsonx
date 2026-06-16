@@ -1,15 +1,16 @@
-/**
- * @file cjsonx_avx2.h
- * @brief stage 1 structural indexer — avx2 + pclmulqdq backend
- *
- * @note architecture and coding style inspired by yyjson (https://github.com/ibireme/yyjson)
- */
+// updated 2026-06-13
+// spdx-license-identifier: mit
+// copyright (c) 2026 jirawat siripuk
 #ifndef CJSONX_AVX2_H
 #define CJSONX_AVX2_H
 
-/*==============================================================================
- * mark: - avx2 backend
- *============================================================================*/
+//  █████  ██    ██ ██   ██ ██████
+// ██   ██ ██    ██  ██ ██       ██
+// ███████ ██    ██   ███    █████
+// ██   ██  ██  ██   ██ ██  ██
+// ██   ██   ████   ██   ██ ███████
+//
+// >>avx2 backend
 
 
 #include <immintrin.h>
@@ -49,13 +50,21 @@ static inline bool cjsonx_stage1_avx2(const char* json, size_t length, cjsonx_ta
                 goto scalar_fallback;
             }
 
-            // check for control characters inside strings
-            // (a full simd validation for ctrl chars requires more instructions, we can add it later)
-            // for now, we rely on the parser stage 2 to catch them if needed, or we just trust the structural pass.
+            /*
+             * check for control characters inside strings
+             * (a full simd validation for ctrl chars requires more instructions, we can add it later)
+             * for now, we rely on the parser stage 2 to catch them if needed, or we just trust the structural pass.
+             */
 
             uint32_t quote_bits = (uint32_t)_mm256_movemask_epi8(_mm256_cmpeq_epi8(v, _mm256_set1_epi8('"')));
             
-            // pure avx2 string mask using carry-less multiplication (prefix xor)
+            /*
+             * pure avx2 string mask using carry-less multiplication (prefix xor).
+             * we use the pclmulqdq instruction to compute the prefix xor of the quote bits in parallel.
+             * clmul of a bitmask with a sequence of 1s (0xff...ff) mathematically computes the cumulative xor sum.
+             * this effectively sets all bits inside quotes to 1 and all bits outside to 0.
+             * string_mask is then combined with the state from the previous block (prev_in_string).
+             */
             __m128i q = _mm_set_epi64x(0, quote_bits);
             __m128i ones = _mm_set1_epi8(-1);
             __m128i prefix = _mm_clmulepi64_si128(q, ones, 0);
@@ -98,7 +107,12 @@ static inline bool cjsonx_stage1_avx2(const char* json, size_t length, cjsonx_ta
             uint32_t sep_mask = valid_structurals | valid_whitespace | quote_bits;
             uint32_t non_sep_mask = ~sep_mask;
             
-            // primitive starts
+            /*
+             * primitive starts:
+             * a primitive (number, true, false, null) starts at any character that is not a separator/whitespace/quote (non_sep_mask)
+             * but is preceded by a separator/whitespace/quote (shifted_sep). we shift sep_mask by 1 to align with the next character,
+             * inserting prev_was_sep at bit 0. primitives must also not be inside a string (~string_mask).
+             */
             uint32_t shifted_sep = (sep_mask << 1) | (prev_was_sep ? 1 : 0);
             uint32_t prim_starts = (non_sep_mask & shifted_sep) & ~string_mask;
 
@@ -165,4 +179,4 @@ static inline bool cjsonx_stage1_avx2(const char* json, size_t length, cjsonx_ta
     return true;
 }
 
-#endif // CJSONX_AVX2_H
+#endif // cjsonx_avx2_h
