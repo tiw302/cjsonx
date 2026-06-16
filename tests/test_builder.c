@@ -59,14 +59,14 @@ int main() {
     free(json_str_overwrite);
     cjsonx_doc_free(doc);
 
-    // Test 1: cjsonx_doc_new() and builder from scratch
+    // test 1: cjsonx_doc_new() and builder from scratch
     printf("Testing cjsonx_doc_new()...\n");
     cjsonx_doc* new_doc = cjsonx_doc_new();
     if (!new_doc || !new_doc->is_valid) {
         printf("[FAIL] Failed to create new document from scratch\n");
         return 1;
     }
-    // Set root to a newly created object
+    // set root to a newly created object
     cjsonx_val root_obj = cjsonx_create_object(new_doc);
     new_doc->root = root_obj;
     cjsonx_object_set(new_doc->root, "status", cjsonx_create_string(new_doc, "success"));
@@ -82,7 +82,7 @@ int main() {
     }
     printf("[PASS] cjsonx_doc_new() and builder from scratch passed!\n");
 
-    // Test 2: cjsonx_stringify_val()
+    // test 2: cjsonx_stringify_val()
     printf("Testing cjsonx_stringify_val()...\n");
     cjsonx_val status_val = cjsonx_get(new_doc->root, "status");
     char* val_str = cjsonx_stringify_val(status_val);
@@ -99,7 +99,7 @@ int main() {
     free(new_json);
     cjsonx_doc_free(new_doc);
 
-    // Test 3: cjsonx_parse_str() macro
+    // test 3: cjsonx_parse_str() macro
     printf("Testing cjsonx_parse_str()...\n");
     cjsonx_doc* parsed_macro = cjsonx_parse_str("{\"macro\":true}");
     if (!parsed_macro || !parsed_macro->is_valid) {
