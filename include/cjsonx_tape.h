@@ -1,15 +1,16 @@
-/**
- * @file cjsonx_tape.h
- * @brief structural token tape for stage 1 output
- *
- * @note architecture and coding style inspired by yyjson (https://github.com/ibireme/yyjson)
- */
+// updated 2026-06-13
+// spdx-license-identifier: mit
+// copyright (c) 2026 jirawat siripuk
 #ifndef CJSONX_TAPE_H
 #define CJSONX_TAPE_H
 
-/*==============================================================================
- * mark: - parsing tape
- *============================================================================*/
+// ████████  █████  ██████  ███████
+//    ██    ██   ██ ██   ██ ██
+//    ██    ███████ ██████  █████
+//    ██    ██   ██ ██      ██
+//    ██    ██   ██ ██      ███████
+//
+// >>parsing tape
 
 
 #include <stdlib.h>
@@ -20,12 +21,14 @@
 extern "C" {
 #endif
 
-// structural tokens tape
-// stores index offsets of all structural characters like { } [ ] : , "
-// helps stage 2 parser skip whitespace and parse faster
-//
-// note: using uint32_t for index offsets limits the maximum supported json input
-// size to 4 gib (uint32_max).
+/*
+ * structural tokens tape
+ * stores index offsets of all structural characters like { } [ ] : , "
+ * helps stage 2 parser skip whitespace and parse faster
+ * 
+ * note: using uint32_t for index offsets limits the maximum supported json input
+ * size to 4 gib (uint32_max).
+ */
 typedef struct {
     uint32_t* indices;   // array of 32-bit index offsets (limits input size to 4 gib)
     size_t count;        // number of indices inside the tape
@@ -83,12 +86,7 @@ static cjsonx_always_inline bool cjsonx_tape_push(cjsonx_tape_t* tape, uint32_t 
         if (CJSONX_UNLIKELY(tape->is_static)) return false;
         size_t new_cap = tape->capacity ? tape->capacity * 2 : 64;
         if (CJSONX_UNLIKELY(new_cap < tape->capacity || new_cap > (size_t)-1 / sizeof(uint32_t))) return false;
-        uint32_t* new_indices;
-        if (tape->alloc && tape->alloc->realloc_fn) {
-            new_indices = (uint32_t*)tape->alloc->realloc_fn(tape->indices, new_cap * sizeof(uint32_t), tape->alloc->user_data);
-        } else {
-            new_indices = (uint32_t*)realloc(tape->indices, new_cap * sizeof(uint32_t));
-        }
+        uint32_t* new_indices = (uint32_t*)cjsonx_realloc(tape->alloc, tape->indices, tape->capacity * sizeof(uint32_t), new_cap * sizeof(uint32_t));
         if (CJSONX_UNLIKELY(!new_indices)) return false;
         tape->indices = new_indices;
         tape->capacity = new_cap;
