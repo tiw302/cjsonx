@@ -1,3 +1,7 @@
+// updated 2026-06-13
+// spdx-license-identifier: mit
+// copyright (c) 2026 jirawat siripuk
+
 #ifndef CJSONX_SRC_H
 #define CJSONX_SRC_H
 
