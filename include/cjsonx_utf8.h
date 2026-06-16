@@ -1,15 +1,16 @@
-/**
- * @file cjsonx_utf8.h
- * @brief utf-8 streaming decoder (hoehrmann dfa)
- *
- * @note architecture and coding style inspired by yyjson (https://github.com/ibireme/yyjson)
- */
+// updated 2026-06-13
+// spdx-license-identifier: mit
+// copyright (c) 2026 jirawat siripuk
 #ifndef CJSONX_UTF8_H
 #define CJSONX_UTF8_H
 
-/*==============================================================================
- * mark: - utf-8 validation
- *============================================================================*/
+// ██    ██ ████████ ███████  █████
+// ██    ██    ██    ██      ██   ██
+// ██    ██    ██    █████    █████
+// ██    ██    ██    ██      ██   ██
+//  ██████     ██    ██       █████
+//
+// >>utf-8 validation
 
 
 #include <stdint.h>
@@ -41,6 +42,17 @@ static const uint8_t cjsonx_utf8d[] = {
   1,3,1,1,1,1,1,3,1,3,1,1,1,1,1,1,1,3,1,1,1,1,1,1,1,1,1,1,1,1,1,1  // s7..s8
 };
 
+/*
+ * bjoern hoehrmann's dfa-based utf-8 decoder.
+ * this function decodes utf-8 octets using a finite state machine (dfa).
+ * 1. it maps the current input byte to its character class (type) using the lookup table.
+ * 2. if we are in the middle of decoding a multi-byte sequence (state is not cjsonx_utf8_accept),
+ *    we shift the accumulated codepoint left by 6 bits and append the lower 6 bits of the byte.
+ * 3. if starting a new character sequence, we extract the initial payload bits based on the type's prefix.
+ * 4. it transitions to the next state by indexing the transition matrix at (256 + state * 16 + type).
+ * 5. returns the new state: cjsonx_utf8_accept (0) if a character is successfully finished,
+ *    cjsonx_utf8_reject (1) if the sequence is invalid, or a intermediate state if more bytes are expected.
+ */
 static inline uint32_t cjsonx_utf8_decode(uint32_t* state, uint32_t* codep, uint32_t byte) {
   uint32_t type = cjsonx_utf8d[byte];
   
