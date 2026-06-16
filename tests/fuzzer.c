@@ -6,9 +6,11 @@
 
 // libfuzzer entry point
 int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size) {
-    // we limit size to prevent massive memory allocations during fuzzing
-    // since cjsonx allocates dom nodes based on tape size.
-    // 1 mb is more than enough to find edge cases.
+    /*
+     * we limit size to prevent massive memory allocations during fuzzing
+     * since cjsonx allocates dom nodes based on tape size.
+     * 1 mb is more than enough to find edge cases.
+     */
     if (size > 1024 * 1024) return 0;
     
     // parse the json
