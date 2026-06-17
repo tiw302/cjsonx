@@ -117,5 +117,19 @@ int main() {
     free(macro_str);
     cjsonx_doc_free(parsed_macro);
 
+    // test empty key clone (fuzzer crash scenario)
+    printf("Testing empty key object clone...\n");
+    cjsonx_doc* empty_key_doc = cjsonx_parse("{\"\":{}}", 7);
+    if (empty_key_doc && empty_key_doc->is_valid) {
+        cjsonx_doc* cloned_doc = cjsonx_doc_new();
+        if (cloned_doc) {
+            cjsonx_val cloned_val = cjsonx_clone_val(cloned_doc, empty_key_doc->root);
+            (void)cloned_val;
+            cjsonx_doc_free(cloned_doc);
+        }
+        cjsonx_doc_free(empty_key_doc);
+    }
+    printf("[PASS] Empty key object clone passed!\n");
+
     return 0;
 }
