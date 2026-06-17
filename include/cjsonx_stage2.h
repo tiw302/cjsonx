@@ -579,12 +579,11 @@ void cjsonx_doc_free(cjsonx_doc_t* doc) {
 }
 
 // dom value accessors — get by key, index, and json pointer
-cjsonx_val_t cjsonx_get(cjsonx_val_t obj_handle, const char* key) {
-    if (!obj_handle.doc) return cjsonx_make_null_handle();
+cjsonx_val_t cjsonx_get_len(cjsonx_val_t obj_handle, const char* key, size_t key_len) {
+    if (!obj_handle.doc || !key) return cjsonx_make_null_handle();
     cjsonx_node_t* obj = &obj_handle.doc->nodes[obj_handle.node_idx];
     if (cjsonx_node_type(obj) != CJSONX_OBJECT) return cjsonx_make_null_handle();
     
-    size_t key_len = strlen(key);
     uint32_t curr = obj->val.first_child;
     size_t len = cjsonx_node_length(obj);
     for (size_t i = 0; i < len; i++) {
@@ -598,6 +597,10 @@ cjsonx_val_t cjsonx_get(cjsonx_val_t obj_handle, const char* key) {
         curr = obj_handle.doc->nodes[val_idx].next_sibling;
     }
     return cjsonx_make_null_handle();
+}
+
+cjsonx_val_t cjsonx_get(cjsonx_val_t obj_handle, const char* key) {
+    return cjsonx_get_len(obj_handle, key, key ? strlen(key) : 0);
 }
 
 cjsonx_val_t cjsonx_get_index(cjsonx_val_t arr_handle, size_t index) {
