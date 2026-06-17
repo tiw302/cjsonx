@@ -44,8 +44,8 @@
 // version macros
 #define CJSONX_VERSION_MAJOR 1
 #define CJSONX_VERSION_MINOR 0
-#define CJSONX_VERSION_PATCH 0
-#define CJSONX_VERSION_STRING "1.0.0"
+#define CJSONX_VERSION_PATCH 2
+#define CJSONX_VERSION_STRING "1.0.2"
 
 
 // internal headers (order matters: config → error → dom → tape → arena)
@@ -351,6 +351,7 @@ CJSONX_API void cjsonx_doc_free(cjsonx_doc_t* doc);
 // container lookup
 // o(n): linear key scan.
 CJSONX_API cjsonx_val_t cjsonx_get(cjsonx_val_t obj, const char* key);
+CJSONX_API cjsonx_val_t cjsonx_get_len(cjsonx_val_t obj, const char* key, size_t key_len);
 // o(n): walks sibling chain. use cjsonx_iter for sequential iteration.
 CJSONX_API cjsonx_val_t cjsonx_get_index(cjsonx_val_t arr, size_t index);
 CJSONX_API cjsonx_val_t cjsonx_pointer_get(cjsonx_val_t root, const char* path);
@@ -689,13 +690,12 @@ static inline cjsonx_val_t cjsonx_create_array(cjsonx_doc_t* doc) {
 }
 
 // mutation
-static inline bool cjsonx_object_set(cjsonx_val_t obj_handle, const char* key, cjsonx_val_t val_handle) {
+static inline bool cjsonx_object_set_len(cjsonx_val_t obj_handle, const char* key, size_t key_len, cjsonx_val_t val_handle) {
     if (!obj_handle.doc || !val_handle.doc || obj_handle.doc != val_handle.doc) return false;
     cjsonx_node_t* obj = &obj_handle.doc->nodes[obj_handle.node_idx];
     if (cjsonx_node_type(obj) != CJSONX_OBJECT) return false;
     
     // if the key already exists, overwrite its value inline to preserve order and key allocations
-    size_t k_len = strlen(key);
     uint32_t curr = obj->val.first_child;
     size_t obj_len = cjsonx_node_length(obj);
     uint32_t last_val_idx = UINT32_MAX;
@@ -703,7 +703,7 @@ static inline bool cjsonx_object_set(cjsonx_val_t obj_handle, const char* key, c
         cjsonx_node_t* k_node = &obj_handle.doc->nodes[curr];
         uint32_t val_idx = k_node->next_sibling;
         cjsonx_node_t* v_node = &obj_handle.doc->nodes[val_idx];
-        if (cjsonx_node_length(k_node) == k_len && memcmp(k_node->val.str, key, k_len) == 0) {
+        if (cjsonx_node_length(k_node) == key_len && memcmp(k_node->val.str, key, key_len) == 0) {
             uint32_t next_key_idx = v_node->next_sibling;
             k_node->next_sibling = val_handle.node_idx;
             cjsonx_node_t* new_v_node = &obj_handle.doc->nodes[val_handle.node_idx];
@@ -722,12 +722,12 @@ static inline bool cjsonx_object_set(cjsonx_val_t obj_handle, const char* key, c
     uint32_t key_idx = cjsonx_builder_alloc_node(obj_handle.doc);
     if (key_idx == UINT32_MAX) return false;
     
-    size_t key_len = k_len; // reuse length computed above
     cjsonx_node_t* key_node = &obj_handle.doc->nodes[key_idx];
     cjsonx_node_set_type_len(key_node, CJSONX_STRING, key_len);
     char* s = (char*)cjsonx_arena_alloc(obj_handle.doc, key_len + 1);
     if (!s) return false;
-    memcpy(s, key, key_len + 1);
+    memcpy(s, key, key_len);
+    s[key_len] = '\0';
     key_node->val.str = s;
     
     // re-fetch obj, key_node because arena alloc or realloc might have moved the nodes array!
@@ -746,6 +746,10 @@ static inline bool cjsonx_object_set(cjsonx_val_t obj_handle, const char* key, c
     
     cjsonx_node_set_type_len(obj, CJSONX_OBJECT, len + 1);
     return true;
+}
+
+static inline bool cjsonx_object_set(cjsonx_val_t obj_handle, const char* key, cjsonx_val_t val_handle) {
+    return cjsonx_object_set_len(obj_handle, key, key ? strlen(key) : 0, val_handle);
 }
 
 /*
@@ -779,12 +783,11 @@ static inline bool cjsonx_array_push(cjsonx_val_t arr_handle, cjsonx_val_t val_h
     return true;
 }
 
-static inline bool cjsonx_object_remove(cjsonx_val_t obj_handle, const char* key) {
+static inline bool cjsonx_object_remove_len(cjsonx_val_t obj_handle, const char* key, size_t key_len) {
     if (!obj_handle.doc) return false;
     cjsonx_node_t* obj = &obj_handle.doc->nodes[obj_handle.node_idx];
     if (cjsonx_node_type(obj) != CJSONX_OBJECT) return false;
     
-    size_t key_len = strlen(key);
     uint32_t curr = obj->val.first_child;
     uint32_t prev_val_idx = UINT32_MAX; // the value node of the previous pair, which points to current key
     size_t len = cjsonx_node_length(obj);
@@ -809,6 +812,10 @@ static inline bool cjsonx_object_remove(cjsonx_val_t obj_handle, const char* key
         curr = v_node->next_sibling;
     }
     return false;
+}
+
+static inline bool cjsonx_object_remove(cjsonx_val_t obj_handle, const char* key) {
+    return cjsonx_object_remove_len(obj_handle, key, key ? strlen(key) : 0);
 }
 
 static inline bool cjsonx_array_remove(cjsonx_val_t arr_handle, size_t index) {
@@ -1724,7 +1731,7 @@ cjsonx_val_t cjsonx_clone_val(cjsonx_doc_t* dest_doc, cjsonx_val_t src_val) {
             cjsonx_iter_t it = cjsonx_iter_init(src_val);
             while (cjsonx_iter_next(&it)) {
                 cjsonx_val_t child = cjsonx_clone_val(dest_doc, it.value);
-                cjsonx_object_set(obj, cjsonx_str(it.key), child);
+                cjsonx_object_set_len(obj, cjsonx_str(it.key), cjsonx_str_len(it.key), child);
             }
             return obj;
         }
@@ -1744,36 +1751,22 @@ cjsonx_val_t cjsonx_merge_patch(cjsonx_val_t target, cjsonx_val_t patch) {
         cjsonx_iter_t it = cjsonx_iter_init(patch);
         while (cjsonx_iter_next(&it)) {
             size_t key_len = cjsonx_str_len(it.key);
-            char key_buf[256];
-            char* key_alloc = NULL;
-            char* key = key_buf;
-            if (key_len >= sizeof(key_buf)) {
-                if (target.doc->alloc.malloc_fn) {
-                    key_alloc = (char*)target.doc->alloc.malloc_fn(key_len + 1, target.doc->alloc.user_data);
-                } else {
-                    key_alloc = (char*)malloc(key_len + 1);
-                }
-                if (!key_alloc) continue;
-                key = key_alloc;
-            }
-            memcpy(key, cjsonx_str(it.key), key_len);
-            key[key_len] = '\0';
-
+            const char* key_ptr = cjsonx_str(it.key);
             cjsonx_val_t patch_val = it.value;
 
             if (cjsonx_is_null(patch_val)) {
-                cjsonx_object_remove(target, key);
+                cjsonx_object_remove_len(target, key_ptr, key_len);
             } else {
-                cjsonx_val_t target_val = cjsonx_get(target, key);
+                cjsonx_val_t target_val = cjsonx_get_len(target, key_ptr, key_len);
                 cjsonx_val_t new_val;
                 if (target_val.doc) {
                     new_val = cjsonx_merge_patch(target_val, patch_val);
                     if (target_val.node_idx != new_val.node_idx || target_val.doc != new_val.doc) {
-                        cjsonx_object_remove(target, key);
+                        cjsonx_object_remove_len(target, key_ptr, key_len);
                         if (target.doc != new_val.doc) {
                             new_val = cjsonx_clone_val(target.doc, new_val);
                         }
-                        cjsonx_object_set(target, key, new_val);
+                        cjsonx_object_set_len(target, key_ptr, key_len, new_val);
                     }
                 } else {
                     if (cjsonx_get_type(patch_val) == CJSONX_OBJECT) {
@@ -1786,14 +1779,7 @@ cjsonx_val_t cjsonx_merge_patch(cjsonx_val_t target, cjsonx_val_t patch) {
                     if (target.doc != new_val.doc) {
                         new_val = cjsonx_clone_val(target.doc, new_val);
                     }
-                    cjsonx_object_set(target, key, new_val);
-                }
-            }
-            if (key_alloc) {
-                if (target.doc->alloc.free_fn) {
-                    target.doc->alloc.free_fn(key_alloc, target.doc->alloc.user_data);
-                } else {
-                    free(key_alloc);
+                    cjsonx_object_set_len(target, key_ptr, key_len, new_val);
                 }
             }
         }
@@ -5074,12 +5060,11 @@ void cjsonx_doc_free(cjsonx_doc_t* doc) {
 }
 
 // dom value accessors — get by key, index, and json pointer
-cjsonx_val_t cjsonx_get(cjsonx_val_t obj_handle, const char* key) {
-    if (!obj_handle.doc) return cjsonx_make_null_handle();
+cjsonx_val_t cjsonx_get_len(cjsonx_val_t obj_handle, const char* key, size_t key_len) {
+    if (!obj_handle.doc || !key) return cjsonx_make_null_handle();
     cjsonx_node_t* obj = &obj_handle.doc->nodes[obj_handle.node_idx];
     if (cjsonx_node_type(obj) != CJSONX_OBJECT) return cjsonx_make_null_handle();
     
-    size_t key_len = strlen(key);
     uint32_t curr = obj->val.first_child;
     size_t len = cjsonx_node_length(obj);
     for (size_t i = 0; i < len; i++) {
@@ -5093,6 +5078,10 @@ cjsonx_val_t cjsonx_get(cjsonx_val_t obj_handle, const char* key) {
         curr = obj_handle.doc->nodes[val_idx].next_sibling;
     }
     return cjsonx_make_null_handle();
+}
+
+cjsonx_val_t cjsonx_get(cjsonx_val_t obj_handle, const char* key) {
+    return cjsonx_get_len(obj_handle, key, key ? strlen(key) : 0);
 }
 
 cjsonx_val_t cjsonx_get_index(cjsonx_val_t arr_handle, size_t index) {
