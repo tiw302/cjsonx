@@ -165,6 +165,7 @@ CJSONX_API void cjsonx_doc_free(cjsonx_doc_t* doc);
 // container lookup
 // o(n): linear key scan.
 CJSONX_API cjsonx_val_t cjsonx_get(cjsonx_val_t obj, const char* key);
+CJSONX_API cjsonx_val_t cjsonx_get_len(cjsonx_val_t obj, const char* key, size_t key_len);
 // o(n): walks sibling chain. use cjsonx_iter for sequential iteration.
 CJSONX_API cjsonx_val_t cjsonx_get_index(cjsonx_val_t arr, size_t index);
 CJSONX_API cjsonx_val_t cjsonx_pointer_get(cjsonx_val_t root, const char* path);
