@@ -13,8 +13,7 @@
 // >>avx2 backend
 
 
-#include <immintrin.h>
-#include <wmmintrin.h> // for pclmulqdq
+#include <immintrin.h>  // covers pclmulqdq / wmmintrin transitively
 #include <stdint.h>
 #include <stdbool.h>
 
@@ -51,9 +50,11 @@ static inline bool cjsonx_stage1_avx2(const char* json, size_t length, cjsonx_ta
             }
 
             /*
-             * check for control characters inside strings
-             * (a full simd validation for ctrl chars requires more instructions, we can add it later)
-             * for now, we rely on the parser stage 2 to catch them if needed, or we just trust the structural pass.
+             * control chars (< 0x20) inside strings are intentionally NOT checked here.
+             * they are handled by cjsonx_parse_string_impl in stage 2, which scans string
+             * content byte-by-byte (or with simd) and rejects any raw control character.
+             * this is a deliberate tradeoff: adding a control char check in stage 1 simd
+             * would add extra instructions on the hot path for a case that stage 2 already handles.
              */
 
             uint32_t quote_bits = (uint32_t)_mm256_movemask_epi8(_mm256_cmpeq_epi8(v, _mm256_set1_epi8('"')));
