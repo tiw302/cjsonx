@@ -19,8 +19,8 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size) {
     // if parsed successfully, we can test dom iteration or mutation
     if (doc) {
         if (doc->is_valid) {
-            // walk the dom to ensure memory is properly linked
-            for (uint32_t i = 1; i < doc->node_count; i++) {
+            // walk all nodes including root (index 0) to catch any corrupted type fields
+            for (uint32_t i = 0; i < doc->node_count; i++) {
                 volatile cjsonx_type_t type = cjsonx_node_type(&doc->nodes[i]);
                 (void)type;
             }
