@@ -6,7 +6,7 @@
 # =========================================================================
 
 cmake_minimum_required(VERSION 3.21)
-project(cjsonx VERSION 1.0.0 LANGUAGES C)
+project(cjsonx VERSION 1.0.2 LANGUAGES C)
 
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED ON)
@@ -139,6 +139,11 @@ if(TARGET cjsonx AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_precision.c"
     add_executable(test_precision tests/test_precision.c)
     target_link_libraries(test_precision PRIVATE cjsonx)
     add_test(NAME test_precision COMMAND test_precision)
+endif()
+if(TARGET cjsonx AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_static_buffer.c")
+    add_executable(test_static_buffer tests/test_static_buffer.c)
+    target_link_libraries(test_static_buffer PRIVATE cjsonx)
+    add_test(NAME test_static_buffer COMMAND test_static_buffer)
 endif()
 
 # =========================================================================
