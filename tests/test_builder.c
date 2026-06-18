@@ -54,6 +54,8 @@ int main() {
         return 1;
     }
     
+    // note: free() is only safe when using the default allocator.
+    // with a custom allocator use alloc.free_fn(json_str, alloc.user_data) instead.
     free(json_str);
     free(json_fmt);
     free(json_str_overwrite);
