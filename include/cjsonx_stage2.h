@@ -16,6 +16,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <locale.h>
+#include <errno.h>
 
 #include "cjsonx_string.h"
 
@@ -678,8 +679,10 @@ cjsonx_val_t cjsonx_pointer_get(cjsonx_val_t root, const char* path) {
             if (!is_valid_index) {
                 curr = cjsonx_make_null_handle();
             } else {
+                // check errno so strtoul overflow (returns ulong_max) is handled correctly
+                errno = 0;
                 unsigned long index = strtoul(token, NULL, 10);
-                if (index > 0xFFFFFF) {
+                if (errno == ERANGE || index > 0xFFFFFF) {
                     curr = cjsonx_make_null_handle();
                 } else {
                     curr = cjsonx_get_index(curr, (size_t)index);
@@ -911,7 +914,13 @@ cjsonx_doc_t* cjsonx_parse_with_buffer(const char* json, size_t length, void* bu
     // explicit size_t mask: ~7 is signed int which sign-extends on 64-bit
     offset = (offset + 7u) & ~(size_t)7;
     
-    size_t alloc_count = tape.count / 2 + 1;
+    // use tape.count+1 as the node capacity upper bound.
+    // tape.count/2+1 is the typical estimate, but cjsonx_next_token checks
+    // node_idx >= capacity for EVERY tape entry (including commas and closers),
+    // so a tight estimate causes spurious cjsonx_grow_nodes calls which fail
+    // for static docs (is_static prevents realloc). tape.count+1 guarantees
+    // node_idx never reaches capacity before the parse finishes.
+    size_t alloc_count = tape.count + 1;
     size_t nodes_size = alloc_count * sizeof(cjsonx_node_t);
     if (offset + nodes_size > buffer_size) {
         doc->is_valid = false;
@@ -933,6 +942,8 @@ cjsonx_doc_t* cjsonx_parse_with_buffer(const char* json, size_t length, void* bu
     }
     
     cjsonx_stage2_build(doc, json, &tape);
+    // note: error is stored in doc->error if build fails. return doc regardless
+    // so caller can inspect doc->is_valid and doc->error.
     return doc;
 }
 
