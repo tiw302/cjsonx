@@ -16,14 +16,13 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
+#include <stdlib.h>
+#include <string.h>
 #include "cjsonx_error.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-#include <stdlib.h>
-#include <string.h>
 
 typedef struct {
     void* (*malloc_fn)(size_t size, void* user_data);
