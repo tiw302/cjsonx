@@ -204,12 +204,11 @@ static inline const char* cjsonx_error_string(cjsonx_error_t err) {
 // >>dom document object model
 
 
+#include <stdlib.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-#include <stdlib.h>
 
 typedef struct {
     void* (*malloc_fn)(size_t size, void* user_data);
@@ -718,7 +717,8 @@ static inline bool cjsonx_object_set_len(cjsonx_val_t obj_handle, const char* ke
     size_t len = cjsonx_node_length(obj);
     if (CJSONX_UNLIKELY(len >= 0xFFFFFF)) return false;
 
-    // allocate key node
+    // allocate key node — this may realloc doc->nodes (invalidates all node pointers).
+    // obj and key_node are re-fetched below after the call.
     uint32_t key_idx = cjsonx_builder_alloc_node(obj_handle.doc);
     if (key_idx == UINT32_MAX) return false;
     
@@ -730,7 +730,7 @@ static inline bool cjsonx_object_set_len(cjsonx_val_t obj_handle, const char* ke
     s[key_len] = '\0';
     key_node->val.str = s;
     
-    // re-fetch obj, key_node because arena alloc or realloc might have moved the nodes array!
+    // re-fetch obj and key_node: alloc_node above may have reallocated doc->nodes
     obj = &obj_handle.doc->nodes[obj_handle.node_idx];
     key_node = &obj_handle.doc->nodes[key_idx];
     
@@ -1205,6 +1205,7 @@ static const char cjsonx_digit_table[] =
  * compared to standard digit-by-digit loops, substantially improving
  * stringification performance for integer values.
  */
+// max int64_t is 19 digits + optional '-' sign = 20 chars. buf is 24 — safe.
 static inline int cjsonx_write_i64(char* buf, int64_t val) {
     if (val == 0) {
         buf[0] = '0';
@@ -1220,6 +1221,7 @@ static inline int cjsonx_write_i64(char* buf, int64_t val) {
         uval = (uint64_t)val;
     }
     char temp[24];
+    // _Static_assert would require c11. temp is 24; max usage is 20 chars (19 digits + sign).
     int t_idx = 24;
     while (uval >= 100) {
         uint32_t val2 = (uint32_t)(uval % 100);
@@ -1267,14 +1269,14 @@ typedef struct {
 
 static cjsonx_always_inline void cjsonx_strbuf_append(cjsonx_strbuf_t* __restrict sb, const char* __restrict str, size_t len) {
     if (CJSONX_UNLIKELY(sb->oom)) return;
-    if (CJSONX_UNLIKELY(sb->len + len < sb->len)) { // overflow check
+    // unsigned wraparound: if sum < either operand, an overflow occurred
+    if (CJSONX_UNLIKELY(sb->len + len < sb->len)) {
         sb->oom = true;
         return;
     }
     if (CJSONX_UNLIKELY(sb->len + len >= sb->cap)) {
         size_t new_cap = sb->cap == 0 ? 2048 : sb->cap * 2;
         if (new_cap <= sb->len + len) new_cap = sb->len + len + 1024;
-        if (CJSONX_UNLIKELY(new_cap < sb->len + len)) new_cap = sb->len + len; // clamp on overflow
         char* new_buf = (char*)cjsonx_realloc(sb->alloc, sb->buf, sb->cap, new_cap);
         if (CJSONX_UNLIKELY(!new_buf)) {
             sb->oom = true;
@@ -1428,8 +1430,20 @@ static void cjsonx_stringify_string(cjsonx_strbuf_t* sb, const char* str, size_t
 
 static inline void cjsonx_strbuf_indent(cjsonx_strbuf_t* sb, int indent, int level) {
     if (indent > 0) {
+        // bulk-append spaces: write up to 64 bytes at a time instead of one char per call
+        static const char spaces[64] = {
+            ' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',
+            ' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',
+            ' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',
+            ' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' '
+        };
         cjsonx_strbuf_append_c(sb, '\n');
-        for (int i = 0; i < level * indent; i++) cjsonx_strbuf_append_c(sb, ' ');
+        int n = level * indent;
+        while (n > 0) {
+            int chunk = n < 64 ? n : 64;
+            cjsonx_strbuf_append(sb, spaces, (size_t)chunk);
+            n -= chunk;
+        }
     }
 }
 
@@ -1717,7 +1731,7 @@ cjsonx_val_t cjsonx_clone_val(cjsonx_doc_t* dest_doc, cjsonx_val_t src_val) {
         }
         case CJSONX_ARRAY: {
             cjsonx_val_t arr = cjsonx_create_array(dest_doc);
-            if (arr.node_idx == UINT32_MAX) return cjsonx_make_null_handle();
+            if (!arr.doc) return cjsonx_make_null_handle();
             cjsonx_iter_t it = cjsonx_iter_init(src_val);
             while (cjsonx_iter_next(&it)) {
                 cjsonx_val_t child = cjsonx_clone_val(dest_doc, it.value);
@@ -1727,7 +1741,7 @@ cjsonx_val_t cjsonx_clone_val(cjsonx_doc_t* dest_doc, cjsonx_val_t src_val) {
         }
         case CJSONX_OBJECT: {
             cjsonx_val_t obj = cjsonx_create_object(dest_doc);
-            if (obj.node_idx == UINT32_MAX) return cjsonx_make_null_handle();
+            if (!obj.doc) return cjsonx_make_null_handle();
             cjsonx_iter_t it = cjsonx_iter_init(src_val);
             while (cjsonx_iter_next(&it)) {
                 cjsonx_val_t child = cjsonx_clone_val(dest_doc, it.value);
@@ -1791,6 +1805,14 @@ cjsonx_val_t cjsonx_merge_patch(cjsonx_val_t target, cjsonx_val_t patch) {
         return patch;
     }
 }
+#endif // cjsonx_implementation
+
+// clean up internal-only macros to avoid polluting downstream translation units
+#ifdef CJSONX_ABS
+#undef CJSONX_ABS
+#endif
+#ifdef CJSONX_MIN
+#undef CJSONX_MIN
 #endif
 
 #ifdef __cplusplus
@@ -1836,8 +1858,7 @@ cjsonx_val_t cjsonx_merge_patch(cjsonx_val_t target, cjsonx_val_t patch) {
 // >>avx2 backend
 
 
-#include <immintrin.h>
-#include <wmmintrin.h> // for pclmulqdq
+#include <immintrin.h>  // covers pclmulqdq / wmmintrin transitively
 
 // msvc compatibility for gcc/clang builtins
 #if defined(_MSC_VER) && !defined(__clang__)
@@ -1872,9 +1893,11 @@ static inline bool cjsonx_stage1_avx2(const char* json, size_t length, cjsonx_ta
             }
 
             /*
-             * check for control characters inside strings
-             * (a full simd validation for ctrl chars requires more instructions, we can add it later)
-             * for now, we rely on the parser stage 2 to catch them if needed, or we just trust the structural pass.
+             * control chars (< 0x20) inside strings are intentionally NOT checked here.
+             * they are handled by cjsonx_parse_string_impl in stage 2, which scans string
+             * content byte-by-byte (or with simd) and rejects any raw control character.
+             * this is a deliberate tradeoff: adding a control char check in stage 1 simd
+             * would add extra instructions on the hot path for a case that stage 2 already handles.
              */
 
             uint32_t quote_bits = (uint32_t)_mm256_movemask_epi8(_mm256_cmpeq_epi8(v, _mm256_set1_epi8('"')));
@@ -2068,7 +2091,12 @@ static inline bool cjsonx_stage1_neon(const char* json, size_t length, cjsonx_ta
                 uint32_t b_mask = neon_movemask_u8(b1) | (neon_movemask_u8(b2) << 16);
 
                 if (q_mask == 0 && b_mask == 0) {
-                    // safe bulk string processing (no quotes, no backslashes)
+                    /*
+                     * safe bulk string processing: no quotes or backslashes in this 32-byte block.
+                     * note: control chars (< 0x20) inside strings are NOT checked here —
+                     * the check is intentionally delegated to cjsonx_parse_string_impl in stage 2,
+                     * which scans the string content explicitly. this matches the avx2 backend behavior.
+                     */
                     i += 32;
                     continue;
                 } else {
@@ -2500,6 +2528,7 @@ bool cjsonx_stage1_build_tape(const char* json, size_t length, cjsonx_tape_t* ta
 
 
 #include <locale.h>
+#include <errno.h>
 
 // updated 2026-06-13
 // spdx-license-identifier: mit
@@ -5159,8 +5188,10 @@ cjsonx_val_t cjsonx_pointer_get(cjsonx_val_t root, const char* path) {
             if (!is_valid_index) {
                 curr = cjsonx_make_null_handle();
             } else {
+                // check errno so strtoul overflow (returns ulong_max) is handled correctly
+                errno = 0;
                 unsigned long index = strtoul(token, NULL, 10);
-                if (index > 0xFFFFFF) {
+                if (errno == ERANGE || index > 0xFFFFFF) {
                     curr = cjsonx_make_null_handle();
                 } else {
                     curr = cjsonx_get_index(curr, (size_t)index);
@@ -5392,7 +5423,13 @@ cjsonx_doc_t* cjsonx_parse_with_buffer(const char* json, size_t length, void* bu
     // explicit size_t mask: ~7 is signed int which sign-extends on 64-bit
     offset = (offset + 7u) & ~(size_t)7;
     
-    size_t alloc_count = tape.count / 2 + 1;
+    // use tape.count+1 as the node capacity upper bound.
+    // tape.count/2+1 is the typical estimate, but cjsonx_next_token checks
+    // node_idx >= capacity for EVERY tape entry (including commas and closers),
+    // so a tight estimate causes spurious cjsonx_grow_nodes calls which fail
+    // for static docs (is_static prevents realloc). tape.count+1 guarantees
+    // node_idx never reaches capacity before the parse finishes.
+    size_t alloc_count = tape.count + 1;
     size_t nodes_size = alloc_count * sizeof(cjsonx_node_t);
     if (offset + nodes_size > buffer_size) {
         doc->is_valid = false;
@@ -5414,6 +5451,8 @@ cjsonx_doc_t* cjsonx_parse_with_buffer(const char* json, size_t length, void* bu
     }
     
     cjsonx_stage2_build(doc, json, &tape);
+    // note: error is stored in doc->error if build fails. return doc regardless
+    // so caller can inspect doc->is_valid and doc->error.
     return doc;
 }
 
