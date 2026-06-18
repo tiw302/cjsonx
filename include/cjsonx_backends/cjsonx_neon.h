@@ -67,7 +67,12 @@ static inline bool cjsonx_stage1_neon(const char* json, size_t length, cjsonx_ta
                 uint32_t b_mask = neon_movemask_u8(b1) | (neon_movemask_u8(b2) << 16);
 
                 if (q_mask == 0 && b_mask == 0) {
-                    // safe bulk string processing (no quotes, no backslashes)
+                    /*
+                     * safe bulk string processing: no quotes or backslashes in this 32-byte block.
+                     * note: control chars (< 0x20) inside strings are NOT checked here —
+                     * the check is intentionally delegated to cjsonx_parse_string_impl in stage 2,
+                     * which scans the string content explicitly. this matches the avx2 backend behavior.
+                     */
                     i += 32;
                     continue;
                 } else {
