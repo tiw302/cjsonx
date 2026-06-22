@@ -13,12 +13,31 @@ jobs:
       - uses: actions/checkout@v4
         with:
           submodules: true
+      - name: Download benchmark dependencies
+        run: |
+          ./benchmarks/download_third_party.sh
+          ./benchmarks/download_datasets.sh
       - name: Configure CMake
         run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
       - name: Build
         run: cmake --build build --config Release
       - name: Run tests
         run: ctest --test-dir build -C Release --output-on-failure -V
+      - name: Run Benchmarks
+        working-directory: ./build
+        run: |
+          echo "## 📊 Performance Benchmarks (cjsonx vs yyjson vs cJSON)" >> $GITHUB_STEP_SUMMARY
+          echo '```text' >> $GITHUB_STEP_SUMMARY
+          echo "=== twitter.json ===" >> $GITHUB_STEP_SUMMARY
+          ./bench_compare ../benchmarks/datasets/twitter.json >> $GITHUB_STEP_SUMMARY || echo "bench failed" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "=== canada.json ===" >> $GITHUB_STEP_SUMMARY
+          ./bench_compare ../benchmarks/datasets/canada.json >> $GITHUB_STEP_SUMMARY || echo "bench failed" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "=== citm_catalog.json ===" >> $GITHUB_STEP_SUMMARY
+          ./bench_compare ../benchmarks/datasets/citm_catalog.json >> $GITHUB_STEP_SUMMARY || echo "bench failed" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+
 
   riscv64:
     runs-on: ubuntu-latest
@@ -30,10 +49,17 @@ jobs:
         run: |
           sudo apt-get update -q
           sudo apt-get install -y gcc-riscv64-linux-gnu qemu-user
-      - name: Compile and run (RISC-V64 Scalar via QEMU)
+      - name: Build and run tests (RISC-V64 Scalar via QEMU)
         run: |
-          # Since we are cross-compiling, it's easier to use raw gcc than CMake here
-          # to avoid setting up a full CMake toolchain file for RISC-V.
-          riscv64-linux-gnu-gcc tests/test_suite.c src/cjsonx.c -Iinclude -I. -Isrc -O3 -lm -static -o test_riscv64
-          echo "{}" > test_dummy.json
-          qemu-riscv64 ./test_riscv64 test_dummy.json
+          RV_CC="riscv64-linux-gnu-gcc"
+          RV_FLAGS="-Iinclude -I. -Isrc -O2 -lm -static"
+
+          $RV_CC tests/test_stage2.c    src/cjsonx.c $RV_FLAGS -o test_riscv_stage2
+          $RV_CC tests/test_builder.c   src/cjsonx.c $RV_FLAGS -o test_riscv_builder
+          $RV_CC tests/test_precision.c src/cjsonx.c $RV_FLAGS -o test_riscv_precision
+          $RV_CC tests/test_static_buffer.c src/cjsonx.c $RV_FLAGS -o test_riscv_static_buffer
+
+          qemu-riscv64 ./test_riscv_stage2
+          qemu-riscv64 ./test_riscv_builder
+          qemu-riscv64 ./test_riscv_precision
+          qemu-riscv64 ./test_riscv_static_buffer
