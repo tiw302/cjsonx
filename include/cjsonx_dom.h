@@ -29,6 +29,9 @@ typedef struct {
     void* (*realloc_fn)(void* ptr, size_t size, void* user_data);
     void  (*free_fn)(void* ptr, void* user_data);
     void* user_data;
+    
+    // dev note: you could also provide an aligned_alloc function pointer if strict simds
+    // needed manually aligned blocks in the future, though the arena handles it well for now.
 } cjsonx_allocator_t;
 
 // reallocate memory safely supporting custom/standard fallback
@@ -75,11 +78,16 @@ typedef struct {
         double f64;            // number val
         const char* str;       // zero-copy string ptr
         bool b;                // bool val
-        uint32_t first_child;  // first child index for object/array
+        struct {
+            uint32_t first_child;  // first child index for object/array
+            uint32_t last_child;   // last child index (o(1) append)
+        };
     } val;
 } cjsonx_node_t;
 
 #if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L
+// dev note: keeping this struct strictly at 16 bytes is crucial. 
+// if you ever add new fields, test the size with _Static_assert to ensure it doesn't inflate.
 _Static_assert(sizeof(cjsonx_node_t) == 16, "cjsonx_node_t must be 16 bytes for cache alignment");
 #endif
 
