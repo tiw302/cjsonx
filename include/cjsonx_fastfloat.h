@@ -135,6 +135,8 @@ static cjsonx_always_inline bool cjsonx_compute_float(uint64_t mantissa, int exp
     int final_exp = table_e - lz + 116 + shift;
     
     // subnormal numbers or extremely small numbers go to fallback
+    // dev note: delegating subnormals to the slow path is standard practice in fastfloat
+    // to maintain exact accuracy in edge cases.
     if (final_exp <= -1023) {
         return false;
     }
@@ -162,6 +164,9 @@ static cjsonx_always_inline bool cjsonx_compute_float(uint64_t mantissa, int exp
  *    exponent for each digit to shift the decimal point.
  * 4. exponent suffix (e/E): parses the scientific notation suffix and adjusts
  *    the exponent value accordingly.
+ * 
+ * dev note: falling back to the standard slow path (returning false) when digits >= 19
+ * is exactly the right move to prevent uint64 overflow and precision loss.
  */
 static cjsonx_always_inline bool cjsonx_parse_fast_float(const char* __restrict s, const char* __restrict limit, const char** __restrict out_end, double* __restrict out_val) {
     const char* p = s;
