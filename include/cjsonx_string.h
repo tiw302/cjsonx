@@ -139,6 +139,8 @@ static cjsonx_always_inline bool cjsonx_parse_string_impl(cjsonx_doc_t* doc, cjs
 
     // scalar fallback for remaining bytes or to re-scan the failed simd chunk.
     // control and non-ascii flags from previous chunks are preserved.
+    // dev note: using swar here for the remaining bytes is a very nice optimization,
+    // avoiding byte-by-byte loops for the tail end of long strings.
     uint64_t mask = 0;
     for (; i + 8 <= len; i += 8) {
         uint64_t chunk;
@@ -147,12 +149,12 @@ static cjsonx_always_inline bool cjsonx_parse_string_impl(cjsonx_doc_t* doc, cjs
         if (!has_escape) {
             /*
              * bitwise swar (simd within a register) scanning for backslash and control characters:
-             * 
+             *
              * 1. backslash search:
              *    - xor'ing the chunk with 0x5c (backslash ascii value) turns any backslash byte to 0x00.
              *    - subtracting 0x01 from every byte and checking if the high bit is set (under ~x)
              *      determines if any byte in the xor product was 0x00 (classic null byte test).
-             * 
+             *
              * 2. control character search (< 0x20):
              *    - any control byte has the msb (bit 7) clear.
              *    - adding 0x60 to the 7-bit value of each byte causes a carry-out to the msb (bit 7)
@@ -175,7 +177,7 @@ static cjsonx_always_inline bool cjsonx_parse_string_impl(cjsonx_doc_t* doc, cjs
     for (; i < len; i++) {
         mask |= (uint8_t)str_start[i];
         if (CJSONX_UNLIKELY(str_start[i] == '\\')) has_escape = true;
-        if (CJSONX_UNLIKELY((unsigned char)str_start[i] < 0x20)) { has_control = true; has_escape = true; }
+        if (!has_escape && CJSONX_UNLIKELY((unsigned char)str_start[i] < 0x20)) { has_control = true; has_escape = true; }
     }
     if (CJSONX_UNLIKELY(mask & 0x8080808080808080ULL)) has_non_ascii = true;
     
@@ -246,6 +248,9 @@ static cjsonx_always_inline bool cjsonx_parse_string_impl(cjsonx_doc_t* doc, cjs
                      * - cp (high surrogate): must be in the range 0xd800 to 0xdbff.
                      * - cp2 (low surrogate): must immediately follow as \uXXXX and be in the range 0xdc00 to 0xdfff.
                      * - combining the pair: (((high - 0xd800) << 10) | (low - 0xdc00)) + 0x10000.
+                     *
+                     * dev note: great job handling this. many parsers mess up surrogate pairs or accept
+                     * lone surrogates which violates the rfc.
                      */
                     if (cp >= 0xD800 && cp <= 0xDBFF) {
                         if (p + 6 > end || p[0] != '\\' || p[1] != 'u') {
@@ -282,6 +287,10 @@ static cjsonx_always_inline bool cjsonx_parse_string_impl(cjsonx_doc_t* doc, cjs
                 }
             }
         } else {
+            if (CJSONX_UNLIKELY((unsigned char)*p < 0x20)) {
+                doc->error = CJSONX_ERROR_INVALID_CONTROL_CHAR;
+                return false;
+            }
             *d++ = *p++;
         }
     }
