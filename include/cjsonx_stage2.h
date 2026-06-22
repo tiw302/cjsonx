@@ -193,11 +193,7 @@ static bool cjsonx_stage2_build(cjsonx_doc_t* doc, const char* json, cjsonx_tape
     #pragma GCC diagnostic pop
 #endif
     
-    #define CJSONX_NEXT_TOKEN() do { \
-        if (CJSONX_UNLIKELY(tape_idx >= tape->count)) goto end_loop; \
-        err_tape_idx = tape_idx; \
-        pos = tape->indices[tape_idx]; \
-        c = json[pos]; \
+    #define CJSONX_ENSURE_CAPACITY() do { \
         if (CJSONX_UNLIKELY(node_idx >= doc->node_capacity)) { \
             if (CJSONX_UNLIKELY(!cjsonx_grow_nodes(doc, node_idx + 1))) { \
                 doc->error = CJSONX_ERROR_OOM; \
@@ -205,6 +201,13 @@ static bool cjsonx_stage2_build(cjsonx_doc_t* doc, const char* json, cjsonx_tape
             } \
         } \
         node = &doc->nodes[node_idx]; \
+    } while (0)
+
+    #define CJSONX_NEXT_TOKEN() do { \
+        if (CJSONX_UNLIKELY(tape_idx >= tape->count)) goto end_loop; \
+        err_tape_idx = tape_idx; \
+        pos = tape->indices[tape_idx]; \
+        c = json[pos]; \
         goto *dispatch_table[(uint8_t)c]; \
     } while (0)
     
@@ -223,16 +226,10 @@ static bool cjsonx_stage2_build(cjsonx_doc_t* doc, const char* json, cjsonx_tape
         err_tape_idx = tape_idx;
         pos = tape->indices[tape_idx];
         c = json[pos];
-        if (CJSONX_UNLIKELY(node_idx >= doc->node_capacity)) {
-            if (CJSONX_UNLIKELY(!cjsonx_grow_nodes(doc, node_idx + 1))) {
-                doc->error = CJSONX_ERROR_OOM;
-                goto fail;
-            }
-        }
-        node = &doc->nodes[node_idx];
         switch (c) {
 #endif
             CJSONX_CASE(string, '"') {
+                CJSONX_ENSURE_CAPACITY();
                 if (CJSONX_UNLIKELY(!(allowed_mask & (CJSONX_S_KEY | CJSONX_S_VAL)))) {
                     CJSONX_PARSE_FAIL_EXPECTED(allowed_mask);
                 }
@@ -249,6 +246,7 @@ static bool cjsonx_stage2_build(cjsonx_doc_t* doc, const char* json, cjsonx_tape
                 CJSONX_NEXT_TOKEN();
             }
             CJSONX_CASE_MULTI(obj_arr_start, '{', '[') {
+                CJSONX_ENSURE_CAPACITY();
                 if (CJSONX_UNLIKELY(!(allowed_mask & CJSONX_S_VAL))) {
                     CJSONX_PARSE_FAIL_EXPECTED(allowed_mask);
                 }
@@ -321,6 +319,7 @@ static bool cjsonx_stage2_build(cjsonx_doc_t* doc, const char* json, cjsonx_tape
                 CJSONX_NEXT_TOKEN();
             }
             CJSONX_CASE(true, 't') {
+                CJSONX_ENSURE_CAPACITY();
                 if (CJSONX_UNLIKELY(!(allowed_mask & CJSONX_S_VAL))) {
                     CJSONX_PARSE_FAIL_EXPECTED(allowed_mask);
                 }
@@ -339,6 +338,7 @@ static bool cjsonx_stage2_build(cjsonx_doc_t* doc, const char* json, cjsonx_tape
                 CJSONX_NEXT_TOKEN();
             }
             CJSONX_CASE(false, 'f') {
+                CJSONX_ENSURE_CAPACITY();
                 if (CJSONX_UNLIKELY(!(allowed_mask & CJSONX_S_VAL))) {
                     CJSONX_PARSE_FAIL_EXPECTED(allowed_mask);
                 }
@@ -357,6 +357,7 @@ static bool cjsonx_stage2_build(cjsonx_doc_t* doc, const char* json, cjsonx_tape
                 CJSONX_NEXT_TOKEN();
             }
             CJSONX_CASE(null, 'n') {
+                CJSONX_ENSURE_CAPACITY();
                 if (CJSONX_UNLIKELY(!(allowed_mask & CJSONX_S_VAL))) {
                     CJSONX_PARSE_FAIL_EXPECTED(allowed_mask);
                 }
@@ -374,6 +375,7 @@ static bool cjsonx_stage2_build(cjsonx_doc_t* doc, const char* json, cjsonx_tape
                 CJSONX_NEXT_TOKEN();
             }
             CJSONX_CASE_DEFAULT() { // number
+                CJSONX_ENSURE_CAPACITY();
                 if (CJSONX_UNLIKELY(!(allowed_mask & CJSONX_S_VAL))) {
                     CJSONX_PARSE_FAIL_EXPECTED(allowed_mask);
                 }
@@ -476,14 +478,6 @@ end_loop:
     }
     
     doc->node_count = node_idx;
-    // shrink nodes array to actual parsed node count if dynamically allocated
-    if (doc->node_capacity > node_idx && !doc->is_static && node_idx > 0) {
-        cjsonx_node_t* new_nodes = (cjsonx_node_t*)cjsonx_realloc(&doc->alloc, doc->nodes, doc->node_capacity * sizeof(cjsonx_node_t), node_idx * sizeof(cjsonx_node_t));
-        if (new_nodes) {
-            doc->nodes = new_nodes;
-            doc->node_capacity = node_idx;
-        }
-    }
     doc->is_valid = true;
     doc->root.doc = doc;
     doc->root.node_idx = 0;
