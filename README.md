@@ -10,6 +10,8 @@
 [![macOS](https://github.com/tiw302/cjsonx/actions/workflows/macos.yml/badge.svg)](https://github.com/tiw302/cjsonx/actions)
 [![Windows](https://github.com/tiw302/cjsonx/actions/workflows/windows.yml/badge.svg)](https://github.com/tiw302/cjsonx/actions)
 [![WASM](https://github.com/tiw302/cjsonx/actions/workflows/wasm.yml/badge.svg)](https://github.com/tiw302/cjsonx/actions)
+[![Sanitizers](https://github.com/tiw302/cjsonx/actions/workflows/sanitizers.yml/badge.svg)](https://github.com/tiw302/cjsonx/actions)
+[![Fuzzing](https://github.com/tiw302/cjsonx/actions/workflows/cflite_pr.yml/badge.svg)](https://github.com/tiw302/cjsonx/actions)
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 [![Language](https://img.shields.io/badge/Language-C11-00599C.svg)](https://en.wikipedia.org/wiki/C11_(C_standard_revision))
@@ -43,12 +45,15 @@
 - [Build and Installation](#build-and-installation)
   - [Single-Header Distribution](#single-header-distribution-recommended)
   - [CMake (System Install)](#cmake-system-install)
+  - [Developer Build Flags](#developer-build-flags)
+- [Configuration Macros](#configuration-macros)
 - [API Reference](#api-reference)
   - [Core Parsing](#core-parsing)
   - [DOM Access](#dom-access)
   - [Iteration](#iteration)
   - [Mutation & Builder API](#mutation--builder-api)
   - [File I/O Utilities](#file-io-utilities)
+  - [Type Aliases](#type-aliases)
 - [Documentation](#documentation)
 - [Examples](#examples)
   - [Quick Start: Basic Parsing & Iteration](#quick-start-basic-parsing--iteration)
@@ -122,8 +127,9 @@ Professional-grade software requires transparent technical boundaries. Here is e
 - **RFC 8259 Compliance:** `cjsonx` strictly adheres to RFC 8259 and ECMA-404. It correctly rejects structural anomalies, unescaped control characters, and deeply nested bombs.
 - **Thread Safety:** The core parsing engine is entirely stateless. Multiple threads can safely parse different JSON documents concurrently without any mutexes or locks.
 - **Length Limit:** The maximum byte length of any single string or serialized container is 16MB (specifically, 16,777,215 bytes, due to the 24-bit length field packed in the 16-byte DOM node structure).
-- **Nesting Depth Limit:** The stringification routines enforce a maximum nesting depth limit of 512 (`CJSONX_MAX_DEPTH`) to prevent stack overflow when printing extremely nested JSON.
+- **Nesting Depth Limit:** The maximum nesting depth is 1000 (`CJSONX_MAX_DEPTH`) to prevent stack overflow on deeply nested documents. This value is compile-time configurable.
 - **Builder Performance:** Pushing elements to an array via `cjsonx_array_push` is an O(N) operation because it traverses the list of siblings to locate the end of the array. Repeated sequential pushes to build large arrays will result in O(N^2) complexity.
+- **Static Buffer Read-Only:** Documents parsed with `cjsonx_parse_with_buffer()` are marked `is_static = true`. The entire DOM is read-only — calling any Builder API function (e.g., `cjsonx_object_set`, `cjsonx_array_push`) on a static document will return failure, as the internal node array cannot grow. `cjsonx_doc_free()` on a static document is a safe no-op.
 
 ---
 
@@ -183,6 +189,44 @@ find_package(cjsonx REQUIRED)
 target_link_libraries(my_app PRIVATE cjsonx::cjsonx)
 ```
 
+### Developer Build Flags
+
+The CMake build exposes optional flags for contributors and CI pipelines:
+
+```bash
+# Enable AddressSanitizer + UndefinedBehaviorSanitizer
+cmake -B build_san -DCJSONX_ENABLE_SANITIZERS=ON
+cmake --build build_san
+ctest --test-dir build_san
+
+# Enable gcov code coverage instrumentation
+cmake -B build_cov -DCJSONX_ENABLE_COVERAGE=ON
+cmake --build build_cov
+ctest --test-dir build_cov
+```
+
+---
+
+## Configuration Macros
+
+All constants can be overridden at compile time by defining them **before** including the header (or passing them as `-D` flags to your compiler). The defaults are suitable for most workloads.
+
+| Macro | Default | Description |
+|---|---|---|
+| `CJSONX_MAX_DEPTH` | `1000` | Maximum JSON nesting depth. Documents exceeding this during parsing are rejected to prevent stack overflow. |
+| `CJSONX_ARENA_CHUNK_SIZE` | `4096` | Byte size of each chunk allocated by the string arena. Increase for documents with many long escaped strings. |
+| `CJSONX_INITIAL_TAPE_CAP` | `1024` | Initial capacity (in entries) of the Stage 1 structural token tape. |
+| `CJSONX_INITIAL_CONTAINER_CAP` | `16` | Initial capacity (in nodes) of the flat DOM node array. |
+
+**Example — embedded target with a tiny nesting limit:**
+
+```c
+#define CJSONX_MAX_DEPTH 32
+#define CJSONX_ARENA_CHUNK_SIZE 512
+#define CJSONX_IMPLEMENTATION
+#include "cjsonx.h"
+```
+
 ---
 
 ## API Reference
@@ -193,7 +237,7 @@ target_link_libraries(my_app PRIVATE cjsonx::cjsonx)
 |---|---|---|
 | `cjsonx_parse` | `cjsonx_doc_t* cjsonx_parse(const char* json, size_t length)` | Parses a JSON string into a managed document tree. Returns `NULL` on fatal memory error. Check `doc->is_valid` for syntax status. |
 | `cjsonx_parse_ex` | `cjsonx_doc_t* cjsonx_parse_ex(const char* json, size_t length, cjsonx_allocator_t* alloc)` | Parses a JSON string using custom memory allocation hooks. |
-| `cjsonx_parse_with_buffer` | `cjsonx_doc_t* cjsonx_parse_with_buffer(const char* json, size_t length, void* buffer, size_t buffer_size)` | Zero-allocation mode parsing JSON directly into a user-provided buffer. |
+| `cjsonx_parse_with_buffer` | `cjsonx_doc_t* cjsonx_parse_with_buffer(const char* json, size_t length, void* buffer, size_t buffer_size)` | Zero-allocation mode. Parses JSON into a user-provided buffer. Result is read-only (`is_static = true`); Builder API calls will fail on this document. |
 | `cjsonx_doc_free` | `void cjsonx_doc_free(cjsonx_doc_t* doc)` | Frees the entire document arena in a single call. |
 | `cjsonx_error_string` | `const char* cjsonx_error_string(cjsonx_error_t err)` | Translates an error code into a human-readable string. |
 
@@ -201,13 +245,14 @@ target_link_libraries(my_app PRIVATE cjsonx::cjsonx)
 
 | Function | Signature | Description |
 |---|---|---|
-| `cjsonx_get` | `cjsonx_val_t cjsonx_get(cjsonx_val_t obj, const char* key)` | Retrieves a child node from an Object by its exact string key. |
-| `cjsonx_get_index` | `cjsonx_val_t cjsonx_get_index(cjsonx_val_t arr, size_t index)` | Retrieves a child node from an Array by its index. |
+| `cjsonx_get` | `cjsonx_val_t cjsonx_get(cjsonx_val_t obj, const char* key)` | Retrieves a child node from an Object by its exact null-terminated string key. O(N) linear scan. |
+| `cjsonx_get_len` | `cjsonx_val_t cjsonx_get_len(cjsonx_val_t obj, const char* key, size_t key_len)` | Same as `cjsonx_get` but accepts a key with explicit length. Useful for keys that are **not** null-terminated. |
+| `cjsonx_get_index` | `cjsonx_val_t cjsonx_get_index(cjsonx_val_t arr, size_t index)` | Retrieves a child node from an Array by its index. O(N) sibling walk. |
 | `cjsonx_get_type` | `cjsonx_type_t cjsonx_get_type(cjsonx_val_t val)` | Returns the type of the node (`CJSONX_STRING`, `CJSONX_NUMBER`, etc.). |
 | `cjsonx_num` | `double cjsonx_num(cjsonx_val_t val)` | Retrieves the numerical value as a float. |
 | `cjsonx_int` | `int64_t cjsonx_int(cjsonx_val_t val)` | Retrieves the numerical value as a 64-bit integer. |
-| `cjsonx_str` | `const char* cjsonx_str(cjsonx_val_t val)` | Retrieves the string pointer. Note: strings may not be null-terminated if they are zero-copy references. |
-| `cjsonx_str_len` | `size_t cjsonx_str_len(cjsonx_val_t val)` | Returns the exact length of the string. |
+| `cjsonx_str` | `const char* cjsonx_str(cjsonx_val_t val)` | Retrieves the string pointer. Note: zero-copy strings are **not** null-terminated — always use `cjsonx_str_len()` to bound the read. |
+| `cjsonx_str_len` | `size_t cjsonx_str_len(cjsonx_val_t val)` | Returns the exact byte length of the string. |
 | `cjsonx_size` | `size_t cjsonx_size(cjsonx_val_t val)` | Returns the element count of an Array or Object. |
 | `cjsonx_bool` | `bool cjsonx_bool(cjsonx_val_t val)` | Retrieves the boolean value. |
 | `cjsonx_is_null` | `bool cjsonx_is_null(cjsonx_val_t val)` | Returns `true` if the node is explicitly a JSON `null` or is empty/invalid. |
@@ -247,6 +292,18 @@ target_link_libraries(my_app PRIVATE cjsonx::cjsonx)
 | `cjsonx_read_file_ex` | `cjsonx_doc_t* cjsonx_read_file_ex(const char* path, cjsonx_allocator_t* alloc)` | Reads and parses a JSON file using a custom allocator. |
 | `cjsonx_write_file` | `bool cjsonx_write_file(const char* path, cjsonx_doc_t* doc)` | Serializes a document to a file (minified). |
 | `cjsonx_write_file_format` | `bool cjsonx_write_file_format(const char* path, cjsonx_doc_t* doc, int indent)` | Serializes a document to a file (pretty printed). |
+
+### Type Aliases
+
+All core types have `_t`-suffix canonical names and shorter aliases for convenience. Both forms compile identically and can be used interchangeably:
+
+| Canonical (`_t`) | Short Alias | Description |
+|---|---|---|
+| `cjsonx_doc_t` | `cjsonx_doc` | Parsed document handle |
+| `cjsonx_val_t` | `cjsonx_val` | Value / node handle |
+| `cjsonx_iter_t` | `cjsonx_iter` | Iterator state |
+| `cjsonx_type_t` | `cjsonx_type` | Node type enum |
+| `cjsonx_allocator_t` | `cjsonx_alc` | Custom allocator struct |
 
 ---
 
@@ -342,56 +399,56 @@ Benchmarks were executed on a modern x86_64 CPU (GCC -O3 -march=native). We trac
 
 | Library | Parse (MB/s) | Stringify (MB/s) | Peak Mem (MB) |
 |---------|--------------|------------------|---------------|
-| **cjsonx** | 665.37 | 1752.71 | **0.92** |
-| yyjson | **813.62** | **3971.40** | 1.20 |
-| cJSON | 334.94 | 494.68 | 1.23 |
+| **cjsonx** | 640.90 | 1904.15 | **0.92** |
+| yyjson | **1029.70** | **4584.73** | 1.20 |
+| cJSON | 398.40 | 611.14 | 1.23 |
 
 ### 2. `citm_catalog.json` (1.65 MB)
 
 | Library | Parse (MB/s) | Stringify (MB/s) | Peak Mem (MB) |
 |---------|--------------|------------------|---------------|
-| **cjsonx** | **1178.33** | 2715.24 | **2.07** |
-| yyjson | 1045.79 | **8428.06** | 3.29 |
-| cJSON | 363.15 | 1014.22 | 2.57 |
+| **cjsonx** | **1172.45** | 1675.20 | **2.07** |
+| yyjson | 718.04 | **6608.75** | 3.29 |
+| cJSON | 284.36 | 799.69 | 2.57 |
 
 ### 3. `canada.json` (2.15 MB) - Heavy Floating-Point Arrays
 
 | Library | Parse (MB/s) | Stringify (MB/s) | Peak Mem (MB) |
 |---------|--------------|------------------|---------------|
-| **cjsonx** | 366.70 | 279.78 | **4.70** |
-| yyjson | **812.55** | **618.04** | 7.87 |
-| cJSON | 71.50 | 26.52 | 10.20 |
+| **cjsonx** | 444.69 | 345.51 | **4.70** |
+| yyjson | **969.17** | **614.07** | 7.87 |
+| cJSON | 68.50 | 26.23 | 10.20 |
 
 <details>
 <summary><b>View raw console output from bench_compare</b></summary>
 
 ```console
 tiw@tiw-CachyOS ~/Public/cjsonx (master)
-❯./build/bench_compare benchmarks/datasets/citm_catalog.json && ./build/bench_compare benchmarks/datasets/twitter.json && ./build/bench_compare benchmarks/datasets/canada.json
+❯ ./build/bench_compare benchmarks/datasets/citm_catalog.json && ./build/bench_compare benchmarks/datasets/twitter.json && ./build/bench_compare benchmarks/datasets/canada.json
 
 Dataset: benchmarks/datasets/citm_catalog.json (1.65 MB)
 ========================================================================
 Library    | Parse (MB/s)    | Stringify (MB/s) | Peak Mem (MB)
 -----------|-----------------|------------------|-----------------------
-cjsonx     | 1178.33         | 2715.24         | 2.07
-yyjson     | 1045.79         | 8428.06         | 3.29
-cJSON      | 363.15          | 1014.22         | 2.57
+cjsonx     | 1172.45         | 1675.20         | 2.07
+yyjson     | 718.04          | 6608.75         | 3.29
+cJSON      | 284.36          | 799.69          | 2.57
 ========================================================================
 Dataset: benchmarks/datasets/twitter.json (0.60 MB)
 ========================================================================
 Library    | Parse (MB/s)    | Stringify (MB/s) | Peak Mem (MB)
 -----------|-----------------|------------------|-----------------------
-cjsonx     | 665.37          | 1752.71         | 0.92
-yyjson     | 813.62          | 3971.40         | 1.20
-cJSON      | 334.94          | 494.68          | 1.23
+cjsonx     | 640.90          | 1904.15         | 0.92
+yyjson     | 1029.70         | 4584.73         | 1.20
+cJSON      | 398.40          | 611.14          | 1.23
 ========================================================================
 Dataset: benchmarks/datasets/canada.json (2.15 MB)
 ========================================================================
 Library    | Parse (MB/s)    | Stringify (MB/s) | Peak Mem (MB)
 -----------|-----------------|------------------|-----------------------
-cjsonx     | 366.70          | 279.78          | 4.70
-yyjson     | 812.55          | 618.04          | 7.87
-cJSON      | 71.50           | 26.52           | 10.20
+cjsonx     | 444.69          | 345.51          | 4.70
+yyjson     | 969.17          | 614.07          | 7.87
+cJSON      | 68.50           | 26.23           | 10.20
 ========================================================================
 
 tiw@tiw-CachyOS ~/Public/cjsonx (master)
@@ -402,7 +459,7 @@ tiw@tiw-CachyOS ~/Public/cjsonx (master)
 
 ### Analysis
 
-`cjsonx` demonstrates significant parsing throughput on large payloads, measuring up to ~898 MB/s on `citm_catalog.json`. This provides a performance profile comparable to, and often exceeding, modern parsers like `yyjson` during tree construction, while dramatically outperforming legacy standards like `cJSON` in computational speed and maintaining the lowest peak memory overhead.
+`cjsonx` demonstrates significant parsing throughput on large payloads, measuring up to **1172.45 MB/s** on `citm_catalog.json`. This provides a performance profile comparable to, and often exceeding, modern parsers like `yyjson` during tree construction, while dramatically outperforming legacy standards like `cJSON` in computational speed and maintaining the lowest peak memory overhead.
 
 ---
 
@@ -414,7 +471,7 @@ To achieve this level of stability and performance within a short timeframe, thi
 
 - Stress-test the Eisel-Lemire numerical engine against extreme floating-point edge cases and LibFuzzer.
 - Assist in planning the memory layout and cache-locality of the 16-byte arena DOM.
-- Automate the generation of robust cross-platform CI/CD pipelines (Linux, macOS, Windows, WASM).
+- Automate the generation of robust cross-platform CI/CD pipelines (Linux, macOS, Windows, WASM, ClusterFuzzLite).
 
 However, **human agency remains at the core of this project**. Every single line of code generated or suggested was manually inspected, audited, and strictly verified. The core architecture, algorithms, and memory design were meticulously human-planned. This hybrid approach—combining human architectural vision with AI-driven debugging and verification—allowed us to push the boundaries of performance and reliability in a modern C library without compromising security or code ownership.
 
