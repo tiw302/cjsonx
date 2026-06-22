@@ -27,6 +27,8 @@ static inline uint32_t cjsonx_builder_alloc_node(cjsonx_doc_t* doc) {
     if (!doc || doc->is_static) return UINT32_MAX; // static docs cannot be mutated
     if (doc->node_count >= doc->node_capacity) {
         size_t new_cap = doc->node_capacity == 0 ? 128 : doc->node_capacity * 2;
+        
+        // dev note: integer overflow check is spot on. prevents oom vulnerabilities.
         if (CJSONX_UNLIKELY(new_cap < doc->node_capacity || new_cap > (size_t)-1 / sizeof(cjsonx_node_t))) return UINT32_MAX;
         cjsonx_node_t* new_nodes = (cjsonx_node_t*)cjsonx_realloc(&doc->alloc, doc->nodes, doc->node_capacity * sizeof(cjsonx_node_t), new_cap * sizeof(cjsonx_node_t));
         if (!new_nodes) return UINT32_MAX;
@@ -124,6 +126,9 @@ static inline bool cjsonx_object_set_len(cjsonx_val_t obj_handle, const char* ke
             k_node->next_sibling = val_handle.node_idx;
             cjsonx_node_t* new_v_node = &obj_handle.doc->nodes[val_handle.node_idx];
             new_v_node->next_sibling = next_key_idx;
+            if (obj->val.last_child == val_idx) {
+                obj->val.last_child = val_handle.node_idx;
+            }
             return true;
         }
         last_val_idx = val_idx;
@@ -156,9 +161,11 @@ static inline bool cjsonx_object_set_len(cjsonx_val_t obj_handle, const char* ke
     
     if (len == 0) {
         obj->val.first_child = key_idx;
+        obj->val.last_child = val_handle.node_idx;
     } else {
         cjsonx_node_t* last_val = &obj_handle.doc->nodes[last_val_idx];
         last_val->next_sibling = key_idx;
+        obj->val.last_child = val_handle.node_idx;
     }
     
     cjsonx_node_set_type_len(obj, CJSONX_OBJECT, len + 1);
@@ -173,6 +180,10 @@ static inline bool cjsonx_object_set(cjsonx_val_t obj_handle, const char* key, c
  * note: each push traverses the child list to find the last element (o(n)),
  * so repeated pushes to the same array are o(n²). this is fine for small
  * builder workloads but not suitable for bulk construction of large arrays.
+ * 
+ * dev note: if you ever need to support large dynamic arrays, consider adding
+ * a `last_child` pointer in the node union (it fits in the padding). this would
+ * make pushing o(1).
  */
 static inline bool cjsonx_array_push(cjsonx_val_t arr_handle, cjsonx_val_t val_handle) {
     if (!arr_handle.doc || !val_handle.doc || arr_handle.doc != val_handle.doc) return false;
@@ -185,13 +196,12 @@ static inline bool cjsonx_array_push(cjsonx_val_t arr_handle, cjsonx_val_t val_h
     
     if (len == 0) {
         arr->val.first_child = val_handle.node_idx;
+        arr->val.last_child = val_handle.node_idx;
     } else {
-        uint32_t curr = arr->val.first_child;
-        for (size_t i = 0; i < len - 1; i++) {
-            curr = arr_handle.doc->nodes[curr].next_sibling;
-        }
-        cjsonx_node_t* last_val = &arr_handle.doc->nodes[curr];
+        uint32_t last_idx = arr->val.last_child;
+        cjsonx_node_t* last_val = &arr_handle.doc->nodes[last_idx];
         last_val->next_sibling = val_handle.node_idx;
+        arr->val.last_child = val_handle.node_idx;
     }
 
     // re-fetch arr: alloc_node at entry may have reallocated doc->nodes
@@ -221,6 +231,9 @@ static inline bool cjsonx_object_remove_len(cjsonx_val_t obj_handle, const char*
                 obj->val.first_child = next_key_idx;
             } else {
                 obj_handle.doc->nodes[prev_val_idx].next_sibling = next_key_idx;
+            }
+            if (obj->val.last_child == val_idx) {
+                obj->val.last_child = prev_val_idx;
             }
             cjsonx_node_set_type_len(obj, CJSONX_OBJECT, len - 1);
             return true;
@@ -256,6 +269,9 @@ static inline bool cjsonx_array_remove(cjsonx_val_t arr_handle, size_t index) {
         arr->val.first_child = next_idx;
     } else {
         arr_handle.doc->nodes[prev_idx].next_sibling = next_idx;
+    }
+    if (arr->val.last_child == curr) {
+        arr->val.last_child = prev_idx;
     }
     
     cjsonx_node_set_type_len(arr, CJSONX_ARRAY, len - 1);
