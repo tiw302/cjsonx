@@ -1,0 +1,31 @@
+name: Sanitizers
+
+on:
+  push:
+    branches: [ master, main ]
+  pull_request:
+    branches: [ master, main ]
+
+jobs:
+  asan_ubsan:
+    name: ASan + UBSan (Linux x86_64)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+
+      - name: Configure CMake (ASan + UBSan)
+        run: |
+          cmake -S . -B build_san \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DCJSONX_ENABLE_SANITIZERS=ON
+
+      - name: Build
+        run: cmake --build build_san --config Debug
+
+      - name: Run tests
+        env:
+          ASAN_OPTIONS: halt_on_error=1:detect_leaks=1
+          UBSAN_OPTIONS: halt_on_error=1:print_stacktrace=1
+        run: ctest --test-dir build_san -C Debug --output-on-failure -V
