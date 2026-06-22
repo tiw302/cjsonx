@@ -16,6 +16,7 @@ typedef struct {
     cjsonx_error_t error;      // Error code if parsing failed
     size_t error_offset;       // Byte offset of the syntax error
     cjsonx_val_t root;         // The root value handle
+    bool is_static;            // True if backed by user-provided static buffer
     // ... internal fields ...
 } cjsonx_doc_t;
 ```
@@ -72,6 +73,7 @@ Parses a JSON string using entirely user-provided memory. This avoids `malloc` e
 
 - **`buffer`**: A static byte array or memory pool.
 - **`buffer_size`**: The size of the buffer. If parsing exhausts this size, the parser fails with `CJSONX_ERROR_OOM`.
+- **Read-Only Result:** The returned document is marked `is_static = true`. The Builder API (`cjsonx_object_set`, `cjsonx_array_push`, etc.) will return `false` on static documents because the node array cannot grow. `cjsonx_doc_free()` on a static document is a safe no-op.
 
 ### `cjsonx_doc_free`
 
@@ -99,9 +101,17 @@ Returns the type of the value. If the handle is invalid or null, returns `CJSONX
 cjsonx_val_t cjsonx_get(cjsonx_val_t obj, const char* key);
 ```
 
-Retrieves a child value from a JSON Object by its string key.
+Retrieves a child value from a JSON Object by its exact null-terminated string key. O(N) linear scan.
 
 - Returns a null handle if the key is not found, or if `obj` is not an Object.
+
+### `cjsonx_get_len`
+
+```c
+cjsonx_val_t cjsonx_get_len(cjsonx_val_t obj, const char* key, size_t key_len);
+```
+
+Same as `cjsonx_get` but accepts a key with an explicit byte length. Useful when the key is a substring or is **not null-terminated** (e.g., when the key pointer comes directly from `cjsonx_str()` on another node).
 
 ### `cjsonx_get_index`
 
@@ -109,7 +119,7 @@ Retrieves a child value from a JSON Object by its string key.
 cjsonx_val_t cjsonx_get_index(cjsonx_val_t arr, size_t index);
 ```
 
-Retrieves a child value from a JSON Array by its zero-based index.
+Retrieves a child value from a JSON Array by its zero-based index. O(N) sibling walk.
 
 - Returns a null handle if the index is out of bounds, or if `arr` is not an Array.
 
@@ -343,4 +353,5 @@ Serializes the document into a JSON file at the specified path. Returns `true` o
 
 - **16MB Node Size Limit:** The 16-byte DOM node packs its type and length field into a single `uint32_t` (8 bits for type, 24 bits for length). This limits the maximum length of any single string or serialized container to `16,777,215` bytes.
 - **O(N) Array Push Complexity:** Pushing an element to an array via `cjsonx_array_push` traverses the list of siblings to find the end. Building large arrays sequentially through push operations results in O(N^2) complexity.
-- **Stringify Depth Guard:** To prevent stack overflows on deeply nested JSON inputs during serialization, `cjsonx_stringify` and `cjsonx_stringify_format` enforce a nesting depth limit of 512 (`CJSONX_MAX_DEPTH`).
+- **Nesting Depth Guard:** `cjsonx_stringify` and `cjsonx_stringify_format` enforce a nesting depth limit of 1000 (`CJSONX_MAX_DEPTH`) to prevent stack overflow on extremely nested inputs. This value is compile-time configurable.
+- **Static Buffer Read-Only:** Documents created with `cjsonx_parse_with_buffer()` are read-only. The Builder API will return `false` on any mutation attempt. `cjsonx_doc_free()` is a safe no-op for static documents.

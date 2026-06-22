@@ -26,10 +26,11 @@ With the Tape constructed, the parser no longer reads the JSON character by char
 
 1. **Computed Gotos:** On supported compilers (GCC/Clang), the central switch statement is replaced with a dispatch table (`goto *dispatch_table[c]`). This allows the CPU's branch predictor to track the flow of JSON states independently, significantly reducing branch mispredictions and boosting parse speed by 10-15%.
 2. **Flat Arena Allocation:** Instead of calling `malloc()` for every object, array, or string, `cjsonx` allocates a single block of memory (an Arena) upfront.
-3. **16-byte Nodes:** Every JSON element (whether it's a number, a string reference, or an object) is represented by a highly compressed 16-byte structure (`cjsonx_node_t`).
-   - 8 bytes for data (a `double`, a string length, or child indices).
-   - 8 bytes for metadata (type, tape index).
-4. **Cache Locality:** Because nodes are stored sequentially in the Arena array, traversing the DOM tree is extremely cache-friendly, leading to massive speedups during querying (`cjsonx_get`).
+3. **16-byte Nodes:** Every JSON element (whether it's a number, a string reference, or an object) is represented by a highly compressed 16-byte structure (`cjsonx_node_t`), verified with `_Static_assert` at compile time:
+   - 4 bytes `type_and_length`: packs an 8-bit type tag and a 24-bit length/count (max 16,777,215 elements).
+   - 4 bytes `next_sibling`: the flat-array index of the next sibling, enabling O(1) subtree skipping without recursion.
+   - 8 bytes `val`: a union overlapping a `double`, a zero-copy `const char*` string pointer, a `bool`, or a `uint32_t` first-child index — whichever applies to the node type.
+4. **Cache Locality:** Because nodes are stored sequentially in the Arena array, 4 nodes fit perfectly inside a single 64-byte CPU cache line. Traversing the DOM tree is extremely cache-friendly, leading to massive speedups during querying (`cjsonx_get`).
 
 ---
 
@@ -52,4 +53,4 @@ Most fast parsers use standard 64-bit IEEE 754 conversions (`strtod` or custom i
 1. As the parser reads a number, it accumulates the mantissa and exponent using fast 64-bit integer arithmetic.
 2. It then performs a high-precision table lookup (using a precomputed table of powers of 10) and a 128-bit multiplication (`__uint128_t` or emulated on 32-bit platforms).
 3. This guarantees that 99.9% of all floating-point numbers are resolved exactly and correctly in a single fast-path operation without any floating-point math overhead.
-4. If the number is an extreme edge case that the fast path cannot perfectly resolve, it gracefully falls back to the standard C library (`strtod`) to guarantee 100% correctness.
+4. If the number is an extreme edge case that the fast path cannot perfectly resolve, it falls back first to `cjsonx_fastfloat` (a secondary fast-path using double arithmetic), and finally to the standard C library (`strtod`) to guarantee 100% correctness.

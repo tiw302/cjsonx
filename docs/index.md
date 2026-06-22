@@ -6,10 +6,10 @@ The `cjsonx` library is a high-performance, single-header C11 JSON parser that a
 
 ## Architecture & Features
 
-- **Hardware Acceleration**: Native SIMD utilization via AVX2 and NEON for rapid bitmask generation and whitespace skipping.
-- **Cache Locality**: Uses a Flat Arena DOM allocator that packs all nodes sequentially into memory. No `malloc` is called during node creation.
-- **Native Eisel-Lemire Parsing**: Handles edge-case scientific and financial numerical formats natively using the fastest known 64-bit float algorithm.
-- **WebAssembly Ready**: Compiles natively to WASM, bringing C-level parsing speeds directly to the web browser.
+- **Hardware Acceleration**: Native SIMD utilization via AVX2, NEON, and WASM-SIMD128 for rapid bitmask generation and whitespace skipping.
+- **Cache Locality**: Uses a Flat Arena DOM allocator that packs all nodes sequentially into memory. 4 nodes fit in a single 64-byte cache line — no `malloc` per node.
+- **Native Eisel-Lemire Parsing**: Handles edge-case scientific and financial numerical formats natively using the fastest known 64-bit float algorithm, with a secondary `cjsonx_fastfloat` fallback before resorting to `strtod`.
+- **WebAssembly Ready**: Compiles natively to WASM with WASM-SIMD128 acceleration, bringing near-native C parsing speeds directly to the browser or Node.js.
 - **Zero OS-Dependencies**: Pure C11 code, allowing deployment on embedded ARM architectures lacking POSIX layers.
 
 ## Quick Links
@@ -51,11 +51,11 @@ target_link_libraries(your_target PRIVATE cjsonx::cjsonx)
 
 ### Node.js & Web
 
-Compile or install the WebAssembly wrapper for extreme frontend performance.
+The WASM build leverages WASM-SIMD128 for near-native parsing performance directly in the browser or Node.js runtime. Compile via Emscripten:
 
 ```bash
-# (NPM package coming soon)
-# npm install @tiw302/cjsonx
+emcmake cmake -S . -B build_wasm
+cmake --build build_wasm
 ```
 
 ## Quick Start Example (C)
@@ -66,13 +66,13 @@ Compile or install the WebAssembly wrapper for extreme frontend performance.
 #include <stdio.h>
 #include <string.h>
 
-int main() {
+int main(void) {
     const char* json = "{\"name\": \"Alice\", \"score\": 99.9}";
 
     // Parse the JSON
     cjsonx_doc_t* doc = cjsonx_parse(json, strlen(json));
 
-    if (doc->is_valid) {
+    if (doc && doc->is_valid) {
         // Extract values
         cjsonx_val_t name = cjsonx_get(doc->root, "name");
         cjsonx_val_t score = cjsonx_get(doc->root, "score");
@@ -96,5 +96,5 @@ To run the benchmarks locally:
 ```bash
 cmake -S . -B build
 cmake --build build
-./build/bench_compare benchmarks/bench_datasets/twitter.json
+./build/bench_compare benchmarks/datasets/twitter.json
 ```
