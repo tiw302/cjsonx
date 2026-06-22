@@ -7,6 +7,9 @@ jobs:
   BatchFuzzing:
     runs-on: ubuntu-latest
     steps:
+    - uses: actions/checkout@v4
+      with:
+        submodules: true
     - name: Build Fuzzers
       id: build
       uses: google/clusterfuzzlite/actions/build_fuzzers@v1
