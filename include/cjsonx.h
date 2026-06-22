@@ -60,6 +60,7 @@ extern "C" {
 #endif
 
 // stage 1: scan json to build structural token tape
+// dev note: keeping this decoupled from stage 2 makes testing and benchmarking incredibly easy.
 CJSONX_API bool cjsonx_stage1_build_tape(const char* json, size_t length, cjsonx_tape_t* tape);
 
 // main parser entry point
