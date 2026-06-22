@@ -11,12 +11,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
       - name: Setup Emscripten
         uses: mymindstorm/setup-emsdk@v14
       
-      - name: Compile cjsonx_wasm.js
+      - name: Compile cjsonx_wasm.js (Scalar)
         run: |
-          # Ensure emcc is available
           source emsdk_env.sh || true
           
           emcc js/wasm_wrapper.c -o docs/demo/cjsonx_wasm.js \
@@ -27,7 +29,26 @@ jobs:
             -Iinclude \
             -I.
 
+      - name: Compile cjsonx_wasm_simd.js (SIMD128)
+        run: |
+          source emsdk_env.sh || true
+          
+          emcc js/wasm_wrapper.c -o docs/demo/cjsonx_wasm_simd.js \
+            -O3 -msimd128 \
+            -s EXPORTED_FUNCTIONS="['_cjsonx_wasm_parse', '_cjsonx_wasm_get_error', '_cjsonx_wasm_get_error_offset', '_cjsonx_wasm_dump', '_cjsonx_wasm_free', '_malloc', '_free']" \
+            -s EXPORTED_RUNTIME_METHODS="['ccall', 'cwrap', 'UTF8ToString', 'getValue', 'setValue', 'lengthBytesUTF8', 'stringToUTF8']" \
+            -s ALLOW_MEMORY_GROWTH=1 \
+            -Iinclude \
+            -I.
+
+      - name: Smoke test with Node.js
+        run: |
+          node -e 'const mod = require("./docs/demo/cjsonx_wasm.js"); mod.onRuntimeInitialized = () => { console.log("WASM Scalar loaded"); };'
+          node -e 'const mod = require("./docs/demo/cjsonx_wasm_simd.js"); mod.onRuntimeInitialized = () => { console.log("WASM SIMD loaded"); };'
+
       - name: Verify build artifacts exist
         run: |
           ls -la docs/demo/cjsonx_wasm.js
           ls -la docs/demo/cjsonx_wasm.wasm
+          ls -la docs/demo/cjsonx_wasm_simd.js
+          ls -la docs/demo/cjsonx_wasm_simd.wasm
