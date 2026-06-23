@@ -166,6 +166,17 @@ static bool cjsonx_stage2_build(cjsonx_doc_t* doc, const char* json, cjsonx_tape
     #define CJSONX_USE_GOTOS 1
 #endif
 
+    #define CJSONX_ENSURE_CAPACITY() do { \
+        if (CJSONX_UNLIKELY(node_idx >= doc->node_capacity)) { \
+            if (CJSONX_UNLIKELY(!cjsonx_grow_nodes(doc, node_idx + 1))) { \
+                doc->error = CJSONX_ERROR_OOM; \
+                goto fail; \
+            } \
+        } \
+        node = &doc->nodes[node_idx]; \
+    } while (0)
+
+
 #ifdef CJSONX_USE_GOTOS
 #if defined(__clang__)
     #pragma clang diagnostic push
@@ -192,16 +203,7 @@ static bool cjsonx_stage2_build(cjsonx_doc_t* doc, const char* json, cjsonx_tape
 #elif defined(__GNUC__)
     #pragma GCC diagnostic pop
 #endif
-    
-    #define CJSONX_ENSURE_CAPACITY() do { \
-        if (CJSONX_UNLIKELY(node_idx >= doc->node_capacity)) { \
-            if (CJSONX_UNLIKELY(!cjsonx_grow_nodes(doc, node_idx + 1))) { \
-                doc->error = CJSONX_ERROR_OOM; \
-                goto fail; \
-            } \
-        } \
-        node = &doc->nodes[node_idx]; \
-    } while (0)
+
 
     #define CJSONX_NEXT_TOKEN() do { \
         if (CJSONX_UNLIKELY(tape_idx >= tape->count)) goto end_loop; \

@@ -8,7 +8,6 @@
 #include <stdio.h>
 #include <string.h>
 
-#define CJSONX_IMPLEMENTATION
 #include "cjsonx.h"
 
 // helper macro: print pass/fail and exit on failure
