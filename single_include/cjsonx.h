@@ -33,6 +33,10 @@
  * copyright (c) 2026 jirawat siripuk
  */
 
+#if defined(__linux__) && !defined(_GNU_SOURCE)
+#define _GNU_SOURCE 1 // expose posix locale functions in standard headers
+#endif
+
 #ifndef CJSONX_H
 #define CJSONX_H
 
@@ -54,6 +58,10 @@
 // copyright (c) 2026 jirawat siripuk
 #ifndef CJSONX_CONFIG_H
 #define CJSONX_CONFIG_H
+
+#if defined(__linux__) && !defined(_GNU_SOURCE)
+#define _GNU_SOURCE 1 // expose posix locales like strtod_l
+#endif
 
 //  ██████  ██████  ███    ██ ███████ ██  ██████
 // ██      ██    ██ ████   ██ ██      ██ ██
@@ -228,7 +236,8 @@ static inline void* cjsonx_realloc(cjsonx_allocator_t* alloc, void* ptr, size_t 
     }
     if (alloc && alloc->malloc_fn) {
         void* new_ptr = alloc->malloc_fn(new_size, alloc->user_data);
-        if (new_ptr && ptr) {
+        if (!new_ptr) return NULL; // allocation failed — caller keeps old ptr
+        if (ptr) {
             memcpy(new_ptr, ptr, old_size < new_size ? old_size : new_size);
             if (alloc->free_fn) alloc->free_fn(ptr, alloc->user_data);
         }
@@ -382,6 +391,16 @@ CJSONX_API bool cjsonx_iter_next(cjsonx_iter_t* iter);
 static inline cjsonx_val_t cjsonx_make_null_handle(void) {
     cjsonx_val_t v = {NULL, 0};
     return v;
+}
+
+/*
+ * check if a value handle points to an actual node (i.e. was found).
+ * use this to distinguish "key not found" from "value is json null":
+ *   if (!cjsonx_valid(v)) { // key missing }
+ *   else if (cjsonx_is_null(v)) { // key exists, value is null }
+ */
+static inline bool cjsonx_valid(cjsonx_val_t v) {
+    return v.doc != NULL;
 }
 
 // type and function aliases for compatibility with non-t api
@@ -618,6 +637,7 @@ extern "C" {
 // allocation internal helper (expands flat arena)
 static inline uint32_t cjsonx_builder_alloc_node(cjsonx_doc_t* doc) {
     if (!doc || doc->is_static) return UINT32_MAX; // static docs cannot be mutated
+    if (CJSONX_UNLIKELY(doc->node_count >= UINT32_MAX - 1)) return UINT32_MAX; // limit count to prevent uint32 index overflow
     if (doc->node_count >= doc->node_capacity) {
         size_t new_cap = doc->node_capacity == 0 ? 128 : doc->node_capacity * 2;
         
@@ -662,6 +682,7 @@ static inline cjsonx_val_t cjsonx_create_number(cjsonx_doc_t* doc, double val) {
 }
 
 static inline cjsonx_val_t cjsonx_create_string(cjsonx_doc_t* doc, const char* str) {
+    if (!str) str = ""; // treat null as empty string, same as cjsonx_get's behavior
     uint32_t idx = cjsonx_builder_alloc_node(doc);
     if (idx == UINT32_MAX) return cjsonx_make_null_handle();
     size_t len = strlen(str);
@@ -670,7 +691,10 @@ static inline cjsonx_val_t cjsonx_create_string(cjsonx_doc_t* doc, const char* s
     
     // duplicate string into arena
     char* s = (char*)cjsonx_arena_alloc(doc, len + 1);
-    if (!s) return cjsonx_make_null_handle();
+    if (!s) {
+        doc->node_count--; // rollback allocated node slot on failure
+        return cjsonx_make_null_handle();
+    }
     memcpy(s, str, len + 1);
     doc->nodes[idx].val.str = s;
     
@@ -740,7 +764,10 @@ static inline bool cjsonx_object_set_len(cjsonx_val_t obj_handle, const char* ke
     cjsonx_node_t* key_node = &obj_handle.doc->nodes[key_idx];
     cjsonx_node_set_type_len(key_node, CJSONX_STRING, key_len);
     char* s = (char*)cjsonx_arena_alloc(obj_handle.doc, key_len + 1);
-    if (!s) return false;
+    if (!s) {
+        obj_handle.doc->node_count--; // rollback allocated node slot on failure
+        return false;
+    }
     memcpy(s, key, key_len);
     s[key_len] = '\0';
     key_node->val.str = s;
@@ -770,13 +797,8 @@ static inline bool cjsonx_object_set(cjsonx_val_t obj_handle, const char* key, c
 }
 
 /*
- * note: each push traverses the child list to find the last element (o(n)),
- * so repeated pushes to the same array are o(n²). this is fine for small
- * builder workloads but not suitable for bulk construction of large arrays.
- * 
- * dev note: if you ever need to support large dynamic arrays, consider adding
- * a `last_child` pointer in the node union (it fits in the padding). this would
- * make pushing o(1).
+ * note: array push is o(1) because we keep track of the last child node index
+ * inside the object/array node struct, enabling rapid bulk construction.
  */
 static inline bool cjsonx_array_push(cjsonx_val_t arr_handle, cjsonx_val_t val_handle) {
     if (!arr_handle.doc || !val_handle.doc || arr_handle.doc != val_handle.doc) return false;
@@ -797,7 +819,6 @@ static inline bool cjsonx_array_push(cjsonx_val_t arr_handle, cjsonx_val_t val_h
         arr->val.last_child = val_handle.node_idx;
     }
 
-    // re-fetch arr: alloc_node at entry may have reallocated doc->nodes
     arr = &arr_handle.doc->nodes[arr_handle.node_idx];
     cjsonx_node_set_type_len(arr, CJSONX_ARRAY, len + 1);
     return true;
@@ -1555,33 +1576,8 @@ static void cjsonx_stringify_node(cjsonx_strbuf_t* sb, cjsonx_val_t val, int ind
 }
 
 char* cjsonx_stringify_val(cjsonx_val_t val) {
-    if (!val.doc) return NULL;
-    // estimate size based on parsed json length or node count with a 2kb floor
-    size_t initial_cap = val.doc->json_len > 0 ? val.doc->json_len : val.doc->node_count * 16;
-    if (initial_cap < 2048) initial_cap = 2048;
-
-    cjsonx_strbuf_t sb;
-    sb.cap = initial_cap;
-    sb.len = 0;
-    sb.alloc = &val.doc->alloc;
-    sb.oom = false;
-    if (sb.alloc && sb.alloc->malloc_fn) {
-        sb.buf = (char*)sb.alloc->malloc_fn(sb.cap, sb.alloc->user_data);
-    } else {
-        sb.buf = (char*)malloc(sb.cap);
-    }
-    if (!sb.buf) return NULL;
-
-    cjsonx_stringify_node(&sb, val, 0, 0);
-    cjsonx_strbuf_append_c(&sb, '\0');
-    if (sb.oom) {
-        if (sb.buf) {
-            if (sb.alloc && sb.alloc->free_fn) sb.alloc->free_fn(sb.buf, sb.alloc->user_data);
-            else free(sb.buf);
-        }
-        return NULL;
-    }
-    return sb.buf;
+    // delegate to the format variant with zero indent (compact output)
+    return cjsonx_stringify_val_format(val, 0);
 }
 
 char* cjsonx_stringify_val_format(cjsonx_val_t val, int indent_spaces) {
@@ -1747,7 +1743,10 @@ cjsonx_val_t cjsonx_clone_val(cjsonx_doc_t* dest_doc, cjsonx_val_t src_val) {
             cjsonx_node_set_type_len(&dest_doc->nodes[idx], CJSONX_STRING, len);
             dest_doc->nodes[idx].next_sibling = idx + 1;
             char* s = (char*)cjsonx_arena_alloc(dest_doc, len + 1);
-            if (!s) return cjsonx_make_null_handle();
+            if (!s) {
+                dest_doc->node_count--; // rollback allocated node slot on failure
+                return cjsonx_make_null_handle();
+            }
             // don't use len+1: zero-copy strings point into the json buffer where
             // src_str[len] is the closing '"', not '\0'. write nul explicitly.
             memcpy(s, src_str, len);
@@ -1785,7 +1784,7 @@ cjsonx_val_t cjsonx_merge_patch(cjsonx_val_t target, cjsonx_val_t patch) {
     if (cjsonx_get_type(patch) == CJSONX_OBJECT) {
         if (cjsonx_get_type(target) != CJSONX_OBJECT) {
             target = cjsonx_create_object(target.doc);
-            if (target.node_idx == UINT32_MAX) return cjsonx_make_null_handle();
+            if (!target.doc) return cjsonx_make_null_handle();
         }
 
         cjsonx_iter_t it = cjsonx_iter_init(patch);
@@ -1802,7 +1801,6 @@ cjsonx_val_t cjsonx_merge_patch(cjsonx_val_t target, cjsonx_val_t patch) {
                 if (target_val.doc) {
                     new_val = cjsonx_merge_patch(target_val, patch_val);
                     if (target_val.node_idx != new_val.node_idx || target_val.doc != new_val.doc) {
-                        cjsonx_object_remove_len(target, key_ptr, key_len);
                         if (target.doc != new_val.doc) {
                             new_val = cjsonx_clone_val(target.doc, new_val);
                         }
@@ -4643,12 +4641,45 @@ static inline bool cjsonx_grow_nodes(cjsonx_doc_t* doc, size_t required) {
     if (doc->is_static) return false;
     size_t new_cap = doc->node_capacity == 0 ? 128 : doc->node_capacity * 2;
     if (new_cap < required) new_cap = required;
-    if (CJSONX_UNLIKELY(new_cap > (size_t)-1 / sizeof(cjsonx_node_t))) return false;
+    if (CJSONX_UNLIKELY(new_cap >= UINT32_MAX - 1 || new_cap > (size_t)-1 / sizeof(cjsonx_node_t))) return false; // check for index overflow
     cjsonx_node_t* new_nodes = (cjsonx_node_t*)cjsonx_realloc(&doc->alloc, doc->nodes, doc->node_capacity * sizeof(cjsonx_node_t), new_cap * sizeof(cjsonx_node_t));
     if (!new_nodes) return false;
     doc->nodes = new_nodes;
     doc->node_capacity = new_cap;
     return true;
+}
+
+// thread-safe locale-independent float parsing fallback
+static inline double cjsonx_strtod(char* buf, char** endptr) {
+#if defined(_MSC_VER)
+    _locale_t loc = _create_locale(LC_ALL, "C");
+    double val = _strtod_l(buf, endptr, loc);
+    if (loc) _free_locale(loc);
+    return val;
+#elif defined(__linux__) || defined(__APPLE__) || defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__NetBSD__) || defined(__EMSCRIPTEN__)
+    locale_t loc = newlocale(LC_ALL_MASK, "C", (locale_t)0);
+    if (loc != (locale_t)0) {
+        double val = strtod_l(buf, endptr, loc);
+        freelocale(loc);
+        return val;
+    }
+#endif
+    // fallback for platforms without strtod_l (e.g. bare metal): temporarily patch decimal point to match host locale
+    struct lconv* lc = localeconv();
+    char original_dot = '.';
+    char* dot = NULL;
+    if (lc && lc->decimal_point && lc->decimal_point[0] != '.') {
+        dot = strchr(buf, '.');
+        if (dot) {
+            original_dot = *dot;
+            *dot = lc->decimal_point[0];
+        }
+    }
+    double val = strtod(buf, endptr);
+    if (dot) {
+        *dot = original_dot; // restore original char
+    }
+    return val;
 }
 
 // non-recursive flat dom parsing engine - strict grammar edition
@@ -4670,7 +4701,7 @@ static bool cjsonx_stage2_build(cjsonx_doc_t* doc, const char* json, cjsonx_tape
     // skip allocation if nodes were already pre-allocated (e.g. static buffer)
     if (!doc->nodes) {
         size_t alloc_count = tape->count / 2 + 1;
-        if (CJSONX_UNLIKELY(alloc_count > (size_t)-1 / sizeof(cjsonx_node_t))) {
+        if (CJSONX_UNLIKELY(alloc_count >= UINT32_MAX - 1 || alloc_count > (size_t)-1 / sizeof(cjsonx_node_t))) {
             doc->error = CJSONX_ERROR_OOM;
             return false;
         }
@@ -4984,14 +5015,7 @@ static bool cjsonx_stage2_build(cjsonx_doc_t* doc, const char* json, cjsonx_tape
                     memcpy(buf, json + pos, num_len);
                     buf[num_len] = '\0';
                     
-                    // temporarily patch the decimal point to match host locale so strtod works correctly
-                    struct lconv* lc = localeconv();
-                    if (lc && lc->decimal_point && lc->decimal_point[0] != '.') {
-                        char* dot = strchr(buf, '.');
-                        if (dot) *dot = lc->decimal_point[0];
-                    }
-                    
-                    val = strtod(buf, (char**)&end);
+                    val = cjsonx_strtod(buf, (char**)&end);
                     bool parse_ok = (end != buf);
                     if (CJSONX_UNLIKELY(num_len >= 512)) {
                         if (doc->alloc.free_fn) doc->alloc.free_fn(buf, doc->alloc.user_data);
@@ -5293,6 +5317,11 @@ bool cjsonx_bool(cjsonx_val_t handle) {
 }
 
 bool cjsonx_is_null(cjsonx_val_t handle) {
+    /*
+     * note: this returns true both when the handle is "not found" (doc == NULL)
+     * and when the json value is actually null. if you need to distinguish between
+     * these cases, check `handle.doc != NULL` first before calling this function.
+     */
     if (!handle.doc) return true;
     cjsonx_node_t* n = &handle.doc->nodes[handle.node_idx];
     return cjsonx_node_type(n) == CJSONX_NULL;
