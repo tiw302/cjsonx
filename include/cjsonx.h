@@ -33,6 +33,10 @@
  * copyright (c) 2026 jirawat siripuk
  */
 
+#if defined(__linux__) && !defined(_GNU_SOURCE)
+#define _GNU_SOURCE 1 // expose posix locale functions in standard headers
+#endif
+
 #ifndef CJSONX_H
 #define CJSONX_H
 
