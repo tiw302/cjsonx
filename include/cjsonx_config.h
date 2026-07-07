@@ -4,6 +4,10 @@
 #ifndef CJSONX_CONFIG_H
 #define CJSONX_CONFIG_H
 
+#if defined(__linux__) && !defined(_GNU_SOURCE)
+#define _GNU_SOURCE 1 // expose posix locales like strtod_l
+#endif
+
 //  ██████  ██████  ███    ██ ███████ ██  ██████
 // ██      ██    ██ ████   ██ ██      ██ ██
 // ██      ██    ██ ██ ██  ██ █████   ██ ██   ███
