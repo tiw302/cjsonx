@@ -41,7 +41,8 @@ static inline void* cjsonx_realloc(cjsonx_allocator_t* alloc, void* ptr, size_t 
     }
     if (alloc && alloc->malloc_fn) {
         void* new_ptr = alloc->malloc_fn(new_size, alloc->user_data);
-        if (new_ptr && ptr) {
+        if (!new_ptr) return NULL; // allocation failed — caller keeps old ptr
+        if (ptr) {
             memcpy(new_ptr, ptr, old_size < new_size ? old_size : new_size);
             if (alloc->free_fn) alloc->free_fn(ptr, alloc->user_data);
         }
@@ -195,6 +196,16 @@ CJSONX_API bool cjsonx_iter_next(cjsonx_iter_t* iter);
 static inline cjsonx_val_t cjsonx_make_null_handle(void) {
     cjsonx_val_t v = {NULL, 0};
     return v;
+}
+
+/*
+ * check if a value handle points to an actual node (i.e. was found).
+ * use this to distinguish "key not found" from "value is json null":
+ *   if (!cjsonx_valid(v)) { // key missing }
+ *   else if (cjsonx_is_null(v)) { // key exists, value is null }
+ */
+static inline bool cjsonx_valid(cjsonx_val_t v) {
+    return v.doc != NULL;
 }
 
 // type and function aliases for compatibility with non-t api
