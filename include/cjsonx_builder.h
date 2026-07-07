@@ -25,6 +25,7 @@ extern "C" {
 // allocation internal helper (expands flat arena)
 static inline uint32_t cjsonx_builder_alloc_node(cjsonx_doc_t* doc) {
     if (!doc || doc->is_static) return UINT32_MAX; // static docs cannot be mutated
+    if (CJSONX_UNLIKELY(doc->node_count >= UINT32_MAX - 1)) return UINT32_MAX; // limit count to prevent uint32 index overflow
     if (doc->node_count >= doc->node_capacity) {
         size_t new_cap = doc->node_capacity == 0 ? 128 : doc->node_capacity * 2;
         
@@ -69,6 +70,7 @@ static inline cjsonx_val_t cjsonx_create_number(cjsonx_doc_t* doc, double val) {
 }
 
 static inline cjsonx_val_t cjsonx_create_string(cjsonx_doc_t* doc, const char* str) {
+    if (!str) str = ""; // treat null as empty string, same as cjsonx_get's behavior
     uint32_t idx = cjsonx_builder_alloc_node(doc);
     if (idx == UINT32_MAX) return cjsonx_make_null_handle();
     size_t len = strlen(str);
@@ -77,7 +79,10 @@ static inline cjsonx_val_t cjsonx_create_string(cjsonx_doc_t* doc, const char* s
     
     // duplicate string into arena
     char* s = (char*)cjsonx_arena_alloc(doc, len + 1);
-    if (!s) return cjsonx_make_null_handle();
+    if (!s) {
+        doc->node_count--; // rollback allocated node slot on failure
+        return cjsonx_make_null_handle();
+    }
     memcpy(s, str, len + 1);
     doc->nodes[idx].val.str = s;
     
@@ -147,7 +152,10 @@ static inline bool cjsonx_object_set_len(cjsonx_val_t obj_handle, const char* ke
     cjsonx_node_t* key_node = &obj_handle.doc->nodes[key_idx];
     cjsonx_node_set_type_len(key_node, CJSONX_STRING, key_len);
     char* s = (char*)cjsonx_arena_alloc(obj_handle.doc, key_len + 1);
-    if (!s) return false;
+    if (!s) {
+        obj_handle.doc->node_count--; // rollback allocated node slot on failure
+        return false;
+    }
     memcpy(s, key, key_len);
     s[key_len] = '\0';
     key_node->val.str = s;
@@ -177,13 +185,8 @@ static inline bool cjsonx_object_set(cjsonx_val_t obj_handle, const char* key, c
 }
 
 /*
- * note: each push traverses the child list to find the last element (o(n)),
- * so repeated pushes to the same array are o(n²). this is fine for small
- * builder workloads but not suitable for bulk construction of large arrays.
- * 
- * dev note: if you ever need to support large dynamic arrays, consider adding
- * a `last_child` pointer in the node union (it fits in the padding). this would
- * make pushing o(1).
+ * note: array push is o(1) because we keep track of the last child node index
+ * inside the object/array node struct, enabling rapid bulk construction.
  */
 static inline bool cjsonx_array_push(cjsonx_val_t arr_handle, cjsonx_val_t val_handle) {
     if (!arr_handle.doc || !val_handle.doc || arr_handle.doc != val_handle.doc) return false;
@@ -204,7 +207,6 @@ static inline bool cjsonx_array_push(cjsonx_val_t arr_handle, cjsonx_val_t val_h
         arr->val.last_child = val_handle.node_idx;
     }
 
-    // re-fetch arr: alloc_node at entry may have reallocated doc->nodes
     arr = &arr_handle.doc->nodes[arr_handle.node_idx];
     cjsonx_node_set_type_len(arr, CJSONX_ARRAY, len + 1);
     return true;
@@ -962,33 +964,8 @@ static void cjsonx_stringify_node(cjsonx_strbuf_t* sb, cjsonx_val_t val, int ind
 }
 
 char* cjsonx_stringify_val(cjsonx_val_t val) {
-    if (!val.doc) return NULL;
-    // estimate size based on parsed json length or node count with a 2kb floor
-    size_t initial_cap = val.doc->json_len > 0 ? val.doc->json_len : val.doc->node_count * 16;
-    if (initial_cap < 2048) initial_cap = 2048;
-
-    cjsonx_strbuf_t sb;
-    sb.cap = initial_cap;
-    sb.len = 0;
-    sb.alloc = &val.doc->alloc;
-    sb.oom = false;
-    if (sb.alloc && sb.alloc->malloc_fn) {
-        sb.buf = (char*)sb.alloc->malloc_fn(sb.cap, sb.alloc->user_data);
-    } else {
-        sb.buf = (char*)malloc(sb.cap);
-    }
-    if (!sb.buf) return NULL;
-
-    cjsonx_stringify_node(&sb, val, 0, 0);
-    cjsonx_strbuf_append_c(&sb, '\0');
-    if (sb.oom) {
-        if (sb.buf) {
-            if (sb.alloc && sb.alloc->free_fn) sb.alloc->free_fn(sb.buf, sb.alloc->user_data);
-            else free(sb.buf);
-        }
-        return NULL;
-    }
-    return sb.buf;
+    // delegate to the format variant with zero indent (compact output)
+    return cjsonx_stringify_val_format(val, 0);
 }
 
 char* cjsonx_stringify_val_format(cjsonx_val_t val, int indent_spaces) {
@@ -1154,7 +1131,10 @@ cjsonx_val_t cjsonx_clone_val(cjsonx_doc_t* dest_doc, cjsonx_val_t src_val) {
             cjsonx_node_set_type_len(&dest_doc->nodes[idx], CJSONX_STRING, len);
             dest_doc->nodes[idx].next_sibling = idx + 1;
             char* s = (char*)cjsonx_arena_alloc(dest_doc, len + 1);
-            if (!s) return cjsonx_make_null_handle();
+            if (!s) {
+                dest_doc->node_count--; // rollback allocated node slot on failure
+                return cjsonx_make_null_handle();
+            }
             // don't use len+1: zero-copy strings point into the json buffer where
             // src_str[len] is the closing '"', not '\0'. write nul explicitly.
             memcpy(s, src_str, len);
@@ -1192,7 +1172,7 @@ cjsonx_val_t cjsonx_merge_patch(cjsonx_val_t target, cjsonx_val_t patch) {
     if (cjsonx_get_type(patch) == CJSONX_OBJECT) {
         if (cjsonx_get_type(target) != CJSONX_OBJECT) {
             target = cjsonx_create_object(target.doc);
-            if (target.node_idx == UINT32_MAX) return cjsonx_make_null_handle();
+            if (!target.doc) return cjsonx_make_null_handle();
         }
 
         cjsonx_iter_t it = cjsonx_iter_init(patch);
@@ -1209,7 +1189,6 @@ cjsonx_val_t cjsonx_merge_patch(cjsonx_val_t target, cjsonx_val_t patch) {
                 if (target_val.doc) {
                     new_val = cjsonx_merge_patch(target_val, patch_val);
                     if (target_val.node_idx != new_val.node_idx || target_val.doc != new_val.doc) {
-                        cjsonx_object_remove_len(target, key_ptr, key_len);
                         if (target.doc != new_val.doc) {
                             new_val = cjsonx_clone_val(target.doc, new_val);
                         }
