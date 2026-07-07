@@ -26,6 +26,7 @@ if(MSVC)
     add_compile_options(/arch:AVX2)
 else()
     add_compile_options(-Wall -Wextra -O3)
+    add_compile_definitions(_GNU_SOURCE)
     # avx2 + pclmul: pclmulqdq is required for the string-in-quote bitmask trick
     # -march=native usually enables it but explicit is safer for non-native builds
     if(CMAKE_SYSTEM_PROCESSOR MATCHES "(x86_64|AMD64)")
@@ -53,6 +54,7 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/src/cjsonx.c")
 add_library(cjsonx STATIC src/cjsonx.c)
 target_include_directories(cjsonx PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
 )
 
 endif()
