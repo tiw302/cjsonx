@@ -89,12 +89,45 @@ static inline bool cjsonx_grow_nodes(cjsonx_doc_t* doc, size_t required) {
     if (doc->is_static) return false;
     size_t new_cap = doc->node_capacity == 0 ? 128 : doc->node_capacity * 2;
     if (new_cap < required) new_cap = required;
-    if (CJSONX_UNLIKELY(new_cap > (size_t)-1 / sizeof(cjsonx_node_t))) return false;
+    if (CJSONX_UNLIKELY(new_cap >= UINT32_MAX - 1 || new_cap > (size_t)-1 / sizeof(cjsonx_node_t))) return false; // check for index overflow
     cjsonx_node_t* new_nodes = (cjsonx_node_t*)cjsonx_realloc(&doc->alloc, doc->nodes, doc->node_capacity * sizeof(cjsonx_node_t), new_cap * sizeof(cjsonx_node_t));
     if (!new_nodes) return false;
     doc->nodes = new_nodes;
     doc->node_capacity = new_cap;
     return true;
+}
+
+// thread-safe locale-independent float parsing fallback
+static inline double cjsonx_strtod(char* buf, char** endptr) {
+#if defined(_MSC_VER)
+    _locale_t loc = _create_locale(LC_ALL, "C");
+    double val = _strtod_l(buf, endptr, loc);
+    if (loc) _free_locale(loc);
+    return val;
+#elif defined(__linux__) || defined(__APPLE__) || defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__NetBSD__) || defined(__EMSCRIPTEN__)
+    locale_t loc = newlocale(LC_ALL_MASK, "C", (locale_t)0);
+    if (loc != (locale_t)0) {
+        double val = strtod_l(buf, endptr, loc);
+        freelocale(loc);
+        return val;
+    }
+#endif
+    // fallback for platforms without strtod_l (e.g. bare metal): temporarily patch decimal point to match host locale
+    struct lconv* lc = localeconv();
+    char original_dot = '.';
+    char* dot = NULL;
+    if (lc && lc->decimal_point && lc->decimal_point[0] != '.') {
+        dot = strchr(buf, '.');
+        if (dot) {
+            original_dot = *dot;
+            *dot = lc->decimal_point[0];
+        }
+    }
+    double val = strtod(buf, endptr);
+    if (dot) {
+        *dot = original_dot; // restore original char
+    }
+    return val;
 }
 
 // non-recursive flat dom parsing engine - strict grammar edition
@@ -116,7 +149,7 @@ static bool cjsonx_stage2_build(cjsonx_doc_t* doc, const char* json, cjsonx_tape
     // skip allocation if nodes were already pre-allocated (e.g. static buffer)
     if (!doc->nodes) {
         size_t alloc_count = tape->count / 2 + 1;
-        if (CJSONX_UNLIKELY(alloc_count > (size_t)-1 / sizeof(cjsonx_node_t))) {
+        if (CJSONX_UNLIKELY(alloc_count >= UINT32_MAX - 1 || alloc_count > (size_t)-1 / sizeof(cjsonx_node_t))) {
             doc->error = CJSONX_ERROR_OOM;
             return false;
         }
@@ -430,14 +463,7 @@ static bool cjsonx_stage2_build(cjsonx_doc_t* doc, const char* json, cjsonx_tape
                     memcpy(buf, json + pos, num_len);
                     buf[num_len] = '\0';
                     
-                    // temporarily patch the decimal point to match host locale so strtod works correctly
-                    struct lconv* lc = localeconv();
-                    if (lc && lc->decimal_point && lc->decimal_point[0] != '.') {
-                        char* dot = strchr(buf, '.');
-                        if (dot) *dot = lc->decimal_point[0];
-                    }
-                    
-                    val = strtod(buf, (char**)&end);
+                    val = cjsonx_strtod(buf, (char**)&end);
                     bool parse_ok = (end != buf);
                     if (CJSONX_UNLIKELY(num_len >= 512)) {
                         if (doc->alloc.free_fn) doc->alloc.free_fn(buf, doc->alloc.user_data);
@@ -739,6 +765,11 @@ bool cjsonx_bool(cjsonx_val_t handle) {
 }
 
 bool cjsonx_is_null(cjsonx_val_t handle) {
+    /*
+     * note: this returns true both when the handle is "not found" (doc == NULL)
+     * and when the json value is actually null. if you need to distinguish between
+     * these cases, check `handle.doc != NULL` first before calling this function.
+     */
     if (!handle.doc) return true;
     cjsonx_node_t* n = &handle.doc->nodes[handle.node_idx];
     return cjsonx_node_type(n) == CJSONX_NULL;
