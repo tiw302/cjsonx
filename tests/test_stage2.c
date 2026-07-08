@@ -67,8 +67,31 @@ void test_error(const char* json, cjsonx_error_t expected_error, size_t expected
     cjsonx_doc_free(doc);
 }
 
+void test_parse_copy(void) {
+    char* json_mut = malloc(32);
+    strcpy(json_mut, "{\"a\": 42}");
+    cjsonx_doc* doc = cjsonx_parse_copy(json_mut, strlen(json_mut));
+    // mutate the original string to prove parse_copy made a copy
+    strcpy(json_mut, "{\"a\": 99}");
+    
+    if (!doc || !doc->is_valid) {
+        printf("FAIL: cjsonx_parse_copy failed\n");
+        exit(1);
+    }
+    cjsonx_val root = doc->root;
+    cjsonx_val a = cjsonx_get(root, "a");
+    if (cjsonx_num(a) != 42.0) {
+        printf("FAIL: cjsonx_parse_copy did not copy properly, got %f\n", cjsonx_num(a));
+        exit(1);
+    }
+    printf("PASS: cjsonx_parse_copy successfully parsed copy\n");
+    cjsonx_doc_free(doc);
+    free(json_mut);
+}
+
 int main(void) {
     printf("--- cjsonx Stage 2 Test ---\n");
+    test_parse_copy();
 
     // basic types: string, number, boolean
     test_dom("{\"key\": \"value\", \"age\": 30, \"is_dev\": true}");
