@@ -31,7 +31,8 @@ typedef enum {
     CJSONX_ERROR_UNEXPECTED_TOKEN,          // found unexpected token
     CJSONX_ERROR_UNCLOSED_CONTAINER,        // array or object is not closed
     CJSONX_ERROR_TRAILING_GARBAGE,          // extra data found after root value
-    CJSONX_ERROR_INVALID_UTF8               // string contains invalid utf-8 sequences
+    CJSONX_ERROR_INVALID_UTF8,              // string contains invalid utf-8 sequences
+    CJSONX_ERROR_TOO_LARGE                  // string or container exceeds 24-bit limit
 } cjsonx_error_t;
 
 // convert error code to string
@@ -69,6 +70,8 @@ static inline const char* cjsonx_error_string(cjsonx_error_t err) {
             return "trailing garbage after root value";
         case CJSONX_ERROR_INVALID_UTF8:
             return "invalid utf-8 sequence in string";
+        case CJSONX_ERROR_TOO_LARGE:
+            return "string or container size exceeds 24-bit maximum (16MB/16M elements)";
         default:
             return "unknown error";
     }
