@@ -48,6 +48,38 @@ async function runTests() {
         assert(false, "Invalid parse test threw: " + e.message);
     }
 
+    // Test 3: DOM Querying and toJS()
+    try {
+        const jsonStr = '{"a": [10, 20, {"b": "hello"}], "c": true, "d": null}';
+        const ok = cjsonx.parse(jsonStr);
+        assert(ok === true, "Parse complex JSON for querying");
+
+        const root = cjsonx.getRoot();
+        assert(root !== null, "getRoot returns value");
+        assert(root.type === cjsonx.Type.OBJECT, "root type is object");
+        assert(root.size === 3, "root size is 3");
+
+        const a = root.get("a");
+        assert(a !== null, "get 'a' returns value");
+        assert(a.type === cjsonx.Type.ARRAY, "'a' type is array");
+        assert(a.size === 3, "'a' size is 3");
+
+        const item0 = a.getIndex(0);
+        assert(item0.num === 10, "array index 0 value is 10");
+
+        const pointerVal = root.pointer("/a/2/b");
+        assert(pointerVal !== null, "pointer resolution");
+        assert(pointerVal.str === "hello", "pointer value is 'hello'");
+
+        // test conversion to native JS object
+        const nativeObj = root.toJS();
+        assert(JSON.stringify(nativeObj) === JSON.stringify(JSON.parse(jsonStr)), "toJS converts correctly to native object");
+
+        cjsonx.free();
+    } catch (e) {
+        assert(false, "DOM Querying test threw: " + e.message);
+    }
+
     console.log(`\nTests completed: ${passed} passed, ${failed} failed.`);
     if (failed > 0) {
         process.exit(1);
