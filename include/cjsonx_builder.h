@@ -71,9 +71,10 @@ static inline cjsonx_val_t cjsonx_create_number(cjsonx_doc_t* doc, double val) {
 
 static inline cjsonx_val_t cjsonx_create_string(cjsonx_doc_t* doc, const char* str) {
     if (!str) str = ""; // treat null as empty string, same as cjsonx_get's behavior
+    size_t len = strlen(str);
+    if (CJSONX_UNLIKELY(len > 0xFFFFFF)) return cjsonx_make_null_handle(); // string too large
     uint32_t idx = cjsonx_builder_alloc_node(doc);
     if (idx == UINT32_MAX) return cjsonx_make_null_handle();
-    size_t len = strlen(str);
     cjsonx_node_set_type_len(&doc->nodes[idx], CJSONX_STRING, len);
     doc->nodes[idx].next_sibling = idx + 1;
     
@@ -115,6 +116,7 @@ static inline cjsonx_val_t cjsonx_create_array(cjsonx_doc_t* doc) {
 // mutation
 static inline bool cjsonx_object_set_len(cjsonx_val_t obj_handle, const char* key, size_t key_len, cjsonx_val_t val_handle) {
     if (!obj_handle.doc || !val_handle.doc || obj_handle.doc != val_handle.doc) return false;
+    if (CJSONX_UNLIKELY(key_len > 0xFFFFFF)) return false; // key too large
     cjsonx_node_t* obj = &obj_handle.doc->nodes[obj_handle.node_idx];
     if (cjsonx_node_type(obj) != CJSONX_OBJECT) return false;
     
