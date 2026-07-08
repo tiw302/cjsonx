@@ -4677,7 +4677,16 @@ static inline double cjsonx_strtod(char* buf, char** endptr) {
     double val = _strtod_l(buf, endptr, loc);
     if (loc) _free_locale(loc);
     return val;
-#elif defined(__linux__) || defined(__APPLE__) || defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__NetBSD__)
+#elif defined(__APPLE__)
+    /* xlocale.h exposes strtod_l on apple platforms */
+#   include <xlocale.h>
+    locale_t loc = newlocale(LC_ALL_MASK, "C", (locale_t)0);
+    if (loc != (locale_t)0) {
+        double val = strtod_l(buf, endptr, loc);
+        freelocale(loc);
+        return val;
+    }
+#elif defined(__linux__) || defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__NetBSD__)
     locale_t loc = newlocale(LC_ALL_MASK, "C", (locale_t)0);
     if (loc != (locale_t)0) {
         double val = strtod_l(buf, endptr, loc);
@@ -4685,22 +4694,26 @@ static inline double cjsonx_strtod(char* buf, char** endptr) {
         return val;
     }
 #endif
-    // fallback for platforms without strtod_l (e.g. bare metal): temporarily patch decimal point to match host locale
-    struct lconv* lc = localeconv();
-    char original_dot = '.';
-    char* dot = NULL;
-    if (lc && lc->decimal_point && lc->decimal_point[0] != '.') {
-        dot = strchr(buf, '.');
-        if (dot) {
-            original_dot = *dot;
-            *dot = lc->decimal_point[0];
+    /* fallback for platforms without strtod_l (e.g. bare metal, msvc fallthrough):
+     * temporarily swap the decimal point character to match the host locale */
+    {
+        struct lconv* lc = localeconv();
+        char original_dot = '.';
+        char* dot = NULL;
+        double val_fallback;
+        if (lc && lc->decimal_point && lc->decimal_point[0] != '.') {
+            dot = strchr(buf, '.');
+            if (dot) {
+                original_dot = *dot;
+                *dot = lc->decimal_point[0];
+            }
         }
+        val_fallback = strtod(buf, endptr);
+        if (dot) {
+            *dot = original_dot; // restore original char
+        }
+        return val_fallback;
     }
-    double val = strtod(buf, endptr);
-    if (dot) {
-        *dot = original_dot; // restore original char
-    }
-    return val;
 }
 
 // non-recursive flat dom parsing engine - strict grammar edition
