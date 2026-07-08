@@ -15,8 +15,11 @@ struct PyValue;
 struct PyDocument {
     cjsonx_doc_t* doc;
     bool own_doc;
+    std::string json_copy; // keep a copy of the json string alive!
 
     PyDocument(cjsonx_doc_t* d, bool own = true) : doc(d), own_doc(own) {}
+    PyDocument(cjsonx_doc_t* d, std::string&& json, bool own = true) 
+        : doc(d), own_doc(own), json_copy(std::move(json)) {}
     ~PyDocument() {
         if (doc && own_doc) {
             cjsonx_doc_free(doc);
@@ -198,11 +201,12 @@ PYBIND11_MODULE(cjsonx, m) {
 
     // expose module level parsing functions
     m.def("parse", [](const std::string& json) {
-        cjsonx_doc_t* d = cjsonx_parse(json.c_str(), json.length());
-        if (!d) {
+        auto py_doc = std::make_shared<PyDocument>(nullptr, std::string(json), true);
+        py_doc->doc = cjsonx_parse(py_doc->json_copy.c_str(), py_doc->json_copy.length());
+        if (!py_doc->doc) {
             throw std::runtime_error("failed to allocate document");
         }
-        return std::make_shared<PyDocument>(d, true);
+        return py_doc;
     });
 
     m.def("read_file", [](const std::string& path) {
