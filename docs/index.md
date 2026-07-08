@@ -49,14 +49,55 @@ find_package(cjsonx REQUIRED)
 target_link_libraries(your_target PRIVATE cjsonx::cjsonx)
 ```
 
-### Node.js & Web
+### Python / PyPI
 
-The WASM build leverages WASM-SIMD128 for near-native parsing performance directly in the browser or Node.js runtime. Compile via Emscripten:
+Install the Python bindings directly from PyPI \u2014 pre-built wheels for Linux, macOS, and Windows:
 
 ```bash
-emcmake cmake -S . -B build_wasm
-cmake --build build_wasm
+pip install cjsonx
 ```
+
+Then parse and query JSON natively from Python:
+
+```python
+import cjsonx
+
+doc = cjsonx.parse('{"name": "alice", "scores": [10, 20, 30]}')
+print(doc["name"])           # alice
+print(doc["scores"][0])      # 10
+print(doc.get("/scores/2"))  # 30 (json pointer)
+```
+
+### Node.js / npm
+
+Install the pre-built WASM package from npm — no native compilation required:
+
+```bash
+npm install @tiw302/cjsonx
+```
+
+Then use the full DOM query API directly in Node.js or the browser:
+
+```js
+const cjsonx = require('@tiw302/cjsonx');
+
+await cjsonx.ready;
+
+const ok = cjsonx.parse('{"user": "alice", "scores": [10, 20, 30]}');
+if (ok) {
+    const root  = cjsonx.getRoot();
+    const user  = root.get('user').str;       // 'alice'
+    const first = root.get('scores').getIndex(0).num; // 10
+    const deep  = root.pointer('/scores/2').num;       // 30
+    const obj   = root.toJS();               // native JS object
+    cjsonx.free();
+}
+```
+
+> **Advanced:** If you need to compile the WASM module yourself (e.g. to enable debug symbols or custom flags), use Emscripten from the repository root:
+> ```bash
+> cd js && node build.js
+> ```
 
 ## Quick Start Example (C)
 

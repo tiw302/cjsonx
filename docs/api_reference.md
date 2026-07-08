@@ -75,6 +75,25 @@ Parses a JSON string using entirely user-provided memory. This avoids `malloc` e
 - **`buffer_size`**: The size of the buffer. If parsing exhausts this size, the parser fails with `CJSONX_ERROR_OOM`.
 - **Read-Only Result:** The returned document is marked `is_static = true`. The Builder API (`cjsonx_object_set`, `cjsonx_array_push`, etc.) will return `false` on static documents because the node array cannot grow. `cjsonx_doc_free()` on a static document is a safe no-op.
 
+---
+
+## Owned-Copy Parsing
+
+Use these variants when you can't guarantee the lifetime of the input buffer, or when you want to free/modify the buffer immediately after the call. The document makes an internal copy and owns it — the copy is freed automatically when you call `cjsonx_doc_free()`.
+
+### `cjsonx_parse_copy`
+
+```c
+cjsonx_doc_t* cjsonx_parse_copy(const char* json, size_t length);
+cjsonx_doc_t* cjsonx_parse_copy_ex(const char* json, size_t length, cjsonx_allocator_t* alloc);
+cjsonx_doc_t* cjsonx_parse_copy_cstr(const char* json); // convenience for null-terminated strings
+```
+
+Copies the input buffer before parsing. Ideal for cases like:
+- Parsing a buffer received from a network socket that will be reused.
+- Using `cjsonx` from bindings where the input string lifetime is short (e.g. WASM JS bridge, Python bindings).
+- Any situation where you don't control the input buffer's lifetime.
+
 ### `cjsonx_doc_free`
 
 ```c
@@ -134,7 +153,8 @@ const char* cjsonx_str(cjsonx_val_t val);
 ```
 
 Retrieves the string pointer.
-**Warning:** `cjsonx` is a zero-copy parser. The returned string points directly into the original JSON payload and is **not null-terminated**. You must use `cjsonx_str_len` to read it safely.
+
+**Warning:** `cjsonx` is a zero-copy parser by default. When using `cjsonx_parse()`, the returned string points directly into the original JSON payload and is **not null-terminated** — always use `cjsonx_str_len()` to bound the read. When using `cjsonx_parse_copy()`, the document owns the buffer, but strings are still **not guaranteed to be null-terminated**.
 
 ### `cjsonx_str_len`
 
@@ -351,7 +371,8 @@ Serializes the document into a JSON file at the specified path. Returns `true` o
 
 ## Limits & Warnings
 
-- **16MB Node Size Limit:** The 16-byte DOM node packs its type and length field into a single `uint32_t` (8 bits for type, 24 bits for length). This limits the maximum length of any single string or serialized container to `16,777,215` bytes.
+- **16MB Node Size Limit:** The 16-byte DOM node packs its type and length field into a single `uint32_t` (8 bits for type, 24 bits for length). This limits the maximum length of any single string or serialized container to `16,777,215` bytes. Inputs exceeding this limit will fail with `CJSONX_ERROR_TOO_LARGE` — no silent truncation occurs.
 - **O(N) Array Push Complexity:** Pushing an element to an array via `cjsonx_array_push` traverses the list of siblings to find the end. Building large arrays sequentially through push operations results in O(N^2) complexity.
 - **Nesting Depth Guard:** `cjsonx_stringify` and `cjsonx_stringify_format` enforce a nesting depth limit of 1000 (`CJSONX_MAX_DEPTH`) to prevent stack overflow on extremely nested inputs. This value is compile-time configurable.
 - **Static Buffer Read-Only:** Documents created with `cjsonx_parse_with_buffer()` are read-only. The Builder API will return `false` on any mutation attempt. `cjsonx_doc_free()` is a safe no-op for static documents.
+- **Zero-Copy Lifetime:** Documents created with `cjsonx_parse()` hold pointers into the original input buffer. The buffer must stay alive for the entire lifetime of the document. Use `cjsonx_parse_copy()` if you need to free the input buffer early.

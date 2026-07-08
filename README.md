@@ -17,6 +17,8 @@
 [![Language](https://img.shields.io/badge/Language-C11-00599C.svg)](https://en.wikipedia.org/wiki/C11_(C_standard_revision))
 [![Header-Only](https://img.shields.io/badge/Library-Header--Only-brightgreen.svg)](#installation)
 [![Dependencies](https://img.shields.io/badge/Dependencies-None-blueviolet.svg)](#introduction)
+[![npm](https://img.shields.io/npm/v/%40tiw302%2Fcjsonx.svg?label=npm)](https://www.npmjs.com/package/@tiw302/cjsonx)
+[![PyPI](https://img.shields.io/pypi/v/cjsonx.svg)](https://pypi.org/project/cjsonx/)
 
 **[Read the Official Documentation: docs/index.md](https://tiw302.github.io/cjsonx/)**<br>
 **[Try the Live WebAssembly Demo: https://tiw302.github.io/cjsonx/demo/](https://tiw302.github.io/cjsonx/demo/)**
@@ -45,10 +47,13 @@
 - [Build and Installation](#build-and-installation)
   - [Single-Header Distribution](#single-header-distribution-recommended)
   - [CMake (System Install)](#cmake-system-install)
+  - [Python / PyPI](#python--pypi)
+  - [Node.js / npm](#nodejs--npm)
   - [Developer Build Flags](#developer-build-flags)
 - [Configuration Macros](#configuration-macros)
 - [API Reference](#api-reference)
   - [Core Parsing](#core-parsing)
+  - [Owned-Copy Parsing](#owned-copy-parsing)
   - [DOM Access](#dom-access)
   - [Iteration](#iteration)
   - [Mutation & Builder API](#mutation--builder-api)
@@ -102,7 +107,7 @@ We believe in engineering honesty. `cjsonx` is built for a specific niche and is
 
 1. **High-Performance Mutable Data:** You need a pure C11 parser that allows you to read, edit, add, and remove JSON nodes rapidly, and stringify them back to JSON text without rebuilding the entire document.
 2. **Strict Memory Constraints (IoT/RTOS):** You need high-speed parsing but absolutely **refuse to waste memory**. Our 16-byte nodes use 4x less RAM than traditional parsers like cJSON. Additionally, `cjsonx_parse_with_buffer()` provides a True Zero-Allocation mode for embedded systems.
-3. **WASM Edge Functions (Cloudflare Workers / Fastly):** You need a pure C11 parser that compiles effortlessly to WebAssembly and leverages WASM-SIMD128 for native execution at the edge, without the heavy overhead of C++ engines.
+3. **WASM / Node.js / Browser:** The `@tiw302/cjsonx` npm package brings full DOM querying to JavaScript. After parsing, you can walk the tree field-by-field via `getRoot()`, `.get(key)`, `.getIndex(i)`, `.pointer(path)`, and `.toJS()` — no JSON.parse re-serialization needed.
 
 ---
 
@@ -189,6 +194,49 @@ find_package(cjsonx REQUIRED)
 target_link_libraries(my_app PRIVATE cjsonx::cjsonx)
 ```
 
+### Python / PyPI
+
+Install the Python bindings via pip — no build tools required, wheels are pre-built for Linux, macOS, and Windows:
+
+```bash
+pip install cjsonx
+```
+
+Then use it directly from Python:
+
+```python
+import cjsonx
+
+doc = cjsonx.parse('{"name": "alice", "scores": [10, 20, 30]}')
+print(doc["name"])              # alice
+print(doc["scores"][0])         # 10
+print(doc.get("/scores/2"))     # 30 (json pointer)
+```
+
+### Node.js / npm
+
+Install the pre-built WebAssembly package — no native compilation or Emscripten required:
+
+```bash
+npm install @tiw302/cjsonx
+```
+
+Then query the DOM directly from JavaScript:
+
+```js
+const cjsonx = require('@tiw302/cjsonx');
+await cjsonx.ready;
+
+const ok = cjsonx.parse('{"name": "alice", "scores": [10, 20, 30]}');
+if (ok) {
+    const root  = cjsonx.getRoot();
+    const name  = root.get('name').str;             // 'alice'
+    const first = root.get('scores').getIndex(0).num; // 10
+    const obj   = root.toJS();                      // plain JS object
+    cjsonx.free();
+}
+```
+
 ### Developer Build Flags
 
 The CMake build exposes optional flags for contributors and CI pipelines:
@@ -235,11 +283,21 @@ All constants can be overridden at compile time by defining them **before** incl
 
 | Function | Signature | Description |
 |---|---|---|
-| `cjsonx_parse` | `cjsonx_doc_t* cjsonx_parse(const char* json, size_t length)` | Parses a JSON string into a managed document tree. Returns `NULL` on fatal memory error. Check `doc->is_valid` for syntax status. |
+| `cjsonx_parse` | `cjsonx_doc_t* cjsonx_parse(const char* json, size_t length)` | Parses a JSON string into a managed document tree. **Zero-copy** — the input buffer must outlive the document. Returns `NULL` on fatal memory error. Check `doc->is_valid` for syntax status. |
 | `cjsonx_parse_ex` | `cjsonx_doc_t* cjsonx_parse_ex(const char* json, size_t length, cjsonx_allocator_t* alloc)` | Parses a JSON string using custom memory allocation hooks. |
 | `cjsonx_parse_with_buffer` | `cjsonx_doc_t* cjsonx_parse_with_buffer(const char* json, size_t length, void* buffer, size_t buffer_size)` | Zero-allocation mode. Parses JSON into a user-provided buffer. Result is read-only (`is_static = true`); Builder API calls will fail on this document. |
 | `cjsonx_doc_free` | `void cjsonx_doc_free(cjsonx_doc_t* doc)` | Frees the entire document arena in a single call. |
 | `cjsonx_error_string` | `const char* cjsonx_error_string(cjsonx_error_t err)` | Translates an error code into a human-readable string. |
+
+### Owned-Copy Parsing
+
+Use these when you don't want to manage the lifetime of the input buffer yourself. The document takes ownership of an internal copy of the JSON string — you can free or modify the original buffer immediately after the call.
+
+| Function | Signature | Description |
+|---|---|---|
+| `cjsonx_parse_copy` | `cjsonx_doc_t* cjsonx_parse_copy(const char* json, size_t length)` | Copies the input buffer and parses it. The document owns the copy. |
+| `cjsonx_parse_copy_ex` | `cjsonx_doc_t* cjsonx_parse_copy_ex(const char* json, size_t length, cjsonx_allocator_t* alloc)` | Same as above, but with a custom allocator. |
+| `cjsonx_parse_copy_cstr` | `cjsonx_doc_t* cjsonx_parse_copy_cstr(const char* json)` | Convenience wrapper for null-terminated strings. |
 
 ### DOM Access
 
