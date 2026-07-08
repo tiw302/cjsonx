@@ -161,24 +161,33 @@ int main() {
     }
     return 0;
 }`,
-    wasm: `// init wasm
-Module.onRuntimeInitialized = () => {
-    const json = '{"message": "Hello WASM World"}';
-    const len = Module.lengthBytesUTF8(json) + 1;
+    wasm: `// install via npm
+// npm install @tiw302/cjsonx
 
-    const ptr = Module._malloc(len);
-    Module.stringToUTF8(json, ptr, len);
+const cjsonx = require('@tiw302/cjsonx');
 
-    // ccall parse
-    const isValid = Module.ccall('cjsonx_wasm_parse', 'number', ['number'], [ptr]);
+async function run() {
+    await cjsonx.ready;
 
-    if (isValid === 1) {
-        console.log("JSON parsed successfully in WASM at extreme speeds!");
-        // handle ast
+    const ok = cjsonx.parse('{"name": "alice", "scores": [10, 20, 30]}');
+    if (ok) {
+        const root  = cjsonx.getRoot();
+
+        // get a string field
+        const name   = root.get('name').str;  // 'alice'
+
+        // index into an array
+        const first  = root.get('scores').getIndex(0).num; // 10
+
+        // json pointer path
+        const third  = root.pointer('/scores/2').num; // 30
+
+        // convert entire dom to plain js object
+        const obj    = root.toJS();
+
+        cjsonx.free();
     }
-
-    Module._free(ptr);
-};`
+}`
 };
 
 document.getElementById('langSelect').addEventListener('change', (e) => {
