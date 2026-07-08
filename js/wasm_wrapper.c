@@ -178,6 +178,135 @@ int cjsonx_wasm_dump(char* buf, size_t max_len) {
     return 1;
 }
 
+// get root node index or uint32_max on failure
+uint32_t cjsonx_wasm_get_root() {
+    if (!current_doc || !current_doc->is_valid) return UINT32_MAX;
+    return current_doc->root.node_idx;
+}
+
+// get type of node at index
+int cjsonx_wasm_get_type(uint32_t idx) {
+    if (!current_doc || idx >= current_doc->node_count) return -1;
+    cjsonx_val_t val = {current_doc, idx};
+    return (int)cjsonx_get_type(val);
+}
+
+// get number of elements in array or object
+int cjsonx_wasm_get_size(uint32_t idx) {
+    if (!current_doc || idx >= current_doc->node_count) return 0;
+    cjsonx_val_t val = {current_doc, idx};
+    return (int)cjsonx_size(val);
+}
+
+// get bool value
+int cjsonx_wasm_get_bool(uint32_t idx) {
+    if (!current_doc || idx >= current_doc->node_count) return 0;
+    cjsonx_val_t val = {current_doc, idx};
+    return cjsonx_bool(val) ? 1 : 0;
+}
+
+// get number value
+double cjsonx_wasm_get_num(uint32_t idx) {
+    if (!current_doc || idx >= current_doc->node_count) return 0.0;
+    cjsonx_val_t val = {current_doc, idx};
+    return cjsonx_num(val);
+}
+
+// get string pointer
+const char* cjsonx_wasm_get_str(uint32_t idx) {
+    if (!current_doc || idx >= current_doc->node_count) return "";
+    cjsonx_val_t val = {current_doc, idx};
+    const char* s = cjsonx_str(val);
+    return s ? s : "";
+}
+
+// get string length
+int cjsonx_wasm_get_str_len(uint32_t idx) {
+    if (!current_doc || idx >= current_doc->node_count) return 0;
+    cjsonx_val_t val = {current_doc, idx};
+    return (int)cjsonx_str_len(val);
+}
+
+// get key of object child
+const char* cjsonx_wasm_get_child_key(uint32_t idx, uint32_t child_idx) {
+    if (!current_doc || idx >= current_doc->node_count) return "";
+    cjsonx_node_t* n = &current_doc->nodes[idx];
+    if (cjsonx_node_type(n) != CJSONX_OBJECT) return "";
+    
+    size_t len = cjsonx_node_length(n);
+    if (child_idx >= len) return "";
+    
+    uint32_t curr = n->val.first_child;
+    for (uint32_t i = 0; i < child_idx; i++) {
+        uint32_t val_idx = current_doc->nodes[curr].next_sibling;
+        curr = current_doc->nodes[val_idx].next_sibling;
+    }
+    cjsonx_node_t* k_node = &current_doc->nodes[curr];
+    return k_node->val.str;
+}
+
+// get key length of object child
+int cjsonx_wasm_get_child_key_len(uint32_t idx, uint32_t child_idx) {
+    if (!current_doc || idx >= current_doc->node_count) return 0;
+    cjsonx_node_t* n = &current_doc->nodes[idx];
+    if (cjsonx_node_type(n) != CJSONX_OBJECT) return 0;
+    
+    size_t len = cjsonx_node_length(n);
+    if (child_idx >= len) return 0;
+    
+    uint32_t curr = n->val.first_child;
+    for (uint32_t i = 0; i < child_idx; i++) {
+        uint32_t val_idx = current_doc->nodes[curr].next_sibling;
+        curr = current_doc->nodes[val_idx].next_sibling;
+    }
+    cjsonx_node_t* k_node = &current_doc->nodes[curr];
+    return (int)cjsonx_node_length(k_node);
+}
+
+// get value node index of object child
+uint32_t cjsonx_wasm_get_child_val(uint32_t idx, uint32_t child_idx) {
+    if (!current_doc || idx >= current_doc->node_count) return UINT32_MAX;
+    cjsonx_node_t* n = &current_doc->nodes[idx];
+    if (cjsonx_node_type(n) != CJSONX_OBJECT) return UINT32_MAX;
+    
+    size_t len = cjsonx_node_length(n);
+    if (child_idx >= len) return UINT32_MAX;
+    
+    uint32_t curr = n->val.first_child;
+    for (uint32_t i = 0; i < child_idx; i++) {
+        uint32_t val_idx = current_doc->nodes[curr].next_sibling;
+        curr = current_doc->nodes[val_idx].next_sibling;
+    }
+    return current_doc->nodes[curr].next_sibling;
+}
+
+// get array item node index
+uint32_t cjsonx_wasm_get_array_item(uint32_t idx, uint32_t item_idx) {
+    if (!current_doc || idx >= current_doc->node_count) return UINT32_MAX;
+    cjsonx_val_t val = {current_doc, idx};
+    cjsonx_val_t res = cjsonx_get_index(val, item_idx);
+    if (!res.doc) return UINT32_MAX;
+    return res.node_idx;
+}
+
+// get object child value index by key
+uint32_t cjsonx_wasm_object_get(uint32_t idx, const char* key) {
+    if (!current_doc || idx >= current_doc->node_count) return UINT32_MAX;
+    cjsonx_val_t val = {current_doc, idx};
+    cjsonx_val_t res = cjsonx_get(val, key);
+    if (!res.doc) return UINT32_MAX;
+    return res.node_idx;
+}
+
+// get value index by json pointer path
+uint32_t cjsonx_wasm_pointer_get(uint32_t idx, const char* path) {
+    if (!current_doc || idx >= current_doc->node_count) return UINT32_MAX;
+    cjsonx_val_t val = {current_doc, idx};
+    cjsonx_val_t res = cjsonx_pointer_get(val, path);
+    if (!res.doc) return UINT32_MAX;
+    return res.node_idx;
+}
+
 #ifdef __cplusplus
 }
 #endif

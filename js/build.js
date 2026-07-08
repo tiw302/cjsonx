@@ -20,6 +20,11 @@ try {
 const exportedFunctions = [
     '_cjsonx_wasm_free', '_cjsonx_wasm_parse', '_cjsonx_wasm_get_error',
     '_cjsonx_wasm_get_error_offset', '_cjsonx_wasm_dump',
+    '_cjsonx_wasm_get_root', '_cjsonx_wasm_get_type', '_cjsonx_wasm_get_size',
+    '_cjsonx_wasm_get_bool', '_cjsonx_wasm_get_num', '_cjsonx_wasm_get_str',
+    '_cjsonx_wasm_get_str_len', '_cjsonx_wasm_get_child_key', '_cjsonx_wasm_get_child_key_len',
+    '_cjsonx_wasm_get_child_val', '_cjsonx_wasm_get_array_item', '_cjsonx_wasm_object_get',
+    '_cjsonx_wasm_pointer_get',
     '_malloc', '_free'
 ];
 
