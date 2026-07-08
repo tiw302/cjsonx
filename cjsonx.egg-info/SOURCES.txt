@@ -10,3 +10,4 @@ cjsonx.egg-info/top_level.txt
 python/cjsonx_python.cpp
 src/cjsonx.c
 tests/test_el.py
+tests/test_python.py
