@@ -154,7 +154,8 @@ typedef enum {
     CJSONX_ERROR_UNEXPECTED_TOKEN,          // found unexpected token
     CJSONX_ERROR_UNCLOSED_CONTAINER,        // array or object is not closed
     CJSONX_ERROR_TRAILING_GARBAGE,          // extra data found after root value
-    CJSONX_ERROR_INVALID_UTF8               // string contains invalid utf-8 sequences
+    CJSONX_ERROR_INVALID_UTF8,              // string contains invalid utf-8 sequences
+    CJSONX_ERROR_TOO_LARGE                  // string or container exceeds 24-bit limit
 } cjsonx_error_t;
 
 // convert error code to string
@@ -192,6 +193,8 @@ static inline const char* cjsonx_error_string(cjsonx_error_t err) {
             return "trailing garbage after root value";
         case CJSONX_ERROR_INVALID_UTF8:
             return "invalid utf-8 sequence in string";
+        case CJSONX_ERROR_TOO_LARGE:
+            return "string or container size exceeds 24-bit maximum (16MB/16M elements)";
         default:
             return "unknown error";
     }
@@ -683,9 +686,10 @@ static inline cjsonx_val_t cjsonx_create_number(cjsonx_doc_t* doc, double val) {
 
 static inline cjsonx_val_t cjsonx_create_string(cjsonx_doc_t* doc, const char* str) {
     if (!str) str = ""; // treat null as empty string, same as cjsonx_get's behavior
+    size_t len = strlen(str);
+    if (CJSONX_UNLIKELY(len > 0xFFFFFF)) return cjsonx_make_null_handle(); // string too large
     uint32_t idx = cjsonx_builder_alloc_node(doc);
     if (idx == UINT32_MAX) return cjsonx_make_null_handle();
-    size_t len = strlen(str);
     cjsonx_node_set_type_len(&doc->nodes[idx], CJSONX_STRING, len);
     doc->nodes[idx].next_sibling = idx + 1;
     
@@ -727,6 +731,7 @@ static inline cjsonx_val_t cjsonx_create_array(cjsonx_doc_t* doc) {
 // mutation
 static inline bool cjsonx_object_set_len(cjsonx_val_t obj_handle, const char* key, size_t key_len, cjsonx_val_t val_handle) {
     if (!obj_handle.doc || !val_handle.doc || obj_handle.doc != val_handle.doc) return false;
+    if (CJSONX_UNLIKELY(key_len > 0xFFFFFF)) return false; // key too large
     cjsonx_node_t* obj = &obj_handle.doc->nodes[obj_handle.node_idx];
     if (cjsonx_node_type(obj) != CJSONX_OBJECT) return false;
     
@@ -2675,6 +2680,10 @@ static inline size_t cjsonx_encode_utf8(uint32_t cp, char* out) {
 // flat string parser: writes directly to out_node
 static cjsonx_always_inline bool cjsonx_parse_string_impl(cjsonx_doc_t* doc, cjsonx_node_t* out_node, const char* json, uint32_t start_pos, uint32_t end_pos) {
     size_t len = end_pos - start_pos - 1;
+    if (CJSONX_UNLIKELY(len > 0xFFFFFF)) {
+        doc->error = CJSONX_ERROR_TOO_LARGE; // string exceeds 24b limit
+        return false;
+    }
     const char* str_start = json + start_pos + 1;
 
     // strict utf-8 and escape validation on raw string
@@ -4656,7 +4665,7 @@ static inline double cjsonx_strtod(char* buf, char** endptr) {
     double val = _strtod_l(buf, endptr, loc);
     if (loc) _free_locale(loc);
     return val;
-#elif defined(__linux__) || defined(__APPLE__) || defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__NetBSD__) || defined(__EMSCRIPTEN__)
+#elif defined(__linux__) || defined(__APPLE__) || defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__NetBSD__)
     locale_t loc = newlocale(LC_ALL_MASK, "C", (locale_t)0);
     if (loc != (locale_t)0) {
         double val = strtod_l(buf, endptr, loc);
@@ -4879,6 +4888,10 @@ static bool cjsonx_stage2_build(cjsonx_doc_t* doc, const char* json, cjsonx_tape
                 }
                 pnode->next_sibling = (uint32_t)node_idx;
                 if (ptype == CJSONX_OBJECT) count /= 2;
+                if (CJSONX_UNLIKELY(count > 0xFFFFFF)) {
+                    doc->error = CJSONX_ERROR_TOO_LARGE; // container exceeds 24b limit
+                    goto fail;
+                }
                 cjsonx_node_set_type_len(pnode, ptype, count);
                 tape_idx++;
                 allowed_mask = cjsonx_get_next_mask(parent_depth, parent_type_stack);
