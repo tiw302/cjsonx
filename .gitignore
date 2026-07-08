@@ -153,3 +153,4 @@ yarn-error.log*
 htmlcov/
 .mypy_cache/
 
+*.egg-info/
