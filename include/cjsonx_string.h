@@ -50,6 +50,10 @@ static inline size_t cjsonx_encode_utf8(uint32_t cp, char* out) {
 // flat string parser: writes directly to out_node
 static cjsonx_always_inline bool cjsonx_parse_string_impl(cjsonx_doc_t* doc, cjsonx_node_t* out_node, const char* json, uint32_t start_pos, uint32_t end_pos) {
     size_t len = end_pos - start_pos - 1;
+    if (CJSONX_UNLIKELY(len > 0xFFFFFF)) {
+        doc->error = CJSONX_ERROR_TOO_LARGE; // string exceeds 24b limit
+        return false;
+    }
     const char* str_start = json + start_pos + 1;
 
     // strict utf-8 and escape validation on raw string
