@@ -5,7 +5,7 @@ class TestCjsonxPython(unittest.TestCase):
     def test_simple_parse(self):
         doc = cjsonx.parse('{"a": 123, "b": true, "c": null, "d": "hello"}')
         self.assertTrue(doc.is_valid)
-        self.assertEqual(doc.error, "no error")
+        self.assertEqual(doc.error, "success")
         
         root = doc.root
         self.assertEqual(root.type, cjsonx.Type.OBJECT)
