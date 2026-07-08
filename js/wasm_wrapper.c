@@ -38,9 +38,18 @@ void cjsonx_wasm_free() {
  */
 int cjsonx_wasm_parse(const char* json) {
     cjsonx_wasm_free();
-    current_doc = cjsonx_parse(json, strlen(json));
-    if (current_doc && current_doc->is_valid) {
-        return 1;
+    size_t len = strlen(json);
+    char* json_copy = (char*)malloc(len + 1);
+    if (!json_copy) return 0;
+    memcpy(json_copy, json, len + 1);
+    current_doc = cjsonx_parse(json_copy, len);
+    if (current_doc) {
+        current_doc->owned_json = json_copy; // owns copy to prevent use after free
+        if (current_doc->is_valid) {
+            return 1;
+        }
+    } else {
+        free(json_copy);
     }
     return 0;
 }
