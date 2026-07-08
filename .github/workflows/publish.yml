@@ -1,0 +1,90 @@
+name: Publish Packages
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: read
+  id-token: write  # required for trusted publishers (oidc) on pypi
+
+jobs:
+  build_wheels:
+    name: Build Python wheels on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build wheels
+        uses: pypa/cibuildwheel@v2.22.0
+        env:
+          CIBW_ARCHS_MACOS: x86_64 arm64
+          CIBW_SKIP: "pp* cp38-macosx_arm64"
+
+      - name: Build sdist
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          pipx run build --sdist
+          mv dist/*.tar.gz ./wheelhouse/
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: artifact-${{ matrix.os }}
+          path: ./wheelhouse/*
+
+  publish_pypi:
+    needs: [build_wheels]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: artifact-*
+          merge-multiple: true
+          path: dist
+
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          # if using trusted publishers, omit the password line completely
+          password: ${{ secrets.PYPI_API_TOKEN }}
+          skip-existing: true
+
+  publish_npm:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18.x'
+          registry-url: 'https://registry.npmjs.org'
+          scope: '@tiw302'
+      
+      - name: Set up Emscripten
+        uses: emscripten-core/setup-emsdk@v14
+        with:
+          version: 'latest'
+          actions-cache-folder: 'emsdk-cache'
+      
+      - name: Build WASM
+        run: |
+          cd js
+          node build.js
+          
+      - name: Run JS Wrapper Tests
+        run: |
+          node tests/test_js.js
+          
+      - name: Publish to NPM
+        run: |
+          cp README.md js/
+          cd js
+          npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
