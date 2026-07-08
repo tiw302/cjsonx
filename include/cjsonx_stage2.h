@@ -104,7 +104,7 @@ static inline double cjsonx_strtod(char* buf, char** endptr) {
     double val = _strtod_l(buf, endptr, loc);
     if (loc) _free_locale(loc);
     return val;
-#elif defined(__linux__) || defined(__APPLE__) || defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__NetBSD__) || defined(__EMSCRIPTEN__)
+#elif defined(__linux__) || defined(__APPLE__) || defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__NetBSD__)
     locale_t loc = newlocale(LC_ALL_MASK, "C", (locale_t)0);
     if (loc != (locale_t)0) {
         double val = strtod_l(buf, endptr, loc);
@@ -327,6 +327,10 @@ static bool cjsonx_stage2_build(cjsonx_doc_t* doc, const char* json, cjsonx_tape
                 }
                 pnode->next_sibling = (uint32_t)node_idx;
                 if (ptype == CJSONX_OBJECT) count /= 2;
+                if (CJSONX_UNLIKELY(count > 0xFFFFFF)) {
+                    doc->error = CJSONX_ERROR_TOO_LARGE; // container exceeds 24b limit
+                    goto fail;
+                }
                 cjsonx_node_set_type_len(pnode, ptype, count);
                 tape_idx++;
                 allowed_mask = cjsonx_get_next_mask(parent_depth, parent_type_stack);
