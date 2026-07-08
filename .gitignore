@@ -131,3 +131,25 @@ GEMINI.md
 # mkdocs
 site/
 
+# python build
+*.egg-info/
+.eggs/
+dist/
+
+# wasm build artifacts
+js/cjsonx_wasm.js
+js/cjsonx_wasm.wasm
+
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# Python testing & coverage
+.pytest_cache/
+.coverage
+htmlcov/
+.mypy_cache/
+
