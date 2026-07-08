@@ -353,7 +353,8 @@ static bool cjsonx_stage2_build(cjsonx_doc_t* doc, const char* json, cjsonx_tape
                     goto fail;
                 }
                 tape_idx++;
-                cjsonx_type_t ptype = cjsonx_node_type(&doc->nodes[parent_stack[parent_depth - 1]]);
+                // optimization: read from parent_type_stack instead of doc->nodes to avoid cache miss
+                cjsonx_type_t ptype = parent_type_stack[parent_depth - 1];
                 allowed_mask = (ptype == CJSONX_OBJECT) ? CJSONX_S_KEY : CJSONX_S_VAL;
                 CJSONX_NEXT_TOKEN();
             }
@@ -607,7 +608,8 @@ void cjsonx_doc_free(cjsonx_doc_t* doc) {
 
 // dom value accessors — get by key, index, and json pointer
 cjsonx_val_t cjsonx_get_len(cjsonx_val_t obj_handle, const char* key, size_t key_len) {
-    if (!obj_handle.doc || !key) return cjsonx_make_null_handle();
+    if (!obj_handle.doc) return cjsonx_make_null_handle();
+    if (!key) { key = ""; key_len = 0; }
     cjsonx_node_t* obj = &obj_handle.doc->nodes[obj_handle.node_idx];
     if (cjsonx_node_type(obj) != CJSONX_OBJECT) return cjsonx_make_null_handle();
     
@@ -898,6 +900,33 @@ cjsonx_doc_t* cjsonx_parse_ex(const char* json, size_t length, cjsonx_allocator_
 
 cjsonx_doc_t* cjsonx_parse(const char* json, size_t length) {
     return cjsonx_parse_ex(json, length, NULL);
+}
+
+cjsonx_doc_t* cjsonx_parse_copy_ex(const char* json, size_t length, cjsonx_allocator_t* alloc) {
+    if (!json) return NULL;
+    char* copy;
+    if (alloc && alloc->malloc_fn) {
+        copy = (char*)alloc->malloc_fn(length + 1, alloc->user_data);
+    } else {
+        copy = (char*)malloc(length + 1);
+    }
+    if (!copy) return NULL;
+    memcpy(copy, json, length);
+    copy[length] = '\0';
+
+    cjsonx_doc_t* doc = cjsonx_parse_ex(copy, length, alloc);
+    if (doc) {
+        doc->owned_json = copy; // owns copy to prevent use after free
+        doc->original_json = copy;
+    } else {
+        if (alloc && alloc->free_fn) alloc->free_fn(copy, alloc->user_data);
+        else free(copy);
+    }
+    return doc;
+}
+
+cjsonx_doc_t* cjsonx_parse_copy(const char* json, size_t length) {
+    return cjsonx_parse_copy_ex(json, length, NULL);
 }
 
 cjsonx_doc_t* cjsonx_parse_with_buffer(const char* json, size_t length, void* buffer, size_t buffer_size) {

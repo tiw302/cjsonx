@@ -15,7 +15,7 @@
  * uses cjsonx_arena. for real zero-alloc, use cjsonx_parse_with_buffer.
  * performance:
  * ------------
- * cjsonx_array_push is o(n) because it walks the siblings.
+ * cjsonx_array_push is o(1) because it uses the last child index.
  * use the builder api for large arrays.
  * conformance:
  * ------------
@@ -72,11 +72,21 @@ CJSONX_API bool cjsonx_stage1_build_tape(const char* json, size_t length, cjsonx
 CJSONX_API CJSONX_NODISCARD cjsonx_doc_t* cjsonx_parse(const char* json, size_t length);
 CJSONX_API CJSONX_NODISCARD cjsonx_doc_t* cjsonx_parse_ex(const char* json, size_t length, cjsonx_allocator_t* alloc);
 
+// parse owned copy of json buffer
+CJSONX_API CJSONX_NODISCARD cjsonx_doc_t* cjsonx_parse_copy(const char* json, size_t length);
+CJSONX_API CJSONX_NODISCARD cjsonx_doc_t* cjsonx_parse_copy_ex(const char* json, size_t length, cjsonx_allocator_t* alloc);
+
 // parse a null-terminated string safely without double evaluation
 static inline CJSONX_NODISCARD cjsonx_doc_t* cjsonx_parse_cstr(const char* json) {
     return cjsonx_parse(json, json ? strlen(json) : 0);
 }
 #define cjsonx_parse_str(json) cjsonx_parse_cstr(json)
+
+// parse a null-terminated string with owned copy
+static inline CJSONX_NODISCARD cjsonx_doc_t* cjsonx_parse_copy_cstr(const char* json) {
+    return cjsonx_parse_copy(json, json ? strlen(json) : 0);
+}
+#define cjsonx_parse_copy_str(json) cjsonx_parse_copy_cstr(json)
 
 #ifdef __cplusplus
 }

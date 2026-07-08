@@ -116,6 +116,7 @@ static inline cjsonx_val_t cjsonx_create_array(cjsonx_doc_t* doc) {
 // mutation
 static inline bool cjsonx_object_set_len(cjsonx_val_t obj_handle, const char* key, size_t key_len, cjsonx_val_t val_handle) {
     if (!obj_handle.doc || !val_handle.doc || obj_handle.doc != val_handle.doc) return false;
+    if (!key) { key = ""; key_len = 0; }
     if (CJSONX_UNLIKELY(key_len > 0xFFFFFF)) return false; // key too large
     cjsonx_node_t* obj = &obj_handle.doc->nodes[obj_handle.node_idx];
     if (cjsonx_node_type(obj) != CJSONX_OBJECT) return false;
@@ -216,6 +217,7 @@ static inline bool cjsonx_array_push(cjsonx_val_t arr_handle, cjsonx_val_t val_h
 
 static inline bool cjsonx_object_remove_len(cjsonx_val_t obj_handle, const char* key, size_t key_len) {
     if (!obj_handle.doc) return false;
+    if (!key) { key = ""; key_len = 0; }
     cjsonx_node_t* obj = &obj_handle.doc->nodes[obj_handle.node_idx];
     if (cjsonx_node_type(obj) != CJSONX_OBJECT) return false;
     

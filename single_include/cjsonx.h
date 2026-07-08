@@ -15,7 +15,7 @@
  * uses cjsonx_arena. for real zero-alloc, use cjsonx_parse_with_buffer.
  * performance:
  * ------------
- * cjsonx_array_push is o(n) because it walks the siblings.
+ * cjsonx_array_push is o(1) because it uses the last child index.
  * use the builder api for large arrays.
  * conformance:
  * ------------
@@ -605,11 +605,21 @@ CJSONX_API bool cjsonx_stage1_build_tape(const char* json, size_t length, cjsonx
 CJSONX_API CJSONX_NODISCARD cjsonx_doc_t* cjsonx_parse(const char* json, size_t length);
 CJSONX_API CJSONX_NODISCARD cjsonx_doc_t* cjsonx_parse_ex(const char* json, size_t length, cjsonx_allocator_t* alloc);
 
+// parse owned copy of json buffer
+CJSONX_API CJSONX_NODISCARD cjsonx_doc_t* cjsonx_parse_copy(const char* json, size_t length);
+CJSONX_API CJSONX_NODISCARD cjsonx_doc_t* cjsonx_parse_copy_ex(const char* json, size_t length, cjsonx_allocator_t* alloc);
+
 // parse a null-terminated string safely without double evaluation
 static inline CJSONX_NODISCARD cjsonx_doc_t* cjsonx_parse_cstr(const char* json) {
     return cjsonx_parse(json, json ? strlen(json) : 0);
 }
 #define cjsonx_parse_str(json) cjsonx_parse_cstr(json)
+
+// parse a null-terminated string with owned copy
+static inline CJSONX_NODISCARD cjsonx_doc_t* cjsonx_parse_copy_cstr(const char* json) {
+    return cjsonx_parse_copy(json, json ? strlen(json) : 0);
+}
+#define cjsonx_parse_copy_str(json) cjsonx_parse_copy_cstr(json)
 
 #ifdef __cplusplus
 }
@@ -731,6 +741,7 @@ static inline cjsonx_val_t cjsonx_create_array(cjsonx_doc_t* doc) {
 // mutation
 static inline bool cjsonx_object_set_len(cjsonx_val_t obj_handle, const char* key, size_t key_len, cjsonx_val_t val_handle) {
     if (!obj_handle.doc || !val_handle.doc || obj_handle.doc != val_handle.doc) return false;
+    if (!key) { key = ""; key_len = 0; }
     if (CJSONX_UNLIKELY(key_len > 0xFFFFFF)) return false; // key too large
     cjsonx_node_t* obj = &obj_handle.doc->nodes[obj_handle.node_idx];
     if (cjsonx_node_type(obj) != CJSONX_OBJECT) return false;
@@ -831,6 +842,7 @@ static inline bool cjsonx_array_push(cjsonx_val_t arr_handle, cjsonx_val_t val_h
 
 static inline bool cjsonx_object_remove_len(cjsonx_val_t obj_handle, const char* key, size_t key_len) {
     if (!obj_handle.doc) return false;
+    if (!key) { key = ""; key_len = 0; }
     cjsonx_node_t* obj = &obj_handle.doc->nodes[obj_handle.node_idx];
     if (cjsonx_node_type(obj) != CJSONX_OBJECT) return false;
     
@@ -4914,7 +4926,8 @@ static bool cjsonx_stage2_build(cjsonx_doc_t* doc, const char* json, cjsonx_tape
                     goto fail;
                 }
                 tape_idx++;
-                cjsonx_type_t ptype = cjsonx_node_type(&doc->nodes[parent_stack[parent_depth - 1]]);
+                // optimization: read from parent_type_stack instead of doc->nodes to avoid cache miss
+                cjsonx_type_t ptype = parent_type_stack[parent_depth - 1];
                 allowed_mask = (ptype == CJSONX_OBJECT) ? CJSONX_S_KEY : CJSONX_S_VAL;
                 CJSONX_NEXT_TOKEN();
             }
@@ -5168,7 +5181,8 @@ void cjsonx_doc_free(cjsonx_doc_t* doc) {
 
 // dom value accessors — get by key, index, and json pointer
 cjsonx_val_t cjsonx_get_len(cjsonx_val_t obj_handle, const char* key, size_t key_len) {
-    if (!obj_handle.doc || !key) return cjsonx_make_null_handle();
+    if (!obj_handle.doc) return cjsonx_make_null_handle();
+    if (!key) { key = ""; key_len = 0; }
     cjsonx_node_t* obj = &obj_handle.doc->nodes[obj_handle.node_idx];
     if (cjsonx_node_type(obj) != CJSONX_OBJECT) return cjsonx_make_null_handle();
     
@@ -5459,6 +5473,33 @@ cjsonx_doc_t* cjsonx_parse_ex(const char* json, size_t length, cjsonx_allocator_
 
 cjsonx_doc_t* cjsonx_parse(const char* json, size_t length) {
     return cjsonx_parse_ex(json, length, NULL);
+}
+
+cjsonx_doc_t* cjsonx_parse_copy_ex(const char* json, size_t length, cjsonx_allocator_t* alloc) {
+    if (!json) return NULL;
+    char* copy;
+    if (alloc && alloc->malloc_fn) {
+        copy = (char*)alloc->malloc_fn(length + 1, alloc->user_data);
+    } else {
+        copy = (char*)malloc(length + 1);
+    }
+    if (!copy) return NULL;
+    memcpy(copy, json, length);
+    copy[length] = '\0';
+
+    cjsonx_doc_t* doc = cjsonx_parse_ex(copy, length, alloc);
+    if (doc) {
+        doc->owned_json = copy; // owns copy to prevent use after free
+        doc->original_json = copy;
+    } else {
+        if (alloc && alloc->free_fn) alloc->free_fn(copy, alloc->user_data);
+        else free(copy);
+    }
+    return doc;
+}
+
+cjsonx_doc_t* cjsonx_parse_copy(const char* json, size_t length) {
+    return cjsonx_parse_copy_ex(json, length, NULL);
 }
 
 cjsonx_doc_t* cjsonx_parse_with_buffer(const char* json, size_t length, void* buffer, size_t buffer_size) {
