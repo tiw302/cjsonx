@@ -457,25 +457,25 @@ Benchmarks were executed on a modern x86_64 CPU (GCC -O3 -march=native). We trac
 
 | Library | Parse (MB/s) | Stringify (MB/s) | Peak Mem (MB) |
 |---------|--------------|------------------|---------------|
-| **cjsonx** | 640.90 | 1904.15 | **0.92** |
-| yyjson | **1029.70** | **4584.73** | 1.20 |
-| cJSON | 398.40 | 611.14 | 1.23 |
+| **cjsonx** | 618.41 | 1611.66 | **0.92** |
+| yyjson | **826.85** | **3773.87** | 1.20 |
+| cJSON | 295.29 | 467.68 | 1.23 |
 
 ### 2. `citm_catalog.json` (1.65 MB)
 
 | Library | Parse (MB/s) | Stringify (MB/s) | Peak Mem (MB) |
 |---------|--------------|------------------|---------------|
-| **cjsonx** | **1172.45** | 1675.20 | **2.07** |
-| yyjson | 718.04 | **6608.75** | 3.29 |
-| cJSON | 284.36 | 799.69 | 2.57 |
+| **cjsonx** | **1169.02** | 2110.53 | **2.07** |
+| yyjson | 889.20 | **6780.16** | 3.29 |
+| cJSON | 292.06 | 836.49 | 2.57 |
 
 ### 3. `canada.json` (2.15 MB) - Heavy Floating-Point Arrays
 
 | Library | Parse (MB/s) | Stringify (MB/s) | Peak Mem (MB) |
 |---------|--------------|------------------|---------------|
-| **cjsonx** | 444.69 | 345.51 | **4.70** |
-| yyjson | **969.17** | **614.07** | 7.87 |
-| cJSON | 68.50 | 26.23 | 10.20 |
+| **cjsonx** | 304.95 | 277.87 | **4.70** |
+| yyjson | **800.68** | **614.18** | 7.87 |
+| cJSON | 72.36 | 25.21 | 10.20 |
 
 <details>
 <summary><b>View raw console output from bench_compare</b></summary>
@@ -488,25 +488,25 @@ Dataset: benchmarks/datasets/citm_catalog.json (1.65 MB)
 ========================================================================
 Library    | Parse (MB/s)    | Stringify (MB/s) | Peak Mem (MB)
 -----------|-----------------|------------------|-----------------------
-cjsonx     | 1172.45         | 1675.20         | 2.07
-yyjson     | 718.04          | 6608.75         | 3.29
-cJSON      | 284.36          | 799.69          | 2.57
+cjsonx     | 1169.02         | 2110.53         | 2.07
+yyjson     | 889.20          | 6780.16         | 3.29
+cJSON      | 292.06          | 836.49          | 2.57
 ========================================================================
 Dataset: benchmarks/datasets/twitter.json (0.60 MB)
 ========================================================================
 Library    | Parse (MB/s)    | Stringify (MB/s) | Peak Mem (MB)
 -----------|-----------------|------------------|-----------------------
-cjsonx     | 640.90          | 1904.15         | 0.92
-yyjson     | 1029.70         | 4584.73         | 1.20
-cJSON      | 398.40          | 611.14          | 1.23
+cjsonx     | 618.41          | 1611.66         | 0.92
+yyjson     | 826.85          | 3773.87         | 1.20
+cJSON      | 295.29          | 467.68          | 1.23
 ========================================================================
 Dataset: benchmarks/datasets/canada.json (2.15 MB)
 ========================================================================
 Library    | Parse (MB/s)    | Stringify (MB/s) | Peak Mem (MB)
 -----------|-----------------|------------------|-----------------------
-cjsonx     | 444.69          | 345.51          | 4.70
-yyjson     | 969.17          | 614.07          | 7.87
-cJSON      | 68.50           | 26.23           | 10.20
+cjsonx     | 304.95          | 277.87          | 4.70
+yyjson     | 800.68          | 614.18          | 7.87
+cJSON      | 72.36           | 25.21           | 10.20
 ========================================================================
 
 tiw@tiw-CachyOS ~/Public/cjsonx (master)
@@ -517,7 +517,7 @@ tiw@tiw-CachyOS ~/Public/cjsonx (master)
 
 ### Analysis
 
-`cjsonx` demonstrates significant parsing throughput on large payloads, measuring up to **1172.45 MB/s** on `citm_catalog.json`. This provides a performance profile comparable to, and often exceeding, modern parsers like `yyjson` during tree construction, while dramatically outperforming legacy standards like `cJSON` in computational speed and maintaining the lowest peak memory overhead.
+`cjsonx` demonstrates significant parsing throughput on large payloads, measuring up to **1169.02 MB/s** on `citm_catalog.json`. This provides a performance profile comparable to, and often exceeding, modern parsers like `yyjson` during tree construction, while dramatically outperforming legacy standards like `cJSON` in computational speed and maintaining the lowest peak memory overhead.
 
 ---
 
