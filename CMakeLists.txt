@@ -6,7 +6,7 @@
 # =========================================================================
 
 cmake_minimum_required(VERSION 3.21)
-project(cjsonx VERSION 1.1.1 LANGUAGES C)
+project(cjsonx VERSION 1.2.4 LANGUAGES C)
 
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED ON)

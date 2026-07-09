@@ -48,8 +48,8 @@
 // version macros
 #define CJSONX_VERSION_MAJOR 1
 #define CJSONX_VERSION_MINOR 2
-#define CJSONX_VERSION_PATCH 2
-#define CJSONX_VERSION_STRING "1.2.2"
+#define CJSONX_VERSION_PATCH 4
+#define CJSONX_VERSION_STRING "1.2.4"
 
 
 // internal headers (order matters: config → error → dom → tape → arena)

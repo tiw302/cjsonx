@@ -47,13 +47,13 @@
 
 // version macros
 #define CJSONX_VERSION_MAJOR 1
-#define CJSONX_VERSION_MINOR 1
-#define CJSONX_VERSION_PATCH 1
-#define CJSONX_VERSION_STRING "1.1.1"
+#define CJSONX_VERSION_MINOR 2
+#define CJSONX_VERSION_PATCH 4
+#define CJSONX_VERSION_STRING "1.2.4"
 
 
 // internal headers (order matters: config → error → dom → tape → arena)
-// updated 2026-06-13
+// updated 2026-07-07
 // spdx-license-identifier: mit
 // copyright (c) 2026 jirawat siripuk
 #ifndef CJSONX_CONFIG_H
@@ -98,6 +98,23 @@
 #define CJSONX_API
 #endif
 
+/*
+ * msvc compat: wrap __builtin_clzll behind CJSONX_CLZLL.
+ * _BitScanReverse64 is available on MSVC x64 only (not x86/win32).
+ * all 32-bit targets are excluded from the build via CIBW_SKIP in CI.
+ */
+#if defined(_MSC_VER) && !defined(__clang__)
+#include <intrin.h>
+static inline int cjsonx_clzll_impl(unsigned long long x) {
+    unsigned long idx;
+    _BitScanReverse64(&idx, x);
+    return 63 - (int)idx;
+}
+#define CJSONX_CLZLL(x) cjsonx_clzll_impl(x)
+#else
+#define CJSONX_CLZLL(x) __builtin_clzll(x)
+#endif
+
 // configuration constants
 
 // maximum nesting level for arrays and objects to prevent stack overflow
@@ -115,14 +132,16 @@
 #define CJSONX_INITIAL_CONTAINER_CAP 16
 #endif
 
-// the block size allocated by the memory arena at once; larger initial chunk means fewer
-// malloc calls during parsing of documents with many strings
+/*
+ * the block size allocated by the memory arena at once; larger initial chunk means fewer
+ * malloc calls during parsing of documents with many strings.
+ */
 #ifndef CJSONX_ARENA_CHUNK_SIZE
 #define CJSONX_ARENA_CHUNK_SIZE 65536
 #endif
 
 #endif // cjsonx_config_h
-// updated 2026-06-13
+// updated 2026-07-08
 // spdx-license-identifier: mit
 // copyright (c) 2026 jirawat siripuk
 #ifndef CJSONX_ERROR_H
@@ -202,7 +221,7 @@ static inline const char* cjsonx_error_string(cjsonx_error_t err) {
 }
 
 #endif // cjsonx_error_h
-// updated 2026-06-13
+// updated 2026-07-07
 // spdx-license-identifier: mit
 // copyright (c) 2026 jirawat siripuk
 #ifndef CJSONX_DOM_H
@@ -419,7 +438,7 @@ typedef cjsonx_allocator_t cjsonx_alc;
 #endif
 
 #endif  // cjsonx_dom_h
-// updated 2026-06-13
+// updated 2026-06-16
 // spdx-license-identifier: mit
 // copyright (c) 2026 jirawat siripuk
 #ifndef CJSONX_TAPE_H
@@ -518,7 +537,7 @@ static cjsonx_always_inline bool cjsonx_tape_push(cjsonx_tape_t* tape, uint32_t 
 #endif
 
 #endif // cjsonx_tape_h
-// updated 2026-06-13
+// updated 2026-06-16
 // spdx-license-identifier: mit
 // copyright (c) 2026 jirawat siripuk
 #ifndef CJSONX_ARENA_H
@@ -627,7 +646,7 @@ static inline CJSONX_NODISCARD cjsonx_doc_t* cjsonx_parse_copy_cstr(const char* 
 #endif
 
 // builder included last so it can see cjsonx_parse_ex declarations
-// updated 2026-06-13
+// updated 2026-07-08
 // spdx-license-identifier: mit
 // copyright (c) 2026 jirawat siripuk
 #ifndef CJSONX_BUILDER_H
@@ -1024,7 +1043,7 @@ static void cjsonx_normalize(cjsonx_fp_t* fp) {
     //   step 1 (old while loop): align leading 1 to bit 52 → shift = clzll - 11
     //   step 2 (old fixed shift): align to bit 63            → shift += 11
     //   combined:                                              shift = clzll(frac)
-    int shift = __builtin_clzll(fp->frac);
+    int shift = CJSONX_CLZLL(fp->frac);
     fp->frac <<= shift;
     fp->exp -= shift;
 }
@@ -1650,8 +1669,9 @@ cjsonx_doc_t* cjsonx_read_file_ex(const char* path, cjsonx_allocator_t* alloc) {
     long fsize = ftell(fp);
     fseek(fp, 0, SEEK_SET);
 
-    // ftell returns long, which caps file size at 2gb on 32-bit platforms.
-    // also reject files larger than 4gb to prevent tape index overflow.
+    /* ftell returns long, which caps file size at 2gb on 32-bit platforms.
+     * also reject files larger than 4gb to prevent tape index overflow.
+     */
     if (fsize < 0 || (unsigned long)fsize > UINT32_MAX || (unsigned long)fsize >= (size_t)-1) {
         fclose(fp);
         return NULL;
@@ -1868,7 +1888,7 @@ cjsonx_val_t cjsonx_merge_patch(cjsonx_val_t target, cjsonx_val_t patch) {
 #ifdef CJSONX_IMPLEMENTATION
 #ifndef CJSONX_IMPLEMENTED
 #define CJSONX_IMPLEMENTED
-// updated 2026-06-13
+// updated 2026-06-23
 // spdx-license-identifier: mit
 // copyright (c) 2026 jirawat siripuk
 #ifndef CJSONX_STAGE1_H
@@ -1884,11 +1904,12 @@ cjsonx_val_t cjsonx_merge_patch(cjsonx_val_t target, cjsonx_val_t patch) {
 
 
 
-// detect architecture and select best available backend.
-// note: if you need to support runtime dispatch (e.g. avx2 on modern cpu, fallback to scalar on old),
-// you should build multiple objects and dispatch at runtime via cpuid, rather than compile-time macros.
+/* detect architecture and select best available backend.
+ * note: if you need to support runtime dispatch (e.g. avx2 on modern cpu, fallback to scalar on old),
+ * you should build multiple objects and dispatch at runtime via cpuid, rather than compile-time macros.
+ */
 #if defined(__AVX2__)
-// updated 2026-06-13
+// updated 2026-06-18
 // spdx-license-identifier: mit
 // copyright (c) 2026 jirawat siripuk
 #ifndef CJSONX_AVX2_H
@@ -1907,7 +1928,6 @@ cjsonx_val_t cjsonx_merge_patch(cjsonx_val_t target, cjsonx_val_t patch) {
 
 // msvc compatibility for gcc/clang builtins
 #if defined(_MSC_VER) && !defined(__clang__)
-#include <intrin.h>
 static inline uint32_t cjsonx_ctz32(uint32_t x) {
     unsigned long idx;
     _BitScanForward(&idx, x);
@@ -2070,7 +2090,7 @@ static inline bool cjsonx_stage1_avx2(const char* json, size_t length, cjsonx_ta
 
 #endif // cjsonx_avx2_h
 #elif defined(__ARM_NEON)
-// updated 2026-06-13
+// updated 2026-06-18
 // spdx-license-identifier: mit
 // copyright (c) 2026 jirawat siripuk
 #ifndef CJSONX_NEON_H
@@ -2263,7 +2283,7 @@ static inline bool cjsonx_stage1_neon(const char* json, size_t length, cjsonx_ta
 
 #endif // cjsonx_neon_h
 #elif defined(__wasm_simd128__)
-// updated 2026-06-13
+// updated 2026-06-23
 // spdx-license-identifier: mit
 // copyright (c) 2026 jirawat siripuk
 #ifndef CJSONX_WASM_H
@@ -2435,7 +2455,7 @@ static inline bool cjsonx_stage1_wasm(const char* json, size_t length, cjsonx_ta
 
 #endif // cjsonx_wasm_h
 #else
-// updated 2026-06-13
+// updated 2026-06-16
 // spdx-license-identifier: mit
 // copyright (c) 2026 jirawat siripuk
 #ifndef CJSONX_SCALAR_H
@@ -2560,7 +2580,7 @@ bool cjsonx_stage1_build_tape(const char* json, size_t length, cjsonx_tape_t* ta
 #endif
 
 #endif  // cjsonx_stage1_h
-// updated 2026-06-13
+// updated 2026-07-08
 // spdx-license-identifier: mit
 // copyright (c) 2026 jirawat siripuk
 #ifndef CJSONX_STAGE2_H
@@ -2578,7 +2598,7 @@ bool cjsonx_stage1_build_tape(const char* json, size_t length, cjsonx_tape_t* ta
 #include <locale.h>
 #include <errno.h>
 
-// updated 2026-06-13
+// updated 2026-07-08
 // spdx-license-identifier: mit
 // copyright (c) 2026 jirawat siripuk
 #ifndef CJSONX_STRING_H
@@ -2593,7 +2613,7 @@ bool cjsonx_stage1_build_tape(const char* json, size_t length, cjsonx_tape_t* ta
 // >>string processing
 
 
-// updated 2026-06-13
+// updated 2026-06-16
 // spdx-license-identifier: mit
 // copyright (c) 2026 jirawat siripuk
 #ifndef CJSONX_UTF8_H
@@ -2785,10 +2805,11 @@ static cjsonx_always_inline bool cjsonx_parse_string_impl(cjsonx_doc_t* doc, cjs
     }
 #endif
 
-    // scalar fallback for remaining bytes or to re-scan the failed simd chunk.
-    // control and non-ascii flags from previous chunks are preserved.
-    // dev note: using swar here for the remaining bytes is a very nice optimization,
-    // avoiding byte-by-byte loops for the tail end of long strings.
+    /* scalar fallback for remaining bytes or to re-scan the failed simd chunk.
+     * control and non-ascii flags from previous chunks are preserved.
+     * dev note: using swar here for the remaining bytes is a very nice optimization,
+     * avoiding byte-by-byte loops for the tail end of long strings.
+     */
     uint64_t mask = 0;
     for (; i + 8 <= len; i += 8) {
         uint64_t chunk;
@@ -2954,7 +2975,7 @@ static cjsonx_always_inline bool cjsonx_parse_string_impl(cjsonx_doc_t* doc, cjs
 
 #endif // cjsonx_string_h
 
-// updated 2026-06-13
+// updated 2026-06-23
 // spdx-license-identifier: mit
 // copyright (c) 2026 jirawat siripuk
 #ifndef CJSONX_FASTFLOAT_H
@@ -2970,7 +2991,7 @@ static cjsonx_always_inline bool cjsonx_parse_string_impl(cjsonx_doc_t* doc, cjs
 
 
 #include <math.h>
-// updated 2026-06-13
+// updated 2026-06-16
 // spdx-license-identifier: mit
 // copyright (c) 2026 jirawat siripuk
 #ifndef CJSONX_EISEL_LEMIRE_H
@@ -4376,17 +4397,7 @@ static const int16_t cjsonx_eisel_lemire_exp[] = {
 
 #endif // cjsonx_eisel_lemire_h
 
-// msvc compat: wrap clzll so we don't touch reserved __builtin_* names (c11 §7.1.3)
-#if defined(_MSC_VER) && !defined(__clang__)
-static inline int cjsonx_clzll(uint64_t x) {
-    unsigned long idx;
-    _BitScanReverse64(&idx, x);
-    return 63 - (int)idx;
-}
-#define CJSONX_CLZLL(x) cjsonx_clzll(x)
-#else
-#define CJSONX_CLZLL(x) __builtin_clzll(x)
-#endif
+// CJSONX_CLZLL is defined in cjsonx_config.h (included via cjsonx_stage2.h chain)
 
 #ifdef __cplusplus
 extern "C" {
@@ -4400,8 +4411,10 @@ static const double cjsonx_power_of_10[] = {
     1e20, 1e21, 1e22
 };
 
-// reciprocals of cjsonx_power_of_10[]: multiplying by these avoids fp division.
-// fp division is ~3-5x slower than multiplication on modern cpus.
+/*
+ * reciprocals of cjsonx_power_of_10[]: multiplying by these avoids fp division.
+ * fp division is ~3-5x slower than multiplication on modern cpus.
+ */
 static const double cjsonx_power_of_10_neg[] = {
     1.0/1e0,  1.0/1e1,  1.0/1e2,  1.0/1e3,  1.0/1e4,  1.0/1e5,
     1.0/1e6,  1.0/1e7,  1.0/1e8,  1.0/1e9,  1.0/1e10, 1.0/1e11,
@@ -5622,12 +5635,13 @@ cjsonx_doc_t* cjsonx_parse_with_buffer(const char* json, size_t length, void* bu
     // explicit size_t mask: ~7 is signed int which sign-extends on 64-bit
     offset = (offset + 7u) & ~(size_t)7;
     
-    // use tape.count+1 as the node capacity upper bound.
-    // tape.count/2+1 is the typical estimate, but cjsonx_next_token checks
-    // node_idx >= capacity for EVERY tape entry (including commas and closers),
-    // so a tight estimate causes spurious cjsonx_grow_nodes calls which fail
-    // for static docs (is_static prevents realloc). tape.count+1 guarantees
-    // node_idx never reaches capacity before the parse finishes.
+    /* use tape.count+1 as the node capacity upper bound.
+     * tape.count/2+1 is the typical estimate, but cjsonx_next_token checks
+     * node_idx >= capacity for EVERY tape entry (including commas and closers),
+     * so a tight estimate causes spurious cjsonx_grow_nodes calls which fail
+     * for static docs (is_static prevents realloc). tape.count+1 guarantees
+     * node_idx never reaches capacity before the parse finishes.
+     */
     size_t alloc_count = tape.count + 1;
     size_t nodes_size = alloc_count * sizeof(cjsonx_node_t);
     if (offset + nodes_size > buffer_size) {
