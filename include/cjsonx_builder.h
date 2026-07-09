@@ -13,6 +13,7 @@
 // >>builder api
 
 
+#include "cjsonx_config.h"
 #include "cjsonx_dom.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -398,7 +399,7 @@ static void cjsonx_normalize(cjsonx_fp_t* fp) {
     //   step 1 (old while loop): align leading 1 to bit 52 → shift = clzll - 11
     //   step 2 (old fixed shift): align to bit 63            → shift += 11
     //   combined:                                              shift = clzll(frac)
-    int shift = __builtin_clzll(fp->frac);
+    int shift = CJSONX_CLZLL(fp->frac);
     fp->frac <<= shift;
     fp->exp -= shift;
 }

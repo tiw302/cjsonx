@@ -43,6 +43,23 @@
 #define CJSONX_API
 #endif
 
+/*
+ * msvc compat: wrap __builtin_clzll behind CJSONX_CLZLL.
+ * _BitScanReverse64 is available on MSVC x64 only (not x86/win32).
+ * all 32-bit targets are excluded from the build via CIBW_SKIP in CI.
+ */
+#if defined(_MSC_VER) && !defined(__clang__)
+#include <intrin.h>
+static inline int cjsonx_clzll_impl(unsigned long long x) {
+    unsigned long idx;
+    _BitScanReverse64(&idx, x);
+    return 63 - (int)idx;
+}
+#define CJSONX_CLZLL(x) cjsonx_clzll_impl(x)
+#else
+#define CJSONX_CLZLL(x) __builtin_clzll(x)
+#endif
+
 // configuration constants
 
 // maximum nesting level for arrays and objects to prevent stack overflow

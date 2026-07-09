@@ -19,18 +19,7 @@
 #include <math.h>
 #include "cjsonx_eisel_lemire.h"
 
-// msvc compat: wrap clzll so we don't touch reserved __builtin_* names (c11 §7.1.3)
-#if defined(_MSC_VER) && !defined(__clang__)
-#include <intrin.h>
-static inline int cjsonx_clzll(uint64_t x) {
-    unsigned long idx;
-    _BitScanReverse64(&idx, x);
-    return 63 - (int)idx;
-}
-#define CJSONX_CLZLL(x) cjsonx_clzll(x)
-#else
-#define CJSONX_CLZLL(x) __builtin_clzll(x)
-#endif
+// CJSONX_CLZLL is defined in cjsonx_config.h (included via cjsonx_stage2.h chain)
 
 #ifdef __cplusplus
 extern "C" {
