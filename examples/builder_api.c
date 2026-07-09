@@ -1,6 +1,7 @@
-#include "cjsonx.h"
 #include <stdio.h>
 #include <stdlib.h>
+
+#include "cjsonx.h"
 
 int main() {
     // 1. create a new empty document
@@ -16,7 +17,9 @@ int main() {
     // 3. add simple key-value pairs
     cjsonx_object_set(doc->root, "name", cjsonx_create_string(doc, "cjsonx"));
     cjsonx_object_set(doc->root, "version", cjsonx_create_number(doc, 1.0));
-    cjsonx_object_set(doc->root, "is_fast", cjsonx_create_bool(doc, true));
+
+    // fast append (o(1) without duplicate check) - ideal for building large objects
+    cjsonx_object_add_unchecked(doc->root, "is_fast", cjsonx_create_bool(doc, true));
 
     // 4. add an array of strings
     cjsonx_val features = cjsonx_create_array(doc);
