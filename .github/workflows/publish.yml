@@ -13,7 +13,9 @@ jobs:
   build_wheels:
     name: Build Python wheels on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
     strategy:
+      fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
 
@@ -24,7 +26,11 @@ jobs:
         uses: pypa/cibuildwheel@v2.22.0
         env:
           CIBW_ARCHS_MACOS: x86_64 arm64
-          CIBW_SKIP: "pp* cp38-macosx_arm64"
+          # skip: 32-bit targets (win32, i686) — __int128 and 64-bit intrinsics
+          # are not available on MSVC x86 / manylinux i686 toolchains.
+          # skip: pp* (PyPy) — not tested, skip cp38-macosx_arm64 (no runner).
+          CIBW_SKIP: "pp* cp38-macosx_arm64 *-win32 *-manylinux_i686 *-musllinux_i686"
+          CIBW_BUILD_VERBOSITY: 1
 
       - name: Build sdist
         if: matrix.os == 'ubuntu-latest'
