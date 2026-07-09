@@ -83,6 +83,18 @@ def main():
                 (r'#define CJSONX_VERSION_PATCH \d+', f'#define CJSONX_VERSION_PATCH {patch}'),
                 (r'#define CJSONX_VERSION_STRING "\d+\.\d+\.\d+"', f'#define CJSONX_VERSION_STRING "{new_version}"')
             ]
+        ),
+        (
+            "js/package.json",
+            [
+                (r'"version": "\d+\.\d+\.\d+"', f'"version": "{new_version}"')
+            ]
+        ),
+        (
+            "setup.py",
+            [
+                (r"version='\d+\.\d+\.\d+'", f"version='{new_version}'")
+            ]
         )
     ]
 
