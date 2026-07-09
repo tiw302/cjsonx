@@ -58,6 +58,10 @@ run_benchmarks() {
         if [ -f "benchmarks/datasets/canada.json" ]; then
             ./build/bench_compare benchmarks/datasets/canada.json
         fi
+        
+        if [ -f "benchmarks/datasets/citm_catalog.json" ]; then
+            ./build/bench_compare benchmarks/datasets/citm_catalog.json
+        fi
     else
         echo "error: benchmark executable not built."
         echo "make sure third_party dependencies are downloaded (see benchmarks/ folder)."

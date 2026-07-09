@@ -122,6 +122,10 @@ if exist "%BENCH_EXE%" (
     if exist "benchmarks\datasets\canada.json" (
         "%BENCH_EXE%" benchmarks\datasets\canada.json
     )
+    
+    if exist "benchmarks\datasets\citm_catalog.json" (
+        "%BENCH_EXE%" benchmarks\datasets\citm_catalog.json
+    )
 ) else (
     echo error: benchmark executable not built.
     echo make sure third_party dependencies are downloaded ^(see benchmarks\ folder^).
