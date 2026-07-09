@@ -34,7 +34,7 @@
  */
 
 #if defined(__linux__) && !defined(_GNU_SOURCE)
-#define _GNU_SOURCE 1 // expose posix locale functions in standard headers
+#define _GNU_SOURCE 1  // expose posix locale functions in standard headers
 #endif
 
 #ifndef CJSONX_H
@@ -51,13 +51,12 @@
 #define CJSONX_VERSION_PATCH 5
 #define CJSONX_VERSION_STRING "1.2.5"
 
-
 // internal headers (order matters: config → error → dom → tape → arena)
-#include "cjsonx_config.h"
-#include "cjsonx_error.h"
-#include "cjsonx_dom.h"
-#include "cjsonx_tape.h"
 #include "cjsonx_arena.h"
+#include "cjsonx_config.h"
+#include "cjsonx_dom.h"
+#include "cjsonx_error.h"
+#include "cjsonx_tape.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -70,11 +69,13 @@ CJSONX_API bool cjsonx_stage1_build_tape(const char* json, size_t length, cjsonx
 // main parser entry point
 // warning: the input json buffer must outlive the returned document (zero-copy string references).
 CJSONX_API CJSONX_NODISCARD cjsonx_doc_t* cjsonx_parse(const char* json, size_t length);
-CJSONX_API CJSONX_NODISCARD cjsonx_doc_t* cjsonx_parse_ex(const char* json, size_t length, cjsonx_allocator_t* alloc);
+CJSONX_API CJSONX_NODISCARD cjsonx_doc_t* cjsonx_parse_ex(const char* json, size_t length,
+                                                          cjsonx_allocator_t* alloc);
 
 // parse owned copy of json buffer
 CJSONX_API CJSONX_NODISCARD cjsonx_doc_t* cjsonx_parse_copy(const char* json, size_t length);
-CJSONX_API CJSONX_NODISCARD cjsonx_doc_t* cjsonx_parse_copy_ex(const char* json, size_t length, cjsonx_allocator_t* alloc);
+CJSONX_API CJSONX_NODISCARD cjsonx_doc_t* cjsonx_parse_copy_ex(const char* json, size_t length,
+                                                               cjsonx_allocator_t* alloc);
 
 // parse a null-terminated string safely without double evaluation
 static inline CJSONX_NODISCARD cjsonx_doc_t* cjsonx_parse_cstr(const char* json) {

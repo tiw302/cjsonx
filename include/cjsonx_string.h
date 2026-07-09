@@ -12,11 +12,11 @@
 //
 // >>string processing
 
-
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <string.h>
+
 #include "cjsonx_utf8.h"
 
 #ifdef __cplusplus
@@ -29,10 +29,14 @@ static inline bool cjsonx_parse_hex4(const char* p, uint32_t* out) {
     for (int i = 0; i < 4; i++) {
         char c = p[i];
         val <<= 4;
-        if (c >= '0' && c <= '9') val |= (c - '0');
-        else if (c >= 'a' && c <= 'f') val |= (c - 'a' + 10);
-        else if (c >= 'A' && c <= 'F') val |= (c - 'A' + 10);
-        else return false;
+        if (c >= '0' && c <= '9')
+            val |= (c - '0');
+        else if (c >= 'a' && c <= 'f')
+            val |= (c - 'a' + 10);
+        else if (c >= 'A' && c <= 'F')
+            val |= (c - 'A' + 10);
+        else
+            return false;
     }
     *out = val;
     return true;
@@ -40,18 +44,35 @@ static inline bool cjsonx_parse_hex4(const char* p, uint32_t* out) {
 
 // encode unicode codepoint to utf-8 bytes, returns byte count
 static inline size_t cjsonx_encode_utf8(uint32_t cp, char* out) {
-    if (cp < 0x80) { out[0] = (char)cp; return 1; }
-    else if (cp < 0x800) { out[0] = (char)(0xC0 | (cp >> 6)); out[1] = (char)(0x80 | (cp & 0x3F)); return 2; }
-    else if (cp < 0x10000) { out[0] = (char)(0xE0 | (cp >> 12)); out[1] = (char)(0x80 | ((cp >> 6) & 0x3F)); out[2] = (char)(0x80 | (cp & 0x3F)); return 3; }
-    else if (cp <= 0x10FFFF) { out[0] = (char)(0xF0 | (cp >> 18)); out[1] = (char)(0x80 | ((cp >> 12) & 0x3F)); out[2] = (char)(0x80 | ((cp >> 6) & 0x3F)); out[3] = (char)(0x80 | (cp & 0x3F)); return 4; }
+    if (cp < 0x80) {
+        out[0] = (char)cp;
+        return 1;
+    } else if (cp < 0x800) {
+        out[0] = (char)(0xC0 | (cp >> 6));
+        out[1] = (char)(0x80 | (cp & 0x3F));
+        return 2;
+    } else if (cp < 0x10000) {
+        out[0] = (char)(0xE0 | (cp >> 12));
+        out[1] = (char)(0x80 | ((cp >> 6) & 0x3F));
+        out[2] = (char)(0x80 | (cp & 0x3F));
+        return 3;
+    } else if (cp <= 0x10FFFF) {
+        out[0] = (char)(0xF0 | (cp >> 18));
+        out[1] = (char)(0x80 | ((cp >> 12) & 0x3F));
+        out[2] = (char)(0x80 | ((cp >> 6) & 0x3F));
+        out[3] = (char)(0x80 | (cp & 0x3F));
+        return 4;
+    }
     return 0;
 }
 
 // flat string parser: writes directly to out_node
-static cjsonx_always_inline bool cjsonx_parse_string_impl(cjsonx_doc_t* doc, cjsonx_node_t* out_node, const char* json, uint32_t start_pos, uint32_t end_pos) {
+static cjsonx_always_inline bool cjsonx_parse_string_impl(cjsonx_doc_t* doc,
+                                                          cjsonx_node_t* out_node, const char* json,
+                                                          uint32_t start_pos, uint32_t end_pos) {
     size_t len = end_pos - start_pos - 1;
     if (CJSONX_UNLIKELY(len > 0xFFFFFF)) {
-        doc->error = CJSONX_ERROR_TOO_LARGE; // string exceeds 24b limit
+        doc->error = CJSONX_ERROR_TOO_LARGE;  // string exceeds 24b limit
         return false;
     }
     const char* str_start = json + start_pos + 1;
@@ -66,23 +87,24 @@ static cjsonx_always_inline bool cjsonx_parse_string_impl(cjsonx_doc_t* doc, cjs
     __m256i escape_char = _mm256_set1_epi8('\\');
     for (; i + 32 <= len; i += 32) {
         __m256i chunk = _mm256_loadu_si256((const __m256i*)(str_start + i));
-        
+
         // check for non-ascii (highest bit set)
         if (CJSONX_UNLIKELY(!_mm256_testz_si256(chunk, _mm256_set1_epi8((char)0x80)))) {
             has_non_ascii = true;
         }
-        
+
         // check for escape character
         __m256i cmp_esc = _mm256_cmpeq_epi8(chunk, escape_char);
-        
+
         // check for control char (< 0x20)
-        __m256i cmp_ctrl = _mm256_cmpeq_epi8(_mm256_subs_epu8(chunk, _mm256_set1_epi8(0x1F)), _mm256_setzero_si256());
-        
+        __m256i cmp_ctrl = _mm256_cmpeq_epi8(_mm256_subs_epu8(chunk, _mm256_set1_epi8(0x1F)),
+                                             _mm256_setzero_si256());
+
         __m256i bad = _mm256_or_si256(cmp_esc, cmp_ctrl);
         if (CJSONX_UNLIKELY(!_mm256_testz_si256(bad, bad))) {
             if (!_mm256_testz_si256(cmp_ctrl, cmp_ctrl)) has_control = true;
             has_escape = true;
-            break; // found escape or control, break to handle it
+            break;  // found escape or control, break to handle it
         }
     }
 #elif defined(__ARM_NEON)
@@ -90,22 +112,22 @@ static cjsonx_always_inline bool cjsonx_parse_string_impl(cjsonx_doc_t* doc, cjs
     uint8x16_t ctrl_limit = vdupq_n_u8(0x20);
     for (; i + 16 <= len; i += 16) {
         uint8x16_t chunk = vld1q_u8((const uint8_t*)(str_start + i));
-        
+
         // bytes >= 0x80 have bit 7 set, which makes them negative as signed int8 — clean trick
         uint8x16_t non_ascii = vcltq_s8(vreinterpretq_s8_u8(chunk), vdupq_n_s8(0));
-        
+
         // check for escape character
         uint8x16_t cmp_esc = vceqq_u8(chunk, escape_char);
-        
+
         // check for control char (< 0x20)
         uint8x16_t cmp_ctrl = vcltq_u8(chunk, ctrl_limit);
-        
+
         uint8x16_t bad = vorrq_u8(cmp_esc, cmp_ctrl);
-        
+
         // bitwise or across vector to check if any condition matched
         uint32x4_t bad_u32 = vreinterpretq_u32_u8(bad);
         uint32x4_t non_ascii_u32 = vreinterpretq_u32_u8(non_ascii);
-        
+
         if (CJSONX_UNLIKELY(vmaxvq_u32(bad_u32) != 0)) {
             if (vmaxvq_u32(vreinterpretq_u32_u8(cmp_ctrl)) != 0) has_control = true;
             has_escape = true;
@@ -121,15 +143,15 @@ static cjsonx_always_inline bool cjsonx_parse_string_impl(cjsonx_doc_t* doc, cjs
     v128_t zero = wasm_i8x16_splat(0);
     for (; i + 16 <= len; i += 16) {
         v128_t chunk = wasm_v128_load((const v128_t*)(str_start + i));
-        
+
         // check for non-ascii (signed < 0)
         v128_t non_ascii = wasm_i8x16_lt(chunk, zero);
-        
+
         v128_t cmp_esc = wasm_i8x16_eq(chunk, escape_char);
         v128_t cmp_ctrl = wasm_u8x16_lt(chunk, ctrl_limit);
-        
+
         v128_t bad = wasm_v128_or(cmp_esc, cmp_ctrl);
-        
+
         if (CJSONX_UNLIKELY(wasm_v128_any_true(bad))) {
             if (wasm_v128_any_true(cmp_ctrl)) has_control = true;
             has_escape = true;
@@ -156,15 +178,18 @@ static cjsonx_always_inline bool cjsonx_parse_string_impl(cjsonx_doc_t* doc, cjs
              * bitwise swar (simd within a register) scanning for backslash and control characters:
              *
              * 1. backslash search:
-             *    - xor'ing the chunk with 0x5c (backslash ascii value) turns any backslash byte to 0x00.
+             *    - xor'ing the chunk with 0x5c (backslash ascii value) turns any backslash byte to
+             * 0x00.
              *    - subtracting 0x01 from every byte and checking if the high bit is set (under ~x)
              *      determines if any byte in the xor product was 0x00 (classic null byte test).
              *
              * 2. control character search (< 0x20):
              *    - any control byte has the msb (bit 7) clear.
-             *    - adding 0x60 to the 7-bit value of each byte causes a carry-out to the msb (bit 7)
-             *      if and only if the byte was >= 0x20. if it was < 0x20, no carry occurs, leaving the msb clear.
-             *    - checking (~t & ~msb) finds if the msb remains clear, indicating a control character.
+             *    - adding 0x60 to the 7-bit value of each byte causes a carry-out to the msb (bit
+             * 7) if and only if the byte was >= 0x20. if it was < 0x20, no carry occurs, leaving
+             * the msb clear.
+             *    - checking (~t & ~msb) finds if the msb remains clear, indicating a control
+             * character.
              */
             uint64_t x = chunk ^ 0x5C5C5C5C5C5C5C5CULL;
             if (CJSONX_UNLIKELY((x - 0x0101010101010101ULL) & ~x & 0x8080808080808080ULL)) {
@@ -174,18 +199,21 @@ static cjsonx_always_inline bool cjsonx_parse_string_impl(cjsonx_doc_t* doc, cjs
             uint64_t no_msb = chunk ^ msb;
             uint64_t t = no_msb + 0x6060606060606060ULL;
             if (CJSONX_UNLIKELY((~t & ~msb) & 0x8080808080808080ULL)) {
-                 has_control = true;
-                 has_escape = true;
+                has_control = true;
+                has_escape = true;
             }
         }
     }
     for (; i < len; i++) {
         mask |= (uint8_t)str_start[i];
         if (CJSONX_UNLIKELY(str_start[i] == '\\')) has_escape = true;
-        if (!has_escape && CJSONX_UNLIKELY((unsigned char)str_start[i] < 0x20)) { has_control = true; has_escape = true; }
+        if (!has_escape && CJSONX_UNLIKELY((unsigned char)str_start[i] < 0x20)) {
+            has_control = true;
+            has_escape = true;
+        }
     }
     if (CJSONX_UNLIKELY(mask & 0x8080808080808080ULL)) has_non_ascii = true;
-    
+
     if (CJSONX_UNLIKELY(has_control)) {
         doc->error = CJSONX_ERROR_INVALID_CONTROL_CHAR;
         return false;
@@ -196,9 +224,15 @@ static cjsonx_always_inline bool cjsonx_parse_string_impl(cjsonx_doc_t* doc, cjs
         uint32_t codep;
         for (size_t j = 0; j < len; j++) {
             cjsonx_utf8_decode(&state, &codep, (uint8_t)str_start[j]);
-            if (CJSONX_UNLIKELY(state == CJSONX_UTF8_REJECT)) { doc->error = CJSONX_ERROR_INVALID_UTF8; return false; }
+            if (CJSONX_UNLIKELY(state == CJSONX_UTF8_REJECT)) {
+                doc->error = CJSONX_ERROR_INVALID_UTF8;
+                return false;
+            }
         }
-        if (CJSONX_UNLIKELY(state != CJSONX_UTF8_ACCEPT)) { doc->error = CJSONX_ERROR_INVALID_UTF8; return false; }
+        if (CJSONX_UNLIKELY(state != CJSONX_UTF8_ACCEPT)) {
+            doc->error = CJSONX_ERROR_INVALID_UTF8;
+            return false;
+        }
     }
 
     // zero-copy fast path
@@ -227,14 +261,38 @@ static cjsonx_always_inline bool cjsonx_parse_string_impl(cjsonx_doc_t* doc, cjs
                 return false;
             }
             switch (*p) {
-                case '"': *d++ = '"'; p++; break;
-                case '\\': *d++ = '\\'; p++; break;
-                case '/': *d++ = '/'; p++; break;
-                case 'b': *d++ = '\b'; p++; break;
-                case 'f': *d++ = '\f'; p++; break;
-                case 'n': *d++ = '\n'; p++; break;
-                case 'r': *d++ = '\r'; p++; break;
-                case 't': *d++ = '\t'; p++; break;
+                case '"':
+                    *d++ = '"';
+                    p++;
+                    break;
+                case '\\':
+                    *d++ = '\\';
+                    p++;
+                    break;
+                case '/':
+                    *d++ = '/';
+                    p++;
+                    break;
+                case 'b':
+                    *d++ = '\b';
+                    p++;
+                    break;
+                case 'f':
+                    *d++ = '\f';
+                    p++;
+                    break;
+                case 'n':
+                    *d++ = '\n';
+                    p++;
+                    break;
+                case 'r':
+                    *d++ = '\r';
+                    p++;
+                    break;
+                case 't':
+                    *d++ = '\t';
+                    p++;
+                    break;
                 case 'u': {
                     p++;
                     if (p + 4 > end) {
@@ -249,13 +307,15 @@ static cjsonx_always_inline bool cjsonx_parse_string_impl(cjsonx_doc_t* doc, cjs
                     p += 4;
                     /*
                      * decode utf-16 surrogate pairs (rfc8259 section 7):
-                     * json represents characters outside the basic multilingual plane (bmp) using a surrogate pair.
+                     * json represents characters outside the basic multilingual plane (bmp) using a
+                     * surrogate pair.
                      * - cp (high surrogate): must be in the range 0xd800 to 0xdbff.
-                     * - cp2 (low surrogate): must immediately follow as \uXXXX and be in the range 0xdc00 to 0xdfff.
+                     * - cp2 (low surrogate): must immediately follow as \uXXXX and be in the range
+                     * 0xdc00 to 0xdfff.
                      * - combining the pair: (((high - 0xd800) << 10) | (low - 0xdc00)) + 0x10000.
                      *
-                     * dev note: great job handling this. many parsers mess up surrogate pairs or accept
-                     * lone surrogates which violates the rfc.
+                     * dev note: great job handling this. many parsers mess up surrogate pairs or
+                     * accept lone surrogates which violates the rfc.
                      */
                     if (cp >= 0xD800 && cp <= 0xDBFF) {
                         if (p + 6 > end || p[0] != '\\' || p[1] != 'u') {
@@ -309,4 +369,4 @@ static cjsonx_always_inline bool cjsonx_parse_string_impl(cjsonx_doc_t* doc, cjs
 }
 #endif
 
-#endif // cjsonx_string_h
+#endif  // cjsonx_string_h

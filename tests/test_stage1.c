@@ -1,9 +1,10 @@
 // test_stage1.c — visual test for stage 1 structural token indexing.
 // prints the tape (byte-offsets + characters) for manual inspection.
 
-#include "cjsonx.h"
 #include <stdio.h>
 #include <string.h>
+
+#include "cjsonx.h"
 
 void print_tape(const char* json, cjsonx_tape* tape) {
     printf("Found %zu structural characters:\n", tape->count);

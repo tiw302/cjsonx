@@ -11,9 +11,8 @@
 
 #include "cjsonx.h"
 
-static void run_test_file(const char* dir_path, const char* file_name,
-                          int* total, int* passed, int* failed,
-                          int* i_passed, int* i_failed) {
+static void run_test_file(const char* dir_path, const char* file_name, int* total, int* passed,
+                          int* failed, int* i_passed, int* i_failed) {
     if (strstr(file_name, ".json") == NULL) return;
 
     char path[1024];
@@ -57,8 +56,10 @@ static void run_test_file(const char* dir_path, const char* file_name,
             printf("[FAIL n] Expected error, got success: %s\n", file_name);
         }
     } else if (type == 'i') {
-        if (success) (*i_passed)++;
-        else (*i_failed)++;
+        if (success)
+            (*i_passed)++;
+        else
+            (*i_failed)++;
     }
 
     if (doc) cjsonx_doc_free(doc);
@@ -107,4 +108,3 @@ int main(int argc, char** argv) {
 
     return failed == 0 ? 0 : 1;
 }
-

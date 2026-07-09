@@ -8,4 +8,4 @@
 // forward to the modular entry header
 #include "../include/cjsonx.h"
 
-#endif // cjsonx_src_h
+#endif  // cjsonx_src_h

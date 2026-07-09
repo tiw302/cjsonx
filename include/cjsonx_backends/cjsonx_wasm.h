@@ -12,15 +12,14 @@
 //
 // >>wasm simd backend
 
-
-#include <wasm_simd128.h>
-#include <stdint.h>
 #include <stdbool.h>
+#include <stdint.h>
+#include <wasm_simd128.h>
 
 /*
  * stage 1 webassembly simd128 scanner:
  * processes 32 bytes of json input per iteration using two 16-byte v128_t vectors.
- * 
+ *
  * 1. character comparison: uses wasm_i8x16_eq to compare lanes in parallel for
  *    structural and whitespace characters.
  * 2. mask extraction: uses wasm_i8x16_bitmask, which extracts the high bit of
@@ -28,7 +27,7 @@
  *    wasm equivalent of x86 _mm_movemask_epi8, avoiding slow scalar processing.
  */
 static inline bool cjsonx_stage1_wasm(const char* json, size_t length, cjsonx_tape_t* tape) {
-    uint32_t prev_in_string = 0; // 0 or 0xffffffff
+    uint32_t prev_in_string = 0;  // 0 or 0xffffffff
     bool escaped = false;
     bool prev_was_sep = true;
     size_t i = 0;
@@ -84,8 +83,12 @@ static inline bool cjsonx_stage1_wasm(const char* json, size_t length, cjsonx_ta
                 v128_t m_com1 = wasm_i8x16_eq(v1, wasm_i8x16_splat(','));
                 v128_t m_com2 = wasm_i8x16_eq(v2, wasm_i8x16_splat(','));
 
-                v128_t s1 = wasm_v128_or(wasm_v128_or(wasm_v128_or(m_lcb1, m_rcb1), wasm_v128_or(m_lsb1, m_rsb1)), wasm_v128_or(m_col1, m_com1));
-                v128_t s2 = wasm_v128_or(wasm_v128_or(wasm_v128_or(m_lcb2, m_rcb2), wasm_v128_or(m_lsb2, m_rsb2)), wasm_v128_or(m_col2, m_com2));
+                v128_t s1 = wasm_v128_or(
+                    wasm_v128_or(wasm_v128_or(m_lcb1, m_rcb1), wasm_v128_or(m_lsb1, m_rsb1)),
+                    wasm_v128_or(m_col1, m_com1));
+                v128_t s2 = wasm_v128_or(
+                    wasm_v128_or(wasm_v128_or(m_lcb2, m_rcb2), wasm_v128_or(m_lsb2, m_rsb2)),
+                    wasm_v128_or(m_col2, m_com2));
                 uint32_t struct_mask = wasm_i8x16_bitmask(s1) | (wasm_i8x16_bitmask(s2) << 16);
 
                 v128_t m_sp1 = wasm_i8x16_eq(v1, wasm_i8x16_splat(' '));
@@ -103,7 +106,7 @@ static inline bool cjsonx_stage1_wasm(const char* json, size_t length, cjsonx_ta
 
                 uint32_t sep_mask = struct_mask | ws_mask;
                 uint32_t non_sep_mask = ~sep_mask;
-                
+
                 uint32_t shifted_sep = (sep_mask << 1) | (prev_was_sep ? 1 : 0);
                 uint32_t prim_starts = non_sep_mask & shifted_sep;
 
@@ -121,53 +124,52 @@ static inline bool cjsonx_stage1_wasm(const char* json, size_t length, cjsonx_ta
             }
         }
 
-    scalar_fallback:
-        {
-            size_t end = (i + 32 < length) ? (i + 32) : length;
-            while (i < end) {
-                char c = json[i];
-                bool in_string = (prev_in_string != 0);
-                
-                if (in_string) {
-                    if ((unsigned char)c < 0x20) return false; 
-                    
-                    if (escaped) {
-                        escaped = false;
-                    } else if (c == '\\') {
-                        escaped = true;
-                    } else if (c == '"') {
-                        prev_in_string = 0;
-                        if (!cjsonx_tape_push(tape, (uint32_t)i)) return false;
-                        prev_was_sep = true;
-                    } else {
-                        prev_was_sep = false;
-                    }
+    scalar_fallback: {
+        size_t end = (i + 32 < length) ? (i + 32) : length;
+        while (i < end) {
+            char c = json[i];
+            bool in_string = (prev_in_string != 0);
+
+            if (in_string) {
+                if ((unsigned char)c < 0x20) return false;
+
+                if (escaped) {
+                    escaped = false;
+                } else if (c == '\\') {
+                    escaped = true;
+                } else if (c == '"') {
+                    prev_in_string = 0;
+                    if (!cjsonx_tape_push(tape, (uint32_t)i)) return false;
+                    prev_was_sep = true;
                 } else {
-                    if (c == '"') {
-                        prev_in_string = 0xFFFFFFFF;
-                        if (!cjsonx_tape_push(tape, (uint32_t)i)) return false;
-                        prev_was_sep = true;
-                    } else if (c == '{' || c == '}' || c == '[' || c == ']' || c == ':' || c == ',') {
-                        if (!cjsonx_tape_push(tape, (uint32_t)i)) return false;
-                        prev_was_sep = true;
-                    } else if (c != ' ' && c != '\t' && c != '\n' && c != '\r') {
-                        if (prev_was_sep) {
-                            if (!cjsonx_tape_push(tape, (uint32_t)i)) return false;
-                        }
-                        prev_was_sep = false;
-                    } else {
-                        prev_was_sep = true;
-                    }
+                    prev_was_sep = false;
                 }
-                i++;
+            } else {
+                if (c == '"') {
+                    prev_in_string = 0xFFFFFFFF;
+                    if (!cjsonx_tape_push(tape, (uint32_t)i)) return false;
+                    prev_was_sep = true;
+                } else if (c == '{' || c == '}' || c == '[' || c == ']' || c == ':' || c == ',') {
+                    if (!cjsonx_tape_push(tape, (uint32_t)i)) return false;
+                    prev_was_sep = true;
+                } else if (c != ' ' && c != '\t' && c != '\n' && c != '\r') {
+                    if (prev_was_sep) {
+                        if (!cjsonx_tape_push(tape, (uint32_t)i)) return false;
+                    }
+                    prev_was_sep = false;
+                } else {
+                    prev_was_sep = true;
+                }
             }
+            i++;
         }
     }
-    
-    if (prev_in_string != 0) return false; 
+    }
+
+    if (prev_in_string != 0) return false;
     if (tape->count == 0) return false;
-    
+
     return true;
 }
 
-#endif // cjsonx_wasm_h
+#endif  // cjsonx_wasm_h

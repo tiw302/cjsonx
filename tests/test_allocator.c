@@ -59,53 +59,50 @@ void my_free(void* ptr, void* user_data) {
 
 int main() {
     cjsonx_alc alloc = {
-        .malloc_fn = my_malloc,
-        .realloc_fn = my_realloc,
-        .free_fn = my_free,
-        .user_data = NULL
-    };
-    
+        .malloc_fn = my_malloc, .realloc_fn = my_realloc, .free_fn = my_free, .user_data = NULL};
+
     const char* json = "{\"name\": \"Alice\", \"age\": 30}";
-    
+
     // parse using custom allocator
     cjsonx_doc* doc = cjsonx_parse_ex(json, strlen(json), &alloc);
-    
+
     if (!doc || !doc->is_valid) {
         printf("FAIL: Failed to parse using custom allocator\n");
         return 1;
     }
-    
+
     cjsonx_val name = cjsonx_get(doc->root, "name");
     if (strncmp(cjsonx_str(name), "Alice", 5) != 0) {
         printf("FAIL: Value check failed\n");
         return 1;
     }
-    
+
     // add something using builder to trigger realloc/malloc
     cjsonx_val new_val = cjsonx_create_string(doc, "Test");
     cjsonx_object_set(doc->root, "new_key", new_val);
-    
+
     char* str = cjsonx_stringify(doc);
     if (!str) {
         printf("FAIL: Failed to stringify\n");
         return 1;
     }
-    
+
     alloc.free_fn(str, alloc.user_data);
     cjsonx_doc_free(doc);
-    
-    printf("Allocator Hook Trace: %zu allocs, %zu frees, %zu active\n", g_total_allocs, g_total_frees, g_tracked_count);
-    
+
+    printf("Allocator Hook Trace: %zu allocs, %zu frees, %zu active\n", g_total_allocs,
+           g_total_frees, g_tracked_count);
+
     if (g_total_allocs == 0 || g_total_frees == 0) {
         printf("FAIL: Hooks were not called!\n");
         return 1;
     }
-    
+
     if (g_tracked_count > 0) {
         printf("FAIL: Memory leak detected! %zu allocations were not freed\n", g_tracked_count);
         return 1;
     }
-    
+
     printf("PASS\n");
     return 0;
 }

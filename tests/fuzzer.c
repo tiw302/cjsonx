@@ -1,21 +1,21 @@
 // fuzzer.c — libfuzzer harness with dom walk and stringify.
-#include <stdint.h>
 #include <stddef.h>
+#include <stdint.h>
 
 #include "cjsonx.h"
 
 // libfuzzer entry point
-int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size) {
+int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
     /*
      * we limit size to prevent massive memory allocations during fuzzing
      * since cjsonx allocates dom nodes based on tape size.
      * 1 mb is more than enough to find edge cases.
      */
     if (size > 1024 * 1024) return 0;
-    
+
     // parse the json
     cjsonx_doc_t* doc = cjsonx_parse((const char*)data, size);
-    
+
     // if parsed successfully, we can test dom iteration or mutation
     if (doc) {
         if (doc->is_valid) {
@@ -24,7 +24,7 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size) {
                 volatile cjsonx_type_t type = cjsonx_node_type(&doc->nodes[i]);
                 (void)type;
             }
-            
+
             // test builder functions
             cjsonx_val_t root = doc->root;
             cjsonx_type_t root_type = cjsonx_get_type(root);
@@ -52,9 +52,9 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size) {
                 free(str);
             }
         }
-        
+
         cjsonx_doc_free(doc);
     }
-    
+
     return 0;
 }

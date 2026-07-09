@@ -12,12 +12,12 @@
 //
 // >>dom document object model
 
-
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
+
 #include "cjsonx_error.h"
 
 #ifdef __cplusplus
@@ -27,21 +27,22 @@ extern "C" {
 typedef struct {
     void* (*malloc_fn)(size_t size, void* user_data);
     void* (*realloc_fn)(void* ptr, size_t size, void* user_data);
-    void  (*free_fn)(void* ptr, void* user_data);
+    void (*free_fn)(void* ptr, void* user_data);
     void* user_data;
-    
+
     // dev note: you could also provide an aligned_alloc function pointer if strict simds
     // needed manually aligned blocks in the future, though the arena handles it well for now.
 } cjsonx_allocator_t;
 
 // reallocate memory safely supporting custom/standard fallback
-static inline void* cjsonx_realloc(cjsonx_allocator_t* alloc, void* ptr, size_t old_size, size_t new_size) {
+static inline void* cjsonx_realloc(cjsonx_allocator_t* alloc, void* ptr, size_t old_size,
+                                   size_t new_size) {
     if (alloc && alloc->realloc_fn) {
         return alloc->realloc_fn(ptr, new_size, alloc->user_data);
     }
     if (alloc && alloc->malloc_fn) {
         void* new_ptr = alloc->malloc_fn(new_size, alloc->user_data);
-        if (!new_ptr) return NULL; // allocation failed — caller keeps old ptr
+        if (!new_ptr) return NULL;  // allocation failed — caller keeps old ptr
         if (ptr) {
             memcpy(new_ptr, ptr, old_size < new_size ? old_size : new_size);
             if (alloc->free_fn) alloc->free_fn(ptr, alloc->user_data);
@@ -76,9 +77,9 @@ typedef struct {
     uint32_t type_and_length;  // 8-bit type | 24-bit length (max 16,777,215)
     uint32_t next_sibling;     // next sibling index for fast skipping
     union {
-        double f64;            // number val
-        const char* str;       // zero-copy string ptr
-        bool b;                // bool val
+        double f64;       // number val
+        const char* str;  // zero-copy string ptr
+        bool b;           // bool val
         struct {
             uint32_t first_child;  // first child index for object/array
             uint32_t last_child;   // last child index (o(1) append)
@@ -87,7 +88,7 @@ typedef struct {
 } cjsonx_node_t;
 
 #if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L
-// dev note: keeping this struct strictly at 16 bytes is crucial. 
+// dev note: keeping this struct strictly at 16 bytes is crucial.
 // if you ever add new fields, test the size with _Static_assert to ensure it doesn't inflate.
 _Static_assert(sizeof(cjsonx_node_t) == 16, "cjsonx_node_t must be 16 bytes for cache alignment");
 #endif
@@ -100,7 +101,8 @@ static cjsonx_always_inline uint32_t cjsonx_node_length(const cjsonx_node_t* n) 
     return (n->type_and_length >> 8);
 }
 
-static cjsonx_always_inline void cjsonx_node_set_type_len(cjsonx_node_t* __restrict n, cjsonx_type_t type, uint32_t length) {
+static cjsonx_always_inline void cjsonx_node_set_type_len(cjsonx_node_t* __restrict n,
+                                                          cjsonx_type_t type, uint32_t length) {
     // silently clamp length to 24-bit maximum (16,777,215).
     // strings longer than 16mb or collections with more than 16m elements will be capped.
     if (CJSONX_UNLIKELY(length > 0xFFFFFF)) length = 0xFFFFFF;
@@ -124,10 +126,10 @@ typedef struct {
 
 // parsed document
 struct cjsonx_doc {
-    cjsonx_val_t root;          // root handle
-    cjsonx_node_t* nodes;       // flat dom array
-    size_t node_count;          // total nodes
-    size_t node_capacity;       // allocated capacity
+    cjsonx_val_t root;     // root handle
+    cjsonx_node_t* nodes;  // flat dom array
+    size_t node_count;     // total nodes
+    size_t node_capacity;  // allocated capacity
 
     const char* original_json;
     size_t json_len;
@@ -142,9 +144,9 @@ struct cjsonx_doc {
     size_t chunk_used;
     uint8_t* current_chunk;
 
-    cjsonx_allocator_t alloc;   // custom allocator hooks
-    bool is_static;             // true if user provided static memory
-    char* owned_json;           // owned copy of json buffer (set by cjsonx_read_file)
+    cjsonx_allocator_t alloc;  // custom allocator hooks
+    bool is_static;            // true if user provided static memory
+    char* owned_json;          // owned copy of json buffer (set by cjsonx_read_file)
 };
 
 /*
@@ -163,7 +165,9 @@ typedef struct {
 } cjsonx_iter_t;
 
 // static buffer parsing
-CJSONX_API CJSONX_NODISCARD cjsonx_doc_t* cjsonx_parse_with_buffer(const char* json, size_t length, void* buffer, size_t buffer_size);
+CJSONX_API CJSONX_NODISCARD cjsonx_doc_t* cjsonx_parse_with_buffer(const char* json, size_t length,
+                                                                   void* buffer,
+                                                                   size_t buffer_size);
 
 // lifecycle
 CJSONX_API cjsonx_doc_t* cjsonx_doc_new(void);

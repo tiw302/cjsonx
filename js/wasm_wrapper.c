@@ -1,7 +1,8 @@
 #define CJSONX_IMPLEMENTATION
-#include "../include/cjsonx.h"
 #include <stdio.h>
 #include <string.h>
+
+#include "../include/cjsonx.h"
 
 /**
  * @file wasm_wrapper.c
@@ -44,7 +45,7 @@ int cjsonx_wasm_parse(const char* json) {
     memcpy(json_copy, json, len + 1);
     current_doc = cjsonx_parse(json_copy, len);
     if (current_doc) {
-        current_doc->owned_json = json_copy; // owns copy to prevent use after free
+        current_doc->owned_json = json_copy;  // owns copy to prevent use after free
         if (current_doc->is_valid) {
             return 1;
         }
@@ -85,7 +86,7 @@ size_t cjsonx_wasm_get_error_offset() {
  */
 static void dump_val(cjsonx_val_t val, char* buf, size_t max_len, size_t* offset, int indent) {
     if (*offset >= max_len - 1) return;
-    
+
     char spaces[64];
     int sp_len = indent * 2;
     if (sp_len > 63) sp_len = 63;
@@ -99,13 +100,15 @@ static void dump_val(cjsonx_val_t val, char* buf, size_t max_len, size_t* offset
             written = snprintf(buf + *offset, max_len - *offset, "null");
             break;
         case CJSONX_BOOL:
-            written = snprintf(buf + *offset, max_len - *offset, "%s", cjsonx_bool(val) ? "true" : "false");
+            written = snprintf(buf + *offset, max_len - *offset, "%s",
+                               cjsonx_bool(val) ? "true" : "false");
             break;
         case CJSONX_NUMBER:
             written = snprintf(buf + *offset, max_len - *offset, "%g", cjsonx_num(val));
             break;
         case CJSONX_STRING:
-            written = snprintf(buf + *offset, max_len - *offset, "\"%.*s\"", (int)cjsonx_str_len(val), cjsonx_str(val));
+            written = snprintf(buf + *offset, max_len - *offset, "\"%.*s\"",
+                               (int)cjsonx_str_len(val), cjsonx_str(val));
             break;
         case CJSONX_ARRAY:
             written = snprintf(buf + *offset, max_len - *offset, "[\n");
@@ -118,9 +121,9 @@ static void dump_val(cjsonx_val_t val, char* buf, size_t max_len, size_t* offset
                     if (*offset >= max_len - 1) return;
                     written = snprintf(buf + *offset, max_len - *offset, "%s  ", spaces);
                     if (written > 0) *offset += written;
-                    
+
                     dump_val(iter.value, buf, max_len, offset, indent + 1);
-                    
+
                     if (i < count - 1) {
                         written = snprintf(buf + *offset, max_len - *offset, ",\n");
                     } else {
@@ -141,11 +144,12 @@ static void dump_val(cjsonx_val_t val, char* buf, size_t max_len, size_t* offset
                 size_t i = 0;
                 while (cjsonx_iter_next(&iter)) {
                     if (*offset >= max_len - 1) return;
-                    written = snprintf(buf + *offset, max_len - *offset, "%s  \"%.*s\": ", spaces, (int)cjsonx_str_len(iter.key), cjsonx_str(iter.key));
+                    written = snprintf(buf + *offset, max_len - *offset, "%s  \"%.*s\": ", spaces,
+                                       (int)cjsonx_str_len(iter.key), cjsonx_str(iter.key));
                     if (written > 0) *offset += written;
-                    
+
                     dump_val(iter.value, buf, max_len, offset, indent + 1);
-                    
+
                     if (i < count - 1) {
                         written = snprintf(buf + *offset, max_len - *offset, ",\n");
                     } else {
@@ -232,10 +236,10 @@ const char* cjsonx_wasm_get_child_key(uint32_t idx, uint32_t child_idx) {
     if (!current_doc || idx >= current_doc->node_count) return "";
     cjsonx_node_t* n = &current_doc->nodes[idx];
     if (cjsonx_node_type(n) != CJSONX_OBJECT) return "";
-    
+
     size_t len = cjsonx_node_length(n);
     if (child_idx >= len) return "";
-    
+
     uint32_t curr = n->val.first_child;
     for (uint32_t i = 0; i < child_idx; i++) {
         uint32_t val_idx = current_doc->nodes[curr].next_sibling;
@@ -250,10 +254,10 @@ int cjsonx_wasm_get_child_key_len(uint32_t idx, uint32_t child_idx) {
     if (!current_doc || idx >= current_doc->node_count) return 0;
     cjsonx_node_t* n = &current_doc->nodes[idx];
     if (cjsonx_node_type(n) != CJSONX_OBJECT) return 0;
-    
+
     size_t len = cjsonx_node_length(n);
     if (child_idx >= len) return 0;
-    
+
     uint32_t curr = n->val.first_child;
     for (uint32_t i = 0; i < child_idx; i++) {
         uint32_t val_idx = current_doc->nodes[curr].next_sibling;
@@ -268,10 +272,10 @@ uint32_t cjsonx_wasm_get_child_val(uint32_t idx, uint32_t child_idx) {
     if (!current_doc || idx >= current_doc->node_count) return UINT32_MAX;
     cjsonx_node_t* n = &current_doc->nodes[idx];
     if (cjsonx_node_type(n) != CJSONX_OBJECT) return UINT32_MAX;
-    
+
     size_t len = cjsonx_node_length(n);
     if (child_idx >= len) return UINT32_MAX;
-    
+
     uint32_t curr = n->val.first_child;
     for (uint32_t i = 0; i < child_idx; i++) {
         uint32_t val_idx = current_doc->nodes[curr].next_sibling;

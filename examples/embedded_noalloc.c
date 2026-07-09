@@ -22,7 +22,8 @@ int main() {
     }
 
     if (!doc->is_valid) {
-        printf("Parse Error: %s at offset %zu\n", cjsonx_error_string(doc->error), doc->error_offset);
+        printf("Parse Error: %s at offset %zu\n", cjsonx_error_string(doc->error),
+               doc->error_offset);
         return 1;
     }
 

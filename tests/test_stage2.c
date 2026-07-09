@@ -1,9 +1,10 @@
 // test_stage2.c — visual test for stage 2 dom parser.
 // parses json strings into a dom tree and prints field types for inspection.
 
-#include "cjsonx.h"
 #include <stdio.h>
 #include <string.h>
+
+#include "cjsonx.h"
 
 void test_dom(const char* json) {
     printf("\nTesting JSON: %s\n", json);
@@ -22,7 +23,7 @@ void test_dom(const char* json) {
             const char* key_str = cjsonx_str(iter.key);
             size_t key_len = cjsonx_str_len(iter.key);
             printf("  Field '%.*s': ", (int)key_len, key_str);
-            
+
             cjsonx_type t = cjsonx_get_type(iter.value);
             if (t == CJSONX_STRING) {
                 printf("STRING '%.*s'\n", (int)cjsonx_str_len(iter.value), cjsonx_str(iter.value));
@@ -56,14 +57,17 @@ void test_error(const char* json, cjsonx_error_t expected_error, size_t expected
         exit(1);
     }
     if (doc->error != expected_error) {
-        printf("FAIL: Expected error %d, got %d for '%s'\n", (int)expected_error, (int)doc->error, json);
+        printf("FAIL: Expected error %d, got %d for '%s'\n", (int)expected_error, (int)doc->error,
+               json);
         exit(1);
     }
     if (doc->error_offset != expected_offset) {
-        printf("FAIL: Expected error offset %zu, got %zu for '%s'\n", expected_offset, doc->error_offset, json);
+        printf("FAIL: Expected error offset %zu, got %zu for '%s'\n", expected_offset,
+               doc->error_offset, json);
         exit(1);
     }
-    printf("PASS error: '%s' failed at offset %zu with correct error code\n", json, doc->error_offset);
+    printf("PASS error: '%s' failed at offset %zu with correct error code\n", json,
+           doc->error_offset);
     cjsonx_doc_free(doc);
 }
 
@@ -73,7 +77,7 @@ void test_parse_copy(void) {
     cjsonx_doc* doc = cjsonx_parse_copy(json_mut, strlen(json_mut));
     // mutate the original string to prove parse_copy made a copy
     strcpy(json_mut, "{\"a\": 99}");
-    
+
     if (!doc || !doc->is_valid) {
         printf("FAIL: cjsonx_parse_copy failed\n");
         exit(1);

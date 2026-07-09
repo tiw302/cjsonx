@@ -1,9 +1,10 @@
-#include "cjsonx.h"
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
+
 #include "../tests/test_helpers.h"
+#include "cjsonx.h"
 
 // get time in seconds
 double get_time(void) {

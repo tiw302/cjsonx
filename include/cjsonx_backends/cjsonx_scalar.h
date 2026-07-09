@@ -12,10 +12,9 @@
 //
 // >>scalar backend
 
-
-#include <stdint.h>
-#include <stddef.h>
 #include <stdbool.h>
+#include <stddef.h>
+#include <stdint.h>
 
 // character classification helpers for stage 1 scanner
 
@@ -43,17 +42,18 @@ static inline bool cjsonx_is_structural(char c) {
 static inline bool cjsonx_stage1_scalar(const char* json, size_t length, cjsonx_tape_t* tape) {
     bool in_string = false;
     bool escaped = false;
-    bool prev_was_sep = true; // true after whitespace/structural — used to detect start of primitive tokens
+    bool prev_was_sep =
+        true;  // true after whitespace/structural — used to detect start of primitive tokens
 
     for (size_t i = 0; i < length; i++) {
         char c = json[i];
-        
+
         if (in_string) {
             // no raw control chars allowed in strings, rfc8259 says so
             if ((unsigned char)c < 0x20) {
-                return false; 
+                return false;
             }
-            
+
             if (escaped) {
                 escaped = false;
             } else if (c == '\\') {
@@ -83,7 +83,7 @@ static inline bool cjsonx_stage1_scalar(const char* json, size_t length, cjsonx_
                 // start of a primitive (number, true/false/null). only store the first byte.
                 if (prev_was_sep) {
                     if (!cjsonx_tape_push(tape, (uint32_t)i)) {
-                        return false; 
+                        return false;
                     }
                 }
                 prev_was_sep = false;
@@ -93,18 +93,18 @@ static inline bool cjsonx_stage1_scalar(const char* json, size_t length, cjsonx_
             }
         }
     }
-    
+
     // unterminated string error
     if (in_string) {
-        return false; 
+        return false;
     }
-    
+
     // empty json is invalid
     if (tape->count == 0) {
         return false;
     }
-    
+
     return true;
 }
 
-#endif // cjsonx_scalar_h
+#endif  // cjsonx_scalar_h

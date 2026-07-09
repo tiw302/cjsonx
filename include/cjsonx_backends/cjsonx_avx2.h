@@ -12,10 +12,9 @@
 //
 // >>avx2 backend
 
-
 #include <immintrin.h>  // covers pclmulqdq / wmmintrin transitively
-#include <stdint.h>
 #include <stdbool.h>
+#include <stdint.h>
 
 // msvc compatibility for gcc/clang builtins
 #if defined(_MSC_VER) && !defined(__clang__)
@@ -31,7 +30,7 @@ static inline uint32_t cjsonx_ctz32(uint32_t x) {
 
 // avx2 specific scanner utilizing 32-byte vectors and pclmulqdq
 static inline bool cjsonx_stage1_avx2(const char* json, size_t length, cjsonx_tape_t* tape) {
-    uint32_t prev_in_string = 0; // 0 or 0xffffffff
+    uint32_t prev_in_string = 0;  // 0 or 0xffffffff
     bool escaped = false;
     bool prev_was_sep = true;
     size_t i = 0;
@@ -44,7 +43,8 @@ static inline bool cjsonx_stage1_avx2(const char* json, size_t length, cjsonx_ta
             __m256i v = _mm256_loadu_si256((const __m256i*)(json + i));
 
             // if we have backslashes or an active escape, fall back to scalar for this block
-            uint32_t bs_bits = (uint32_t)_mm256_movemask_epi8(_mm256_cmpeq_epi8(v, _mm256_set1_epi8('\\')));
+            uint32_t bs_bits =
+                (uint32_t)_mm256_movemask_epi8(_mm256_cmpeq_epi8(v, _mm256_set1_epi8('\\')));
             if (bs_bits != 0 || escaped) {
                 goto scalar_fallback;
             }
@@ -57,14 +57,16 @@ static inline bool cjsonx_stage1_avx2(const char* json, size_t length, cjsonx_ta
              * would add extra instructions on the hot path for a case that stage 2 already handles.
              */
 
-            uint32_t quote_bits = (uint32_t)_mm256_movemask_epi8(_mm256_cmpeq_epi8(v, _mm256_set1_epi8('"')));
-            
+            uint32_t quote_bits =
+                (uint32_t)_mm256_movemask_epi8(_mm256_cmpeq_epi8(v, _mm256_set1_epi8('"')));
+
             /*
              * pure avx2 string mask using carry-less multiplication (prefix xor).
-             * we use the pclmulqdq instruction to compute the prefix xor of the quote bits in parallel.
-             * clmul of a bitmask with a sequence of 1s (0xff...ff) mathematically computes the cumulative xor sum.
-             * this effectively sets all bits inside quotes to 1 and all bits outside to 0.
-             * string_mask is then combined with the state from the previous block (prev_in_string).
+             * we use the pclmulqdq instruction to compute the prefix xor of the quote bits in
+             * parallel. clmul of a bitmask with a sequence of 1s (0xff...ff) mathematically
+             * computes the cumulative xor sum. this effectively sets all bits inside quotes to 1
+             * and all bits outside to 0. string_mask is then combined with the state from the
+             * previous block (prev_in_string).
              */
             __m128i q = _mm_set_epi64x(0, quote_bits);
             __m128i ones = _mm_set1_epi8(-1);
@@ -85,34 +87,33 @@ static inline bool cjsonx_stage1_avx2(const char* json, size_t length, cjsonx_ta
 
             __m256i structurals = _mm256_or_si256(
                 _mm256_or_si256(_mm256_or_si256(m_lcb, m_rcb), _mm256_or_si256(m_lsb, m_rsb)),
-                _mm256_or_si256(m_col, m_com)
-            );
+                _mm256_or_si256(m_col, m_com));
             uint32_t struct_mask = (uint32_t)_mm256_movemask_epi8(structurals);
 
             // find whitespace
-            __m256i m_sp  = _mm256_cmpeq_epi8(v, _mm256_set1_epi8(' '));
+            __m256i m_sp = _mm256_cmpeq_epi8(v, _mm256_set1_epi8(' '));
             __m256i m_tab = _mm256_cmpeq_epi8(v, _mm256_set1_epi8('\t'));
-            __m256i m_nl  = _mm256_cmpeq_epi8(v, _mm256_set1_epi8('\n'));
-            __m256i m_cr  = _mm256_cmpeq_epi8(v, _mm256_set1_epi8('\r'));
+            __m256i m_nl = _mm256_cmpeq_epi8(v, _mm256_set1_epi8('\n'));
+            __m256i m_cr = _mm256_cmpeq_epi8(v, _mm256_set1_epi8('\r'));
 
-            __m256i whitespace = _mm256_or_si256(
-                _mm256_or_si256(m_sp, m_tab),
-                _mm256_or_si256(m_nl, m_cr)
-            );
+            __m256i whitespace =
+                _mm256_or_si256(_mm256_or_si256(m_sp, m_tab), _mm256_or_si256(m_nl, m_cr));
             uint32_t ws_mask = (uint32_t)_mm256_movemask_epi8(whitespace);
 
             // clear structurals and whitespaces that are inside strings
             uint32_t valid_structurals = struct_mask & ~string_mask;
-            uint32_t valid_whitespace  = ws_mask & ~string_mask;
+            uint32_t valid_whitespace = ws_mask & ~string_mask;
 
             uint32_t sep_mask = valid_structurals | valid_whitespace | quote_bits;
             uint32_t non_sep_mask = ~sep_mask;
-            
+
             /*
              * primitive starts:
-             * a primitive (number, true, false, null) starts at any character that is not a separator/whitespace/quote (non_sep_mask)
-             * but is preceded by a separator/whitespace/quote (shifted_sep). we shift sep_mask by 1 to align with the next character,
-             * inserting prev_was_sep at bit 0. primitives must also not be inside a string (~string_mask).
+             * a primitive (number, true, false, null) starts at any character that is not a
+             * separator/whitespace/quote (non_sep_mask) but is preceded by a
+             * separator/whitespace/quote (shifted_sep). we shift sep_mask by 1 to align with the
+             * next character, inserting prev_was_sep at bit 0. primitives must also not be inside a
+             * string (~string_mask).
              */
             uint32_t shifted_sep = (sep_mask << 1) | (prev_was_sep ? 1 : 0);
             uint32_t prim_starts = (non_sep_mask & shifted_sep) & ~string_mask;
@@ -131,53 +132,52 @@ static inline bool cjsonx_stage1_avx2(const char* json, size_t length, cjsonx_ta
             continue;
         }
 
-    scalar_fallback:
-        {
-            size_t end = (i + 32 < length) ? (i + 32) : length;
-            while (i < end) {
-                char c = json[i];
-                bool in_string = (prev_in_string != 0);
-                
-                if (in_string) {
-                    if ((unsigned char)c < 0x20) return false; 
-                    
-                    if (escaped) {
-                        escaped = false;
-                    } else if (c == '\\') {
-                        escaped = true;
-                    } else if (c == '"') {
-                        prev_in_string = 0;
-                        if (!cjsonx_tape_push(tape, (uint32_t)i)) return false;
-                        prev_was_sep = true;
-                    } else {
-                        prev_was_sep = false;
-                    }
+    scalar_fallback: {
+        size_t end = (i + 32 < length) ? (i + 32) : length;
+        while (i < end) {
+            char c = json[i];
+            bool in_string = (prev_in_string != 0);
+
+            if (in_string) {
+                if ((unsigned char)c < 0x20) return false;
+
+                if (escaped) {
+                    escaped = false;
+                } else if (c == '\\') {
+                    escaped = true;
+                } else if (c == '"') {
+                    prev_in_string = 0;
+                    if (!cjsonx_tape_push(tape, (uint32_t)i)) return false;
+                    prev_was_sep = true;
                 } else {
-                    if (c == '"') {
-                        prev_in_string = 0xFFFFFFFF;
-                        if (!cjsonx_tape_push(tape, (uint32_t)i)) return false;
-                        prev_was_sep = true;
-                    } else if (c == '{' || c == '}' || c == '[' || c == ']' || c == ':' || c == ',') {
-                        if (!cjsonx_tape_push(tape, (uint32_t)i)) return false;
-                        prev_was_sep = true;
-                    } else if (c != ' ' && c != '\t' && c != '\n' && c != '\r') {
-                        if (prev_was_sep) {
-                            if (!cjsonx_tape_push(tape, (uint32_t)i)) return false;
-                        }
-                        prev_was_sep = false;
-                    } else {
-                        prev_was_sep = true;
-                    }
+                    prev_was_sep = false;
                 }
-                i++;
+            } else {
+                if (c == '"') {
+                    prev_in_string = 0xFFFFFFFF;
+                    if (!cjsonx_tape_push(tape, (uint32_t)i)) return false;
+                    prev_was_sep = true;
+                } else if (c == '{' || c == '}' || c == '[' || c == ']' || c == ':' || c == ',') {
+                    if (!cjsonx_tape_push(tape, (uint32_t)i)) return false;
+                    prev_was_sep = true;
+                } else if (c != ' ' && c != '\t' && c != '\n' && c != '\r') {
+                    if (prev_was_sep) {
+                        if (!cjsonx_tape_push(tape, (uint32_t)i)) return false;
+                    }
+                    prev_was_sep = false;
+                } else {
+                    prev_was_sep = true;
+                }
             }
+            i++;
         }
     }
-    
-    if (prev_in_string != 0) return false; 
+    }
+
+    if (prev_in_string != 0) return false;
     if (tape->count == 0) return false;
-    
+
     return true;
 }
 
-#endif // cjsonx_avx2_h
+#endif  // cjsonx_avx2_h

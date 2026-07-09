@@ -1,8 +1,9 @@
 // test_suite.c — single-file parse harness for json test suite.
-#include "cjsonx.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+#include "cjsonx.h"
 #include "test_helpers.h"
 
 int main(int argc, char** argv) {

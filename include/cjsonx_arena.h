@@ -12,9 +12,9 @@
 //
 // >>memory arena
 
-
-#include <stdlib.h>
 #include <stdint.h>
+#include <stdlib.h>
+
 #include "cjsonx_config.h"
 #include "cjsonx_dom.h"
 
@@ -26,27 +26,30 @@ extern "C" {
  * chunk-based arena allocator:
  * allocations are made sequentially from contiguous chunks of memory to avoid the overhead and
  * fragmentation associated with standard malloc/free.
- * 1. sizes are rounded up to 8-byte alignment to prevent misaligned memory access faults on platforms like arm.
- * 2. if the current chunk does not have enough remaining space (or is null), a new chunk of size max(needed, 2 * previous_size)
- *    is allocated and linked to the head of the document head list (doc->head).
- * 3. all chunks are cleaned up simultaneously in one o(1) loop when cjsonx_doc_free is called, avoiding tiny frees.
+ * 1. sizes are rounded up to 8-byte alignment to prevent misaligned memory access faults on
+ * platforms like arm.
+ * 2. if the current chunk does not have enough remaining space (or is null), a new chunk of size
+ * max(needed, 2 * previous_size) is allocated and linked to the head of the document head list
+ * (doc->head).
+ * 3. all chunks are cleaned up simultaneously in one o(1) loop when cjsonx_doc_free is called,
+ * avoiding tiny frees.
  */
 static cjsonx_always_inline void* cjsonx_arena_alloc(cjsonx_doc_t* __restrict doc, size_t size) {
-    if (CJSONX_UNLIKELY(size > (size_t) - 8)) return NULL;
+    if (CJSONX_UNLIKELY(size > (size_t)-8)) return NULL;
     // round up to 8-byte alignment for safe struct access
     size = (size + 7) & ~7;
 
     // current chunk exhausted or first allocation — grow arena with a new chunk
     if (CJSONX_UNLIKELY(!doc->current_chunk || doc->chunk_used + size > doc->chunk_size)) {
-        if (CJSONX_UNLIKELY(doc->is_static)) return NULL; // static buffers cannot be expanded
+        if (CJSONX_UNLIKELY(doc->is_static)) return NULL;  // static buffers cannot be expanded
         size_t min_needed = size + sizeof(cjsonx_arena_node_t);
-        if (CJSONX_UNLIKELY(min_needed < size)) return NULL; // overflow check
+        if (CJSONX_UNLIKELY(min_needed < size)) return NULL;  // overflow check
 
         size_t new_chunk_size = doc->chunk_size ? doc->chunk_size * 2 : CJSONX_ARENA_CHUNK_SIZE;
         if (new_chunk_size < min_needed) {
             new_chunk_size = min_needed + CJSONX_ARENA_CHUNK_SIZE;
             if (CJSONX_UNLIKELY(new_chunk_size < min_needed)) {
-                new_chunk_size = min_needed; // handle overflow by allocating exact amount
+                new_chunk_size = min_needed;  // handle overflow by allocating exact amount
             }
         }
 
@@ -60,7 +63,7 @@ static cjsonx_always_inline void* cjsonx_arena_alloc(cjsonx_doc_t* __restrict do
 
         node->next = doc->head;
         doc->head = node;
-        
+
         doc->current_chunk = (uint8_t*)node + sizeof(cjsonx_arena_node_t);
         doc->chunk_size = new_chunk_size - sizeof(cjsonx_arena_node_t);
         doc->chunk_used = 0;
@@ -75,4 +78,4 @@ static cjsonx_always_inline void* cjsonx_arena_alloc(cjsonx_doc_t* __restrict do
 }
 #endif
 
-#endif // cjsonx_arena_h
+#endif  // cjsonx_arena_h

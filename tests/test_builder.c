@@ -7,44 +7,45 @@
 
 int main() {
     printf("Running builder tests...\n");
-    
+
     // parse an empty object
     cjsonx_doc* doc = cjsonx_parse("{}", 2);
     if (!doc || !doc->is_valid) {
         printf("[FAIL] Failed to parse empty object\n");
         return 1;
     }
-    
+
     // create primitives
     cjsonx_val name = cjsonx_create_string(doc, "cjsonx");
     cjsonx_val version = cjsonx_create_number(doc, 2.1);
     cjsonx_val fast = cjsonx_create_bool(doc, true);
-    
+
     // set to root object
     cjsonx_object_set(doc->root, "name", name);
     cjsonx_object_set(doc->root, "version", version);
     cjsonx_object_set(doc->root, "is_fast", fast);
-    
+
     // create array
     cjsonx_val features = cjsonx_create_array(doc);
     cjsonx_array_push(features, cjsonx_create_string(doc, "simd"));
     cjsonx_array_push(features, cjsonx_create_string(doc, "strict"));
     cjsonx_object_set(doc->root, "features", features);
-    
+
     char* json_str = cjsonx_stringify(doc);
     printf("Generated Minified JSON:\n%s\n\n", json_str);
-    
+
     char* json_fmt = cjsonx_stringify_format(doc, 4);
     printf("Generated Formatted JSON:\n%s\n\n", json_fmt);
-    
+
     // test key overwrite behavior
     cjsonx_val new_version = cjsonx_create_number(doc, 3.0);
     cjsonx_object_set(doc->root, "version", new_version);
-    
+
     char* json_str_overwrite = cjsonx_stringify(doc);
-    
+
     // verify
-    const char* expected_overwrite = "{\"name\":\"cjsonx\",\"version\":3,\"is_fast\":true,\"features\":[\"simd\",\"strict\"]}";
+    const char* expected_overwrite =
+        "{\"name\":\"cjsonx\",\"version\":3,\"is_fast\":true,\"features\":[\"simd\",\"strict\"]}";
     if (strcmp(json_str_overwrite, expected_overwrite) == 0) {
         printf("[PASS] Builder overwrite and Stringify working perfectly!\n");
     } else {
@@ -53,7 +54,7 @@ int main() {
         printf("Got:      %s\n", json_str_overwrite);
         return 1;
     }
-    
+
     // note: free() is only safe when using the default allocator.
     // with a custom allocator use alloc.free_fn(json_str, alloc.user_data) instead.
     free(json_str);

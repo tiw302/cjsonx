@@ -140,6 +140,16 @@ static inline int cjsonx_clzll_impl(unsigned long long x) {
 #define CJSONX_ARENA_CHUNK_SIZE 65536
 #endif
 
+// initial capacity for string builder buffers
+#ifndef CJSONX_INITIAL_STRBUF_CAP
+#define CJSONX_INITIAL_STRBUF_CAP 2048
+#endif
+
+// margin to add when growing string builder buffers
+#ifndef CJSONX_STRBUF_GROW_MARGIN
+#define CJSONX_STRBUF_GROW_MARGIN 1024
+#endif
+
 #endif // cjsonx_config_h
 // updated 2026-07-08
 // spdx-license-identifier: mit
@@ -774,7 +784,8 @@ static inline bool cjsonx_object_set_len(cjsonx_val_t obj_handle, const char* ke
         cjsonx_node_t* k_node = &obj_handle.doc->nodes[curr];
         uint32_t val_idx = k_node->next_sibling;
         cjsonx_node_t* v_node = &obj_handle.doc->nodes[val_idx];
-        if (cjsonx_node_length(k_node) == key_len && memcmp(k_node->val.str, key, key_len) == 0) {
+        // fast char match avoids memcmp overhead on mismatch
+        if (cjsonx_node_length(k_node) == key_len && (key_len == 0 || (k_node->val.str[0] == key[0] && memcmp(k_node->val.str, key, key_len) == 0))) {
             uint32_t next_key_idx = v_node->next_sibling;
             k_node->next_sibling = val_handle.node_idx;
             cjsonx_node_t* new_v_node = &obj_handle.doc->nodes[val_handle.node_idx];
@@ -832,6 +843,58 @@ static inline bool cjsonx_object_set(cjsonx_val_t obj_handle, const char* key, c
     return cjsonx_object_set_len(obj_handle, key, key ? strlen(key) : 0, val_handle);
 }
 
+// fast o(1) append without checking for duplicate keys. use only when you are sure the key is unique.
+static inline bool cjsonx_object_add_unchecked_len(cjsonx_val_t obj_handle, const char* key, size_t key_len, cjsonx_val_t val_handle) {
+    if (!obj_handle.doc || !val_handle.doc || obj_handle.doc != val_handle.doc) return false;
+    if (!key) { key = ""; key_len = 0; }
+    if (CJSONX_UNLIKELY(key_len > 0xFFFFFF)) return false; // key too large
+    cjsonx_node_t* obj = &obj_handle.doc->nodes[obj_handle.node_idx];
+    if (cjsonx_node_type(obj) != CJSONX_OBJECT) return false;
+    
+    // guard against maximum length limit for 24-bit field
+    size_t len = cjsonx_node_length(obj);
+    if (CJSONX_UNLIKELY(len >= 0xFFFFFF)) return false;
+    
+    uint32_t last_val_idx = obj->val.last_child;
+    
+    uint32_t key_idx = cjsonx_builder_alloc_node(obj_handle.doc);
+    if (key_idx == UINT32_MAX) return false;
+    
+    cjsonx_node_t* key_node = &obj_handle.doc->nodes[key_idx];
+    cjsonx_node_set_type_len(key_node, CJSONX_STRING, key_len);
+    char* s = (char*)cjsonx_arena_alloc(obj_handle.doc, key_len + 1);
+    if (!s) {
+        obj_handle.doc->node_count--; // rollback allocated node slot on failure
+        return false;
+    }
+    memcpy(s, key, key_len);
+    s[key_len] = '\0';
+    key_node->val.str = s;
+    
+    // re-fetch obj and key_node: alloc_node above may have reallocated doc->nodes
+    obj = &obj_handle.doc->nodes[obj_handle.node_idx];
+    key_node = &obj_handle.doc->nodes[key_idx];
+    
+    // link key and value into object
+    key_node->next_sibling = val_handle.node_idx;
+    
+    if (len == 0) {
+        obj->val.first_child = key_idx;
+        obj->val.last_child = val_handle.node_idx;
+    } else {
+        cjsonx_node_t* last_val = &obj_handle.doc->nodes[last_val_idx];
+        last_val->next_sibling = key_idx;
+        obj->val.last_child = val_handle.node_idx;
+    }
+    
+    cjsonx_node_set_type_len(obj, CJSONX_OBJECT, len + 1);
+    return true;
+}
+
+static inline bool cjsonx_object_add_unchecked(cjsonx_val_t obj_handle, const char* key, cjsonx_val_t val_handle) {
+    return cjsonx_object_add_unchecked_len(obj_handle, key, key ? strlen(key) : 0, val_handle);
+}
+
 /*
  * note: array push is o(1) because we keep track of the last child node index
  * inside the object/array node struct, enabling rapid bulk construction.
@@ -875,7 +938,8 @@ static inline bool cjsonx_object_remove_len(cjsonx_val_t obj_handle, const char*
         uint32_t val_idx = k_node->next_sibling;
         cjsonx_node_t* v_node = &obj_handle.doc->nodes[val_idx];
         
-        if (cjsonx_node_length(k_node) == key_len && memcmp(k_node->val.str, key, key_len) == 0) {
+        // fast char match avoids memcmp overhead on mismatch
+        if (cjsonx_node_length(k_node) == key_len && (key_len == 0 || (k_node->val.str[0] == key[0] && memcmp(k_node->val.str, key, key_len) == 0))) {
             // found it. link previous sibling to the next sibling (skipping both key and val)
             uint32_t next_key_idx = v_node->next_sibling;
             if (prev_val_idx == UINT32_MAX) {
@@ -1360,8 +1424,12 @@ static cjsonx_always_inline void cjsonx_strbuf_append(cjsonx_strbuf_t* __restric
         return;
     }
     if (CJSONX_UNLIKELY(sb->len + len >= sb->cap)) {
-        size_t new_cap = sb->cap == 0 ? 2048 : sb->cap * 2;
-        if (new_cap <= sb->len + len) new_cap = sb->len + len + 1024;
+        size_t new_cap = sb->cap == 0 ? CJSONX_INITIAL_STRBUF_CAP : sb->cap * 2;
+        if (CJSONX_UNLIKELY(new_cap <= sb->len + len)) {
+            new_cap = sb->len + len + CJSONX_STRBUF_GROW_MARGIN;
+            // overflow guard for + 1024
+            if (CJSONX_UNLIKELY(new_cap < sb->len + len)) new_cap = sb->len + len;
+        }
         char* new_buf = (char*)cjsonx_realloc(sb->alloc, sb->buf, sb->cap, new_cap);
         if (CJSONX_UNLIKELY(!new_buf)) {
             sb->oom = true;
@@ -1381,7 +1449,7 @@ static cjsonx_always_inline void cjsonx_strbuf_append_c(cjsonx_strbuf_t* __restr
         return;
     }
     if (CJSONX_UNLIKELY(sb->len + 1 >= sb->cap)) {
-        size_t new_cap = sb->cap == 0 ? 2048 : sb->cap * 2;
+        size_t new_cap = sb->cap == 0 ? CJSONX_INITIAL_STRBUF_CAP : sb->cap * 2;
         if (CJSONX_UNLIKELY(new_cap < sb->cap)) new_cap = sb->len + 1; // clamp on overflow
         char* new_buf = (char*)cjsonx_realloc(sb->alloc, sb->buf, sb->cap, new_cap);
         if (CJSONX_UNLIKELY(!new_buf)) {
@@ -1623,7 +1691,7 @@ char* cjsonx_stringify_val_format(cjsonx_val_t val, int indent_spaces) {
     // estimate size based on parsed json length or node count with a 2kb floor
     size_t initial_cap = val.doc->json_len > 0 ? val.doc->json_len : val.doc->node_count * 16;
     if (indent_spaces > 0) initial_cap += initial_cap / 2;
-    if (initial_cap < 2048) initial_cap = 2048;
+    if (initial_cap < CJSONX_INITIAL_STRBUF_CAP) initial_cap = CJSONX_INITIAL_STRBUF_CAP;
 
     cjsonx_strbuf_t sb;
     sb.cap = initial_cap;

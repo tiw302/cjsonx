@@ -12,27 +12,26 @@
 //
 // >>error handling
 
-
 // error codes
 
 typedef enum {
-    CJSONX_SUCCESS = 0,                     // parsed successfully
-    CJSONX_ERROR_OOM,                       // out of memory
-    CJSONX_ERROR_EMPTY_INPUT,               // input is empty or whitespace only
-    CJSONX_ERROR_UNTERMINATED_STRING,       // string is not closed with a quote
-    CJSONX_ERROR_INVALID_CONTROL_CHAR,      // raw control character inside string
-    CJSONX_ERROR_INVALID_ESCAPE,            // invalid escape sequence inside string
-    CJSONX_ERROR_INVALID_NUMBER,            // number format is invalid
-    CJSONX_ERROR_INVALID_KEYWORD,           // keyword true, false, or null is misspelled
-    CJSONX_ERROR_MAX_DEPTH,                 // maximum nesting depth exceeded
-    CJSONX_ERROR_MISSING_COMMA,             // missing comma between elements
-    CJSONX_ERROR_MISSING_COLON,             // missing colon after key
-    CJSONX_ERROR_TRAILING_COMMA,            // trailing comma is not allowed
-    CJSONX_ERROR_UNEXPECTED_TOKEN,          // found unexpected token
-    CJSONX_ERROR_UNCLOSED_CONTAINER,        // array or object is not closed
-    CJSONX_ERROR_TRAILING_GARBAGE,          // extra data found after root value
-    CJSONX_ERROR_INVALID_UTF8,              // string contains invalid utf-8 sequences
-    CJSONX_ERROR_TOO_LARGE                  // string or container exceeds 24-bit limit
+    CJSONX_SUCCESS = 0,                 // parsed successfully
+    CJSONX_ERROR_OOM,                   // out of memory
+    CJSONX_ERROR_EMPTY_INPUT,           // input is empty or whitespace only
+    CJSONX_ERROR_UNTERMINATED_STRING,   // string is not closed with a quote
+    CJSONX_ERROR_INVALID_CONTROL_CHAR,  // raw control character inside string
+    CJSONX_ERROR_INVALID_ESCAPE,        // invalid escape sequence inside string
+    CJSONX_ERROR_INVALID_NUMBER,        // number format is invalid
+    CJSONX_ERROR_INVALID_KEYWORD,       // keyword true, false, or null is misspelled
+    CJSONX_ERROR_MAX_DEPTH,             // maximum nesting depth exceeded
+    CJSONX_ERROR_MISSING_COMMA,         // missing comma between elements
+    CJSONX_ERROR_MISSING_COLON,         // missing colon after key
+    CJSONX_ERROR_TRAILING_COMMA,        // trailing comma is not allowed
+    CJSONX_ERROR_UNEXPECTED_TOKEN,      // found unexpected token
+    CJSONX_ERROR_UNCLOSED_CONTAINER,    // array or object is not closed
+    CJSONX_ERROR_TRAILING_GARBAGE,      // extra data found after root value
+    CJSONX_ERROR_INVALID_UTF8,          // string contains invalid utf-8 sequences
+    CJSONX_ERROR_TOO_LARGE              // string or container exceeds 24-bit limit
 } cjsonx_error_t;
 
 // convert error code to string
@@ -77,4 +76,4 @@ static inline const char* cjsonx_error_string(cjsonx_error_t err) {
     }
 }
 
-#endif // cjsonx_error_h
+#endif  // cjsonx_error_h

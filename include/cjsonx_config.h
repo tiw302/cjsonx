@@ -5,7 +5,7 @@
 #define CJSONX_CONFIG_H
 
 #if defined(__linux__) && !defined(_GNU_SOURCE)
-#define _GNU_SOURCE 1 // expose posix locales like strtod_l
+#define _GNU_SOURCE 1  // expose posix locales like strtod_l
 #endif
 
 //  ██████  ██████  ███    ██ ███████ ██  ██████
@@ -16,7 +16,6 @@
 //
 // >>configuration
 
-
 // ██   ██ ██ ███    ██ ████████ ███████
 // ██   ██ ██ ████   ██    ██    ██
 // ███████ ██ ██ ██  ██    ██    ███████
@@ -26,7 +25,8 @@
 // >>compiler hints
 
 #if defined(__GNUC__) || defined(__clang__)
-// dev note: using __builtin_expect for branch prediction helps the cpu pipeline stay full on hot paths.
+// dev note: using __builtin_expect for branch prediction helps the cpu pipeline stay full on hot
+// paths.
 #define CJSONX_LIKELY(x) __builtin_expect(!!(x), 1)
 #define CJSONX_UNLIKELY(x) __builtin_expect(!!(x), 0)
 #define cjsonx_always_inline __attribute__((always_inline)) inline
@@ -85,4 +85,14 @@ static inline int cjsonx_clzll_impl(unsigned long long x) {
 #define CJSONX_ARENA_CHUNK_SIZE 65536
 #endif
 
-#endif // cjsonx_config_h
+// initial capacity for string builder buffers
+#ifndef CJSONX_INITIAL_STRBUF_CAP
+#define CJSONX_INITIAL_STRBUF_CAP 2048
+#endif
+
+// margin to add when growing string builder buffers
+#ifndef CJSONX_STRBUF_GROW_MARGIN
+#define CJSONX_STRBUF_GROW_MARGIN 1024
+#endif
+
+#endif  // cjsonx_config_h

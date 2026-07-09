@@ -11,13 +11,13 @@
 #include "cjsonx.h"
 
 // helper macro: print pass/fail and exit on failure
-#define CHECK(cond, msg) \
-    do { \
-        if (!(cond)) { \
+#define CHECK(cond, msg)                  \
+    do {                                  \
+        if (!(cond)) {                    \
             printf("[fail] %s\n", (msg)); \
-            return 1; \
-        } \
-        printf("[pass] %s\n", (msg)); \
+            return 1;                     \
+        }                                 \
+        printf("[pass] %s\n", (msg));     \
     } while (0)
 
 // 8 kb static buffer — enough for basic test cases
@@ -39,8 +39,8 @@ int main(void) {
         CHECK(cjsonx_get_type(name) == CJSONX_STRING, "name field is string");
         // zero-copy strings point into the json buffer — they are NOT null-terminated.
         // always use cjsonx_str_len() to bound the comparison.
-        CHECK(cjsonx_str_len(name) == 5 &&
-              strncmp(cjsonx_str(name), "alice", 5) == 0, "name value is 'alice'");
+        CHECK(cjsonx_str_len(name) == 5 && strncmp(cjsonx_str(name), "alice", 5) == 0,
+              "name value is 'alice'");
 
         cjsonx_val_t age = cjsonx_get(doc->root, "age");
         CHECK(cjsonx_get_type(age) == CJSONX_NUMBER, "age field is number");
@@ -54,7 +54,7 @@ int main(void) {
     // buffer too small: should return a doc with CJSONX_ERROR_OOM or NULL
     {
         const char* json = "{\"key\":\"value\"}";
-        uint8_t tiny[8]; // far too small
+        uint8_t tiny[8];  // far too small
         cjsonx_doc_t* doc = cjsonx_parse_with_buffer(json, strlen(json), tiny, sizeof(tiny));
         // doc may be null if it can't even fit the cjsonx_doc_t struct
         if (doc) {

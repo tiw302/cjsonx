@@ -1,8 +1,8 @@
 // test_precision.c — precision and strict conformance edge cases tests.
+#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <math.h>
 
 #include "cjsonx.h"
 
@@ -54,15 +54,8 @@ int main() {
 
     // 2. keyword trailing garbage check
     {
-        const char* invalid_cases[] = {
-            "truefalse",
-            "true1",
-            "falsejunk",
-            "nullnull",
-            "true}",
-            "null,",
-            NULL
-        };
+        const char* invalid_cases[] = {"truefalse", "true1", "falsejunk", "nullnull",
+                                       "true}",     "null,", NULL};
         for (int i = 0; invalid_cases[i] != NULL; i++) {
             cjsonx_doc* doc = cjsonx_parse(invalid_cases[i], strlen(invalid_cases[i]));
             if (doc && doc->is_valid) {
@@ -85,7 +78,8 @@ int main() {
         }
         cjsonx_val v = cjsonx_pointer_get(doc->root, "/");
         if (cjsonx_get_type(v) != CJSONX_NUMBER || cjsonx_num(v) != 1234.0) {
-            printf("fail: json pointer '/' failed to resolve empty key! type: %d, val: %g\n", cjsonx_get_type(v), cjsonx_num(v));
+            printf("fail: json pointer '/' failed to resolve empty key! type: %d, val: %g\n",
+                   cjsonx_get_type(v), cjsonx_num(v));
             cjsonx_doc_free(doc);
             return 1;
         }
@@ -111,7 +105,8 @@ int main() {
         }
         cjsonx_doc_free(doc);
         if (mock_malloc_count == 0 || mock_malloc_count != mock_free_count) {
-            printf("fail: custom allocator mismatched malloc (%zu) and free (%zu) calls\n", mock_malloc_count, mock_free_count);
+            printf("fail: custom allocator mismatched malloc (%zu) and free (%zu) calls\n",
+                   mock_malloc_count, mock_free_count);
             return 1;
         }
         printf("pass: custom allocator without realloc emulated safely\n");
@@ -121,11 +116,11 @@ int main() {
     {
         cjsonx_doc* doc1 = cjsonx_parse("{\"a\": 1}", 8);
         cjsonx_doc* doc2 = cjsonx_parse("{\"a\": 2}", 8);
-        
+
         // force nodes array index to overlap (e.g. index 1)
         cjsonx_val target_val = cjsonx_get(doc1->root, "a");
         cjsonx_val patch_val = cjsonx_get(doc2->root, "a");
-        
+
         if (target_val.node_idx != patch_val.node_idx) {
             printf("warn: could not align node indices for merge patch overlap test\n");
         } else {

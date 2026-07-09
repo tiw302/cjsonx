@@ -1,17 +1,19 @@
-#include "cjsonx.h"
 #include <stdio.h>
 #include <string.h>
 
+#include "cjsonx.h"
+
 int main() {
-    const char* json = "{\n"
-                       "  \"name\": \"cjsonx\",\n"
-                       "  \"fast\": true,\n"
-                       "  \"tags\": [\"C11\", \"JSON\", \"SIMD\"]\n"
-                       "}";
-                       
+    const char* json =
+        "{\n"
+        "  \"name\": \"cjsonx\",\n"
+        "  \"fast\": true,\n"
+        "  \"tags\": [\"C11\", \"JSON\", \"SIMD\"]\n"
+        "}";
+
     // parse the json string
     cjsonx_doc* doc = cjsonx_parse(json, strlen(json));
-    
+
     if (!doc || !doc->is_valid) {
         printf("failed to parse json\n");
         return 1;
@@ -45,6 +47,6 @@ int main() {
 
     // free the document memory
     cjsonx_doc_free(doc);
-    
+
     return 0;
 }

@@ -1,6 +1,7 @@
-#include "cjsonx.h"
 #include <stdio.h>
 #include <string.h>
+
+#include "cjsonx.h"
 
 int main(void) {
     const char* json_str =
