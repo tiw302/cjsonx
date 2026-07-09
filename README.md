@@ -457,25 +457,25 @@ Benchmarks were executed on a modern x86_64 CPU (GCC -O3 -march=native). We trac
 
 | Library | Parse (MB/s) | Stringify (MB/s) | Peak Mem (MB) |
 |---------|--------------|------------------|---------------|
-| **cjsonx** | 618.41 | 1611.66 | **0.92** |
-| yyjson | **826.85** | **3773.87** | 1.20 |
-| cJSON | 295.29 | 467.68 | 1.23 |
+| **cjsonx** | 611.63 | 1546.55 | **0.92** |
+| yyjson | **756.00** | **3922.39** | 1.20 |
+| cJSON | 283.91 | 414.75 | 1.23 |
 
 ### 2. `citm_catalog.json` (1.65 MB)
 
 | Library | Parse (MB/s) | Stringify (MB/s) | Peak Mem (MB) |
 |---------|--------------|------------------|---------------|
-| **cjsonx** | **1169.02** | 2110.53 | **2.07** |
-| yyjson | 889.20 | **6780.16** | 3.29 |
-| cJSON | 292.06 | 836.49 | 2.57 |
+| **cjsonx** | **1156.58** | 1990.31 | **2.13** |
+| yyjson | 736.33 | **6539.28** | 3.29 |
+| cJSON | 267.55 | 755.45 | 2.57 |
 
 ### 3. `canada.json` (2.15 MB) - Heavy Floating-Point Arrays
 
 | Library | Parse (MB/s) | Stringify (MB/s) | Peak Mem (MB) |
 |---------|--------------|------------------|---------------|
-| **cjsonx** | 304.95 | 277.87 | **4.70** |
-| yyjson | **800.68** | **614.18** | 7.87 |
-| cJSON | 72.36 | 25.21 | 10.20 |
+| **cjsonx** | 303.56 | 272.62 | **4.76** |
+| yyjson | **754.31** | **606.38** | 7.87 |
+| cJSON | 71.25 | 24.91 | 10.20 |
 
 <details>
 <summary><b>View raw console output from bench_compare</b></summary>
@@ -486,27 +486,27 @@ tiw@tiw-CachyOS ~/Public/cjsonx (master)
 
 Dataset: benchmarks/datasets/citm_catalog.json (1.65 MB)
 ========================================================================
-Library    | Parse (MB/s)    | Stringify (MB/s) | Peak Mem (MB)
+Library    | Parse (MB/s)    | Stringify (MB/s) | Peak Mem (MB)  
 -----------|-----------------|------------------|-----------------------
-cjsonx     | 1169.02         | 2110.53         | 2.07
-yyjson     | 889.20          | 6780.16         | 3.29
-cJSON      | 292.06          | 836.49          | 2.57
+cjsonx     | 1156.58         | 1990.31         | 2.13           
+yyjson     | 736.33          | 6539.28         | 3.29           
+cJSON      | 267.55          | 755.45          | 2.57           
 ========================================================================
 Dataset: benchmarks/datasets/twitter.json (0.60 MB)
 ========================================================================
-Library    | Parse (MB/s)    | Stringify (MB/s) | Peak Mem (MB)
+Library    | Parse (MB/s)    | Stringify (MB/s) | Peak Mem (MB)  
 -----------|-----------------|------------------|-----------------------
-cjsonx     | 618.41          | 1611.66         | 0.92
-yyjson     | 826.85          | 3773.87         | 1.20
-cJSON      | 295.29          | 467.68          | 1.23
+cjsonx     | 611.63          | 1546.55         | 0.92           
+yyjson     | 756.00          | 3922.39         | 1.20           
+cJSON      | 283.91          | 414.75          | 1.23           
 ========================================================================
 Dataset: benchmarks/datasets/canada.json (2.15 MB)
 ========================================================================
-Library    | Parse (MB/s)    | Stringify (MB/s) | Peak Mem (MB)
+Library    | Parse (MB/s)    | Stringify (MB/s) | Peak Mem (MB)  
 -----------|-----------------|------------------|-----------------------
-cjsonx     | 304.95          | 277.87          | 4.70
-yyjson     | 800.68          | 614.18          | 7.87
-cJSON      | 72.36           | 25.21           | 10.20
+cjsonx     | 303.56          | 272.62          | 4.76           
+yyjson     | 754.31          | 606.38          | 7.87           
+cJSON      | 71.25           | 24.91           | 10.20          
 ========================================================================
 
 tiw@tiw-CachyOS ~/Public/cjsonx (master)
