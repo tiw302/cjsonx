@@ -1,4 +1,4 @@
-// updated 2026-06-13
+// updated 2026-06-18
 // spdx-license-identifier: mit
 // copyright (c) 2026 jirawat siripuk
 #ifndef CJSONX_AVX2_H
@@ -37,8 +37,8 @@ static inline bool cjsonx_stage1_avx2(const char* json, size_t length, cjsonx_ta
     size_t i = 0;
 
     while (i < length) {
-        // prefetch json data 128 bytes ahead into l1 cache for extreme throughput
-        __builtin_prefetch(json + i + 128, 0, 0);
+        // prefetch 512 bytes ahead (~16 cache lines) for better throughput on modern cpus
+        __builtin_prefetch(json + i + 512, 0, 0);
 
         if (i + 31 < length) {
             __m256i v = _mm256_loadu_si256((const __m256i*)(json + i));

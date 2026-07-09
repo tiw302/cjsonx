@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "cjsonx"
-version = "1.1.1"
+version = "1.2.2"
 description = "High-performance C11 JSON parser python bindings"
 authors = [{name = "jirawat siripuk"}]
 readme = "README.md"

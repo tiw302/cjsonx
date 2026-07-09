@@ -1,4 +1,4 @@
-// updated 2026-06-13
+// updated 2026-07-07
 // spdx-license-identifier: mit
 // copyright (c) 2026 jirawat siripuk
 #ifndef CJSONX_CONFIG_H
@@ -60,9 +60,12 @@
 #define CJSONX_INITIAL_CONTAINER_CAP 16
 #endif
 
-// the block size allocated by the memory arena at once
+/*
+ * the block size allocated by the memory arena at once; larger initial chunk means fewer
+ * malloc calls during parsing of documents with many strings.
+ */
 #ifndef CJSONX_ARENA_CHUNK_SIZE
-#define CJSONX_ARENA_CHUNK_SIZE 4096
+#define CJSONX_ARENA_CHUNK_SIZE 65536
 #endif
 
 #endif // cjsonx_config_h

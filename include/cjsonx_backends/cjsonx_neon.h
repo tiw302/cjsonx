@@ -1,4 +1,4 @@
-// updated 2026-06-13
+// updated 2026-06-18
 // spdx-license-identifier: mit
 // copyright (c) 2026 jirawat siripuk
 #ifndef CJSONX_NEON_H

@@ -1,4 +1,4 @@
-// updated 2026-06-13
+// updated 2026-06-23
 // spdx-license-identifier: mit
 // copyright (c) 2026 jirawat siripuk
 #ifndef CJSONX_STAGE1_H
@@ -15,9 +15,10 @@
 
 #include <stdlib.h>
 
-// detect architecture and select best available backend.
-// note: if you need to support runtime dispatch (e.g. avx2 on modern cpu, fallback to scalar on old),
-// you should build multiple objects and dispatch at runtime via cpuid, rather than compile-time macros.
+/* detect architecture and select best available backend.
+ * note: if you need to support runtime dispatch (e.g. avx2 on modern cpu, fallback to scalar on old),
+ * you should build multiple objects and dispatch at runtime via cpuid, rather than compile-time macros.
+ */
 #if defined(__AVX2__)
     #include "cjsonx_backends/cjsonx_avx2.h"
 #elif defined(__ARM_NEON)

@@ -1,4 +1,4 @@
-// updated 2026-06-13
+// updated 2026-07-08
 // spdx-license-identifier: mit
 // copyright (c) 2026 jirawat siripuk
 #ifndef CJSONX_STAGE2_H
@@ -107,18 +107,36 @@ static inline double cjsonx_strtod(char* buf, char** endptr) {
 #elif defined(__APPLE__)
     /* xlocale.h exposes strtod_l on apple platforms */
 #   include <xlocale.h>
-    locale_t loc = newlocale(LC_ALL_MASK, "C", (locale_t)0);
-    if (loc != (locale_t)0) {
-        double val = strtod_l(buf, endptr, loc);
-        freelocale(loc);
-        return val;
+    /*
+     * static locale cached for the process lifetime — never freed intentionally.
+     * this avoids a newlocale/freelocale pair on every float parse fallback call.
+     * note: initialization is not atomic; a benign double-init race is possible in
+     * multi-threaded code. both threads create an equivalent "C" locale so the
+     * result is always correct (worst case: one extra locale handle leaked on the
+     * very first concurrent call).
+     */
+    static locale_t s_c_locale_apple = (locale_t)0;
+    if (CJSONX_UNLIKELY(s_c_locale_apple == (locale_t)0)) {
+        s_c_locale_apple = newlocale(LC_ALL_MASK, "C", (locale_t)0);
+    }
+    if (s_c_locale_apple != (locale_t)0) {
+        return strtod_l(buf, endptr, s_c_locale_apple);
     }
 #elif defined(__linux__) || defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__NetBSD__)
-    locale_t loc = newlocale(LC_ALL_MASK, "C", (locale_t)0);
-    if (loc != (locale_t)0) {
-        double val = strtod_l(buf, endptr, loc);
-        freelocale(loc);
-        return val;
+    /*
+     * static locale cached for the process lifetime — never freed intentionally.
+     * this avoids a newlocale/freelocale pair on every float parse fallback call.
+     * note: initialization is not atomic; a benign double-init race is possible in
+     * multi-threaded code. both threads create an equivalent "C" locale so the
+     * result is always correct (worst case: one extra locale handle leaked on the
+     * very first concurrent call).
+     */
+    static locale_t s_c_locale_posix = (locale_t)0;
+    if (CJSONX_UNLIKELY(s_c_locale_posix == (locale_t)0)) {
+        s_c_locale_posix = newlocale(LC_ALL_MASK, "C", (locale_t)0);
+    }
+    if (s_c_locale_posix != (locale_t)0) {
+        return strtod_l(buf, endptr, s_c_locale_posix);
     }
 #endif
     /* fallback for platforms without strtod_l (e.g. bare metal, msvc fallthrough):
@@ -987,12 +1005,13 @@ cjsonx_doc_t* cjsonx_parse_with_buffer(const char* json, size_t length, void* bu
     // explicit size_t mask: ~7 is signed int which sign-extends on 64-bit
     offset = (offset + 7u) & ~(size_t)7;
     
-    // use tape.count+1 as the node capacity upper bound.
-    // tape.count/2+1 is the typical estimate, but cjsonx_next_token checks
-    // node_idx >= capacity for EVERY tape entry (including commas and closers),
-    // so a tight estimate causes spurious cjsonx_grow_nodes calls which fail
-    // for static docs (is_static prevents realloc). tape.count+1 guarantees
-    // node_idx never reaches capacity before the parse finishes.
+    /* use tape.count+1 as the node capacity upper bound.
+     * tape.count/2+1 is the typical estimate, but cjsonx_next_token checks
+     * node_idx >= capacity for EVERY tape entry (including commas and closers),
+     * so a tight estimate causes spurious cjsonx_grow_nodes calls which fail
+     * for static docs (is_static prevents realloc). tape.count+1 guarantees
+     * node_idx never reaches capacity before the parse finishes.
+     */
     size_t alloc_count = tape.count + 1;
     size_t nodes_size = alloc_count * sizeof(cjsonx_node_t);
     if (offset + nodes_size > buffer_size) {

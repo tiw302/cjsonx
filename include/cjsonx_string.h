@@ -1,4 +1,4 @@
-// updated 2026-06-13
+// updated 2026-07-08
 // spdx-license-identifier: mit
 // copyright (c) 2026 jirawat siripuk
 #ifndef CJSONX_STRING_H
@@ -141,10 +141,11 @@ static cjsonx_always_inline bool cjsonx_parse_string_impl(cjsonx_doc_t* doc, cjs
     }
 #endif
 
-    // scalar fallback for remaining bytes or to re-scan the failed simd chunk.
-    // control and non-ascii flags from previous chunks are preserved.
-    // dev note: using swar here for the remaining bytes is a very nice optimization,
-    // avoiding byte-by-byte loops for the tail end of long strings.
+    /* scalar fallback for remaining bytes or to re-scan the failed simd chunk.
+     * control and non-ascii flags from previous chunks are preserved.
+     * dev note: using swar here for the remaining bytes is a very nice optimization,
+     * avoiding byte-by-byte loops for the tail end of long strings.
+     */
     uint64_t mask = 0;
     for (; i + 8 <= len; i += 8) {
         uint64_t chunk;

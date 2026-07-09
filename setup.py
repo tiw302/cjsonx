@@ -24,7 +24,7 @@ ext_modules = [
 
 setup(
     name='cjsonx',
-    version='1.1.1',
+    version='1.2.2',
     description="High-performance JSON parser C11 bindings for Python",
     ext_modules=ext_modules,
     packages=[],

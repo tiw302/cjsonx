@@ -1,4 +1,4 @@
-// updated 2026-06-13
+// updated 2026-07-08
 // spdx-license-identifier: mit
 // copyright (c) 2026 jirawat siripuk
 #ifndef CJSONX_BUILDER_H
@@ -393,11 +393,12 @@ static cjsonx_fp_t cjsonx_build_fp(double d) {
 }
 
 static void cjsonx_normalize(cjsonx_fp_t* fp) {
-    while ((fp->frac & CJSONX_HIDDENBIT) == 0) {
-        fp->frac <<= 1;
-        fp->exp--;
-    }
-    int shift = 64 - 52 - 1;
+    if (fp->frac == 0) return; // clzll(0) is undefined behavior; nothing to normalize
+    // collapse the old two-step normalization into a single shift:
+    //   step 1 (old while loop): align leading 1 to bit 52 → shift = clzll - 11
+    //   step 2 (old fixed shift): align to bit 63            → shift += 11
+    //   combined:                                              shift = clzll(frac)
+    int shift = __builtin_clzll(fp->frac);
     fp->frac <<= shift;
     fp->exp -= shift;
 }
@@ -1023,8 +1024,9 @@ cjsonx_doc_t* cjsonx_read_file_ex(const char* path, cjsonx_allocator_t* alloc) {
     long fsize = ftell(fp);
     fseek(fp, 0, SEEK_SET);
 
-    // ftell returns long, which caps file size at 2gb on 32-bit platforms.
-    // also reject files larger than 4gb to prevent tape index overflow.
+    /* ftell returns long, which caps file size at 2gb on 32-bit platforms.
+     * also reject files larger than 4gb to prevent tape index overflow.
+     */
     if (fsize < 0 || (unsigned long)fsize > UINT32_MAX || (unsigned long)fsize >= (size_t)-1) {
         fclose(fp);
         return NULL;
