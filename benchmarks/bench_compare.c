@@ -1,16 +1,23 @@
 #include "cjsonx.h"
-
-#include "third_party/yyjson.h"
 #include "third_party/cJSON.h"
+#include "third_party/yyjson.h"
 
 #define JSMN_STATIC
+#if defined(__GNUC__) || defined(__clang__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-function"
+#endif
 #include "third_party/jsmn.h"
+#if defined(__GNUC__) || defined(__clang__)
+#pragma GCC diagnostic pop
+#endif
 
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <time.h>
 #include <string.h>
+#include <time.h>
+
 #include "../tests/test_helpers.h"
 
 // ---------------------------------------------------------
@@ -49,18 +56,41 @@ static void track_free(void* ptr) {
 }
 
 // cjsonx wrappers
-static void* cx_malloc(size_t size, void* user) { (void)user; return track_malloc(size); }
-static void* cx_realloc(void* ptr, size_t size, void* user) { (void)user; return track_realloc(ptr, size); }
-static void cx_free(void* ptr, void* user) { (void)user; track_free(ptr); }
+static void* cx_malloc(size_t size, void* user) {
+    (void)user;
+    return track_malloc(size);
+}
+static void* cx_realloc(void* ptr, size_t size, void* user) {
+    (void)user;
+    return track_realloc(ptr, size);
+}
+static void cx_free(void* ptr, void* user) {
+    (void)user;
+    track_free(ptr);
+}
 
 // yyjson wrappers
-static void* yy_malloc(void* ctx, size_t size) { (void)ctx; return track_malloc(size); }
-static void* yy_realloc(void* ctx, void* ptr, size_t old, size_t size) { (void)ctx; (void)old; return track_realloc(ptr, size); }
-static void yy_free(void* ctx, void* ptr) { (void)ctx; track_free(ptr); }
+static void* yy_malloc(void* ctx, size_t size) {
+    (void)ctx;
+    return track_malloc(size);
+}
+static void* yy_realloc(void* ctx, void* ptr, size_t old, size_t size) {
+    (void)ctx;
+    (void)old;
+    return track_realloc(ptr, size);
+}
+static void yy_free(void* ctx, void* ptr) {
+    (void)ctx;
+    track_free(ptr);
+}
 
 // cjson wrappers
-static void* cj_malloc(size_t size) { return track_malloc(size); }
-static void cj_free(void* ptr) { track_free(ptr); }
+static void* cj_malloc(size_t size) {
+    return track_malloc(size);
+}
+static void cj_free(void* ptr) {
+    track_free(ptr);
+}
 
 // ---------------------------------------------------------
 
@@ -71,9 +101,10 @@ static double get_time(void) {
     return (double)ts.tv_sec + (double)ts.tv_nsec / 1e9;
 }
 
-void bench_cjsonx(const char* json, size_t len, int iterations, double* out_parse_time, double* out_stringify_time, double* out_mem_mb) {
-    cjsonx_alc alloc = { cx_malloc, cx_realloc, cx_free, NULL };
-    
+void bench_cjsonx(const char* json, size_t len, int iterations, double* out_parse_time,
+                  double* out_stringify_time, double* out_mem_mb) {
+    cjsonx_alc alloc = {cx_malloc, cx_realloc, cx_free, NULL};
+
     // memory measurement
     reset_mem();
     cjsonx_doc* doc = cjsonx_parse_ex(json, len, &alloc);
@@ -88,7 +119,7 @@ void bench_cjsonx(const char* json, size_t len, int iterations, double* out_pars
     }
     double end = get_time();
     *out_parse_time = (end - start) * 1000.0 / iterations;
-    
+
     // stringify speed
     doc = cjsonx_parse(json, len);
     start = get_time();
@@ -101,9 +132,10 @@ void bench_cjsonx(const char* json, size_t len, int iterations, double* out_pars
     cjsonx_doc_free(doc);
 }
 
-void bench_yyjson(const char* json, size_t len, int iterations, double* out_parse_time, double* out_stringify_time, double* out_mem_mb) {
-    yyjson_alc alc = { yy_malloc, yy_realloc, yy_free, NULL };
-    
+void bench_yyjson(const char* json, size_t len, int iterations, double* out_parse_time,
+                  double* out_stringify_time, double* out_mem_mb) {
+    yyjson_alc alc = {yy_malloc, yy_realloc, yy_free, NULL};
+
     // memory measurement
     reset_mem();
     yyjson_doc* doc = yyjson_read_opts((char*)json, len, 0, &alc, NULL);
@@ -118,7 +150,7 @@ void bench_yyjson(const char* json, size_t len, int iterations, double* out_pars
     }
     double end = get_time();
     *out_parse_time = (end - start) * 1000.0 / iterations;
-    
+
     // stringify speed
     doc = yyjson_read(json, len, 0);
     start = get_time();
@@ -131,11 +163,12 @@ void bench_yyjson(const char* json, size_t len, int iterations, double* out_pars
     yyjson_doc_free(doc);
 }
 
-void bench_cjson(const char* json, size_t len, int iterations, double* out_parse_time, double* out_stringify_time, double* out_mem_mb) {
+void bench_cjson(const char* json, size_t len, int iterations, double* out_parse_time,
+                 double* out_stringify_time, double* out_mem_mb) {
     (void)len;
-    cJSON_Hooks hooks = { cj_malloc, cj_free };
+    cJSON_Hooks hooks = {cj_malloc, cj_free};
     cJSON_InitHooks(&hooks);
-    
+
     // memory measurement
     reset_mem();
     cJSON* doc = cJSON_Parse(json);
@@ -151,7 +184,7 @@ void bench_cjson(const char* json, size_t len, int iterations, double* out_parse
     }
     double end = get_time();
     *out_parse_time = (end - start) * 1000.0 / iterations;
-    
+
     // stringify speed
     doc = cJSON_Parse(json);
     start = get_time();
@@ -181,7 +214,8 @@ int main(int argc, char** argv) {
 
     printf("Dataset: %s (%.2f MB)\n", file_path, (double)len / (1024 * 1024));
     printf("========================================================================\n");
-    printf("%-10s | %-15s | %-15s | %-15s\n", "Library", "Parse (MB/s)", "Stringify (MB/s)", "Peak Mem (MB)");
+    printf("%-10s | %-15s | %-15s | %-15s\n", "Library", "Parse (MB/s)", "Stringify (MB/s)",
+           "Peak Mem (MB)");
     printf("-----------|-----------------|------------------|-----------------------\n");
 
     // scale down iterations for larger files to keep benchmark runtime reasonable
@@ -193,13 +227,16 @@ int main(int argc, char** argv) {
     double file_mb = (double)len / (1024 * 1024);
 
     bench_cjsonx(json, len, iterations, &p_time, &s_time, &mem);
-    printf("%-10s | %-15.2f | %-15.2f | %-15.2f\n", "cjsonx", file_mb / (p_time / 1000.0), file_mb / (s_time / 1000.0), mem);
+    printf("%-10s | %-15.2f | %-15.2f | %-15.2f\n", "cjsonx", file_mb / (p_time / 1000.0),
+           file_mb / (s_time / 1000.0), mem);
 
     bench_yyjson(json, len, iterations, &p_time, &s_time, &mem);
-    printf("%-10s | %-15.2f | %-15.2f | %-15.2f\n", "yyjson", file_mb / (p_time / 1000.0), file_mb / (s_time / 1000.0), mem);
+    printf("%-10s | %-15.2f | %-15.2f | %-15.2f\n", "yyjson", file_mb / (p_time / 1000.0),
+           file_mb / (s_time / 1000.0), mem);
 
     bench_cjson(json, len, iterations / 10 > 0 ? iterations / 10 : 1, &p_time, &s_time, &mem);
-    printf("%-10s | %-15.2f | %-15.2f | %-15.2f\n", "cJSON", file_mb / (p_time / 1000.0), file_mb / (s_time / 1000.0), mem);
+    printf("%-10s | %-15.2f | %-15.2f | %-15.2f\n", "cJSON", file_mb / (p_time / 1000.0),
+           file_mb / (s_time / 1000.0), mem);
 
     printf("========================================================================\n\n");
 
