@@ -1,4 +1,5 @@
-// test_stringify.c — escape handling and stringify roundtrip.
+// test_stringify.c - stringify roundtrip and control character escape handling.
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
