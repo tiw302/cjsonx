@@ -1,4 +1,13 @@
-// micro-benchmark to compare switch-case vs computed goto (labels as values) performance
+/*
+ * file: bench_gotos.c
+ * description: micro-benchmark to compare standard switch-case performance against
+ *              gnu c computed gotos (labels as values) used in the stage 2 engine.
+ * 
+ * how to compile:
+ *   gcc -O3 bench_gotos.c -o bench_gotos
+ *   ./bench_gotos
+ */
+
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
