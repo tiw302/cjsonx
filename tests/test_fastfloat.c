@@ -1,4 +1,5 @@
-// test_fastfloat.c — tests for eisel-lemire fast float parser.
+// test_fastfloat.c - tests for eisel-lemire fast float parser implementation.
+
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
