@@ -11,6 +11,14 @@ versioning follows [semantic versioning](https://semver.org/).
 
 ---
 
+## [v1.4.1] — 2026-07-10
+
+### Fixed
+- **c++ wrapper**: removed `std::string_view` from `cjsonx.hpp` to ensure strict c++11 compatibility, fixing compilation errors on strict c++11 toolchains
+- **rust bindings**: fixed `cargo package` failing to include c source files on `crates.io` by copying them into the crate directory during ci publishing
+
+---
+
 ## [v1.4.0] — 2026-07-10
 
 ### Added
@@ -178,7 +186,8 @@ versioning follows [semantic versioning](https://semver.org/).
 - jsontestsuite conformance: 95 valid cases pass, 188 invalid cases correctly rejected
 - mit license
 
-[unreleased]: https://github.com/tiw302/cjsonx/compare/v1.4.0...HEAD
+[unreleased]: https://github.com/tiw302/cjsonx/compare/v1.4.1...HEAD
+[v1.4.1]: https://github.com/tiw302/cjsonx/compare/v1.4.0...v1.4.1
 [v1.4.0]: https://github.com/tiw302/cjsonx/compare/v1.3.0...v1.4.0
 [v1.3.0]: https://github.com/tiw302/cjsonx/compare/v1.2.4...v1.3.0
 [v1.2.4]: https://github.com/tiw302/cjsonx/compare/v1.2.3...v1.2.4

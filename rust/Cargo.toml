@@ -1,6 +1,6 @@
 [package]
 name = "cjsonx"
-version = "1.4.0"
+version = "1.4.1"
 edition = "2021"
 description = "High-performance JSON parser bindings for cjsonx"
 repository = "https://github.com/tiw302/cjsonx"
