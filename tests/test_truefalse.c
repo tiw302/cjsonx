@@ -1,4 +1,5 @@
-// test_truefalse.c — diagnostic tests for float precision and keyword boundaries.
+// test_truefalse.c - tests strict keyword boundary parsing for true, false, and null.
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
