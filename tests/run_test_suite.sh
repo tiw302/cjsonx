@@ -1,4 +1,5 @@
 #!/bin/bash
+
 # run_test_suite.sh — json test suite conformance test runner.
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$script_dir/JSONTestSuite/test_parsing" || exit 1
