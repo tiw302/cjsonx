@@ -161,7 +161,7 @@ int main() {
     }
     return 0;
 }`,
-    wasm: `// install via npm
+    nodejs: `// install via npm
 // npm install @tiw302/cjsonx
 
 const cjsonx = require('@tiw302/cjsonx');
@@ -179,12 +179,63 @@ async function run() {
         // index into an array
         const first = root.get('scores').at(0).getNum(); // 10
 
-        // convert entire dom to plain js object
-        // const obj = root.toJS(); // (assuming this still exists or just omit if unsure)
-
         doc.free();
     } else {
         console.error("Parse Error:", doc.error);
+    }
+}`,
+    python: `# install via pip
+# pip install cjsonx
+
+import cjsonx
+
+json_data = '{"message": "Hello Python World", "scores": [10, 20, 30]}'
+
+# parse json
+doc = cjsonx.parse(json_data)
+
+if doc.is_valid:
+    root = doc.root
+
+    # get a string field using pythonic indexing
+    message = root["message"].get_str()
+    print(f"message: {message}")
+
+    # iterate over an array
+    scores = root["scores"]
+    for i in range(len(scores)):
+        print(f"  score[{i}]: {scores[i].get_num()}")
+else:
+    print(f"Parse Error: {doc.error}")`,
+    rust: `// add to Cargo.toml:
+// [dependencies]
+// cjsonx = "*"
+
+use cjsonx::{Document, JsonType};
+
+fn main() {
+    let json = r#"{"message": "Hello Rust World", "scores": [10, 20, 30]}"#;
+
+    // parse using safe abstraction (handles unsafe C FFI underneath)
+    let doc = Document::parse(json).expect("failed to parse");
+    let root = doc.root();
+
+    if root.get_type() == JsonType::Object {
+        // extract string safely
+        if let Some(msg_node) = root.get("message") {
+            if let Some(msg) = msg_node.as_str() {
+                println!("message: {}", msg);
+            }
+        }
+
+        // iterate over array
+        if let Some(scores) = root.get("scores") {
+            for i in 0..scores.len() {
+                if let Some(score) = scores.at(i) {
+                    println!("  score[{}]: {}", i, score.as_f64().unwrap_or(0.0));
+                }
+            }
+        }
     }
 }`
 };
