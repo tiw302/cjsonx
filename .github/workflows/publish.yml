@@ -107,8 +107,8 @@ jobs:
         run: |
           cp README.md rust/
           cp -r src rust/c_src
-          cp -r include rust/c_include
-          git add rust/c_src rust/c_include
+          cp -r include rust/include
+          git add rust/c_src rust/include
           cd rust
           cargo publish --allow-dirty
         env:

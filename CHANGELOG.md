@@ -11,6 +11,13 @@ versioning follows [semantic versioning](https://semver.org/).
 
 ---
 
+## [v1.4.2] — 2026-07-10
+
+### Fixed
+- **rust bindings**: resolved `#include` path resolution error (`../include/cjsonx.h`) during `cargo package` build by preserving directory structure in the published tarball
+
+---
+
 ## [v1.4.1] — 2026-07-10
 
 ### Fixed
@@ -186,7 +193,8 @@ versioning follows [semantic versioning](https://semver.org/).
 - jsontestsuite conformance: 95 valid cases pass, 188 invalid cases correctly rejected
 - mit license
 
-[unreleased]: https://github.com/tiw302/cjsonx/compare/v1.4.1...HEAD
+[unreleased]: https://github.com/tiw302/cjsonx/compare/v1.4.2...HEAD
+[v1.4.2]: https://github.com/tiw302/cjsonx/compare/v1.4.1...v1.4.2
 [v1.4.1]: https://github.com/tiw302/cjsonx/compare/v1.4.0...v1.4.1
 [v1.4.0]: https://github.com/tiw302/cjsonx/compare/v1.3.0...v1.4.0
 [v1.3.0]: https://github.com/tiw302/cjsonx/compare/v1.2.4...v1.3.0

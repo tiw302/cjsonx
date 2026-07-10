@@ -5,8 +5,8 @@ fn main() {
         "../src/cjsonx.c"
     };
 
-    let include_path = if std::path::Path::new("c_include").exists() {
-        "c_include"
+    let include_path = if std::path::Path::new("include").exists() {
+        "include"
     } else {
         "../include"
     };
@@ -17,6 +17,5 @@ fn main() {
     cc::Build::new()
         .file(src_path)
         .include(include_path)
-        .define("CJSONX_IMPLEMENTATION", None)
         .compile("cjsonx");
 }
