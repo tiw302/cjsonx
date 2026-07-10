@@ -1,6 +1,7 @@
-// updated 2026-06-18
+// updated 2026-07-09
 // spdx-license-identifier: mit
 // copyright (c) 2026 jirawat siripuk
+
 #ifndef CJSONX_AVX2_H
 #define CJSONX_AVX2_H
 
@@ -50,7 +51,7 @@ static inline bool cjsonx_stage1_avx2(const char* json, size_t length, cjsonx_ta
             }
 
             /*
-             * control chars (< 0x20) inside strings are intentionally NOT checked here.
+             * control chars (< 0x20) inside strings are intentionally not checked here.
              * they are handled by cjsonx_parse_string_impl in stage 2, which scans string
              * content byte-by-byte (or with simd) and rejects any raw control character.
              * this is a deliberate tradeoff: adding a control char check in stage 1 simd
