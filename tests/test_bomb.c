@@ -1,4 +1,9 @@
-// test_bomb.c — depth bomb test to ensure no stack overflow.
+/*
+ * test_bomb.c - depth bomb resilience test.
+ * ensures the parser does not suffer from stack overflow when parsing
+ * heavily nested structures (e.g. billion laughs array/object bombs).
+ */
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
