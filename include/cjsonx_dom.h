@@ -1,6 +1,7 @@
-// updated 2026-07-07
+// updated 2026-07-09
 // spdx-license-identifier: mit
 // copyright (c) 2026 jirawat siripuk
+
 #ifndef CJSONX_DOM_H
 #define CJSONX_DOM_H
 
@@ -89,7 +90,7 @@ typedef struct {
 
 #if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L
 // dev note: keeping this struct strictly at 16 bytes is crucial.
-// if you ever add new fields, test the size with _Static_assert to ensure it doesn't inflate.
+// if you ever add new fields, test the size with _static_assert to ensure it doesn't inflate.
 _Static_assert(sizeof(cjsonx_node_t) == 16, "cjsonx_node_t must be 16 bytes for cache alignment");
 #endif
 
