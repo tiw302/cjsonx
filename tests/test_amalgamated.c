@@ -1,4 +1,5 @@
-// test compiling and basic parsing using the amalgamated single-header
+// test_amalgamated.c - verifies compilation and parsing of the single-header amalgamation.
+
 #define CJSONX_IMPLEMENTATION
 #include <stdio.h>
 #include <string.h>
