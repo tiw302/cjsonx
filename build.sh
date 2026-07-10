@@ -1,4 +1,5 @@
 #!/bin/bash
+set -e
 
 # build.sh - build script for cjsonx engine
 # optimized with parallel builds and consistent naming
@@ -15,16 +16,15 @@ build_lib() {
 
 build_examples() {
     cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
-    cmake --build build --target example_dom_access example_float128_precision example_error_handling example_simple_parse example_embedded_noalloc example_builder_api --parallel
+    cmake --build build --parallel
     echo ""
     echo "===================================================================================="
     echo " build complete! to run examples:"
-    echo "  * ./build/example_dom_access"
-    echo "  * ./build/example_float128_precision"
-    echo "  * ./build/example_error_handling"
-    echo "  * ./build/example_simple_parse"
-    echo "  * ./build/example_embedded_noalloc"
-    echo "  * ./build/example_builder_api"
+    echo "  * ./build/example_c_dom_access"
+    echo "  * ./build/example_c_simple_parse"
+    echo "  * ./build/example_cpp_cpp_wrapper_example"
+    echo "  * ./build/example_cpp_iteration_and_pointers"
+    echo "  * (and others in ./build/)"
     echo "===================================================================================="
     echo " "
 }
