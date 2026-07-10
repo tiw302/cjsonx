@@ -106,6 +106,9 @@ jobs:
       - name: Publish to crates.io
         run: |
           cp README.md rust/
+          cp -r src rust/c_src
+          cp -r include rust/c_include
+          git add rust/c_src rust/c_include
           cd rust
           cargo publish --allow-dirty
         env:
