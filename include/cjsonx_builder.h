@@ -1,6 +1,7 @@
-// updated 2026-07-08
+// updated 2026-07-09
 // spdx-license-identifier: mit
 // copyright (c) 2026 jirawat siripuk
+
 #ifndef CJSONX_BUILDER_H
 #define CJSONX_BUILDER_H
 
@@ -740,7 +741,7 @@ static inline int cjsonx_write_i64(char* buf, int64_t val) {
         uval = (uint64_t)val;
     }
     char temp[24];
-    // _Static_assert would require c11. temp is 24; max usage is 20 chars (19 digits + sign).
+    // _static_assert would require c11. temp is 24; max usage is 20 chars (19 digits + sign).
     int t_idx = 24;
     while (uval >= 100) {
         uint32_t val2 = (uint32_t)(uval % 100);
