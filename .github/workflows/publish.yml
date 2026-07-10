@@ -73,7 +73,7 @@ jobs:
           scope: '@tiw302'
       
       - name: Set up Emscripten
-        uses: emscripten-core/setup-emsdk@v14
+        uses: emscripten-core/setup-emsdk@v16
         with:
           version: 'latest'
           actions-cache-folder: 'emsdk-cache'
