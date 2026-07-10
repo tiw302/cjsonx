@@ -1,4 +1,9 @@
-// test_allocator.c — custom allocator hook tests.
+/*
+ * test_allocator.c - custom memory allocator hook tests.
+ * verifies that cjsonx respects user-provided malloc/free overrides
+ * and checks internal arena bounds when memory limits are reached.
+ */
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
