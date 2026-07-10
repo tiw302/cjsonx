@@ -1,6 +1,6 @@
 {
   "name": "@tiw302/cjsonx",
-  "version": "1.4.2",
+  "version": "1.4.3",
   "description": "high-performance json parser for javascript using wasm",
   "main": "cjsonx.js",
   "types": "cjsonx.d.ts",
