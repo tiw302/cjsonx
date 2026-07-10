@@ -7,7 +7,6 @@
 
 #include <stdexcept>
 #include <string>
-#include <string_view>
 
 #include "cjsonx.h"
 
@@ -52,14 +51,18 @@ class Node {
         return cjsonx_int(val);
     }
 
-    std::string_view as_string() const {
-        return std::string_view(cjsonx_str(val), cjsonx_str_len(val));
+    std::string as_string() const {
+        return std::string(cjsonx_str(val), cjsonx_str_len(val));
     }
 
-    Node operator[](std::string_view key) const {
+    Node operator[](const std::string& key) const {
         if (!is_object()) throw std::runtime_error("Node is not an object");
-        std::string k_str(key);
-        return Node(cjsonx_get(val, k_str.c_str()));
+        return Node(cjsonx_get(val, key.c_str()));
+    }
+    
+    Node operator[](const char* key) const {
+        if (!is_object()) throw std::runtime_error("Node is not an object");
+        return Node(cjsonx_get(val, key));
     }
 
     Node operator[](size_t index) const {
@@ -67,9 +70,12 @@ class Node {
         return Node(cjsonx_get_index(val, index));
     }
 
-    Node pointer(std::string_view path) const {
-        std::string p_str(path);
-        return Node(cjsonx_pointer_get(val, p_str.c_str()));
+    Node pointer(const std::string& path) const {
+        return Node(cjsonx_pointer_get(val, path.c_str()));
+    }
+    
+    Node pointer(const char* path) const {
+        return Node(cjsonx_pointer_get(val, path));
     }
 
     size_t size() const {
@@ -99,7 +105,7 @@ class Node {
 
         struct KV {
             cjsonx_val_t k, v;
-            std::string_view key() const { return std::string_view(cjsonx_str(k), cjsonx_str_len(k)); }
+            std::string key() const { return std::string(cjsonx_str(k), cjsonx_str_len(k)); }
             Node value() const { return Node(v); }
             // Implicit conversion for array iteration: `for (Node item : array)`
             operator Node() const { return Node(v); }
@@ -157,8 +163,12 @@ class Document {
     }
 };
 
-inline Document parse(std::string_view json) {
+inline Document parse(const std::string& json) {
     return Document(cjsonx_parse(json.data(), json.size()));
+}
+
+inline Document parse(const char* json, size_t len) {
+    return Document(cjsonx_parse(json, len));
 }
 
 }  // namespace cjsonx
