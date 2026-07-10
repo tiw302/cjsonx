@@ -8,5 +8,9 @@
     "build": "node build.js"
   },
   "author": "jirawat siripuk",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/tiw302/cjsonx.git"
+  },
   "license": "MIT"
 }
