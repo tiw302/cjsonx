@@ -1,6 +1,7 @@
-// updated 2026-07-08
+// updated 2026-07-09
 // spdx-license-identifier: mit
 // copyright (c) 2026 jirawat siripuk
+
 #ifndef CJSONX_STAGE2_H
 #define CJSONX_STAGE2_H
 
@@ -115,7 +116,7 @@ static inline double cjsonx_strtod(char* buf, char** endptr) {
      * static locale cached for the process lifetime — never freed intentionally.
      * this avoids a newlocale/freelocale pair on every float parse fallback call.
      * note: initialization is not atomic; a benign double-init race is possible in
-     * multi-threaded code. both threads create an equivalent "C" locale so the
+     * multi-threaded code. both threads create an equivalent "c" locale so the
      * result is always correct (worst case: one extra locale handle leaked on the
      * very first concurrent call).
      */
@@ -131,7 +132,7 @@ static inline double cjsonx_strtod(char* buf, char** endptr) {
      * static locale cached for the process lifetime — never freed intentionally.
      * this avoids a newlocale/freelocale pair on every float parse fallback call.
      * note: initialization is not atomic; a benign double-init race is possible in
-     * multi-threaded code. both threads create an equivalent "C" locale so the
+     * multi-threaded code. both threads create an equivalent "c" locale so the
      * result is always correct (worst case: one extra locale handle leaked on the
      * very first concurrent call).
      */
@@ -849,9 +850,9 @@ bool cjsonx_bool(cjsonx_val_t handle) {
 
 bool cjsonx_is_null(cjsonx_val_t handle) {
     /*
-     * note: this returns true both when the handle is "not found" (doc == NULL)
+     * note: this returns true both when the handle is "not found" (doc == null)
      * and when the json value is actually null. if you need to distinguish between
-     * these cases, check `handle.doc != NULL` first before calling this function.
+     * these cases, check `handle.doc != null` first before calling this function.
      */
     if (!handle.doc) return true;
     cjsonx_node_t* n = &handle.doc->nodes[handle.node_idx];
@@ -1061,7 +1062,7 @@ cjsonx_doc_t* cjsonx_parse_with_buffer(const char* json, size_t length, void* bu
 
     /* use tape.count+1 as the node capacity upper bound.
      * tape.count/2+1 is the typical estimate, but cjsonx_next_token checks
-     * node_idx >= capacity for EVERY tape entry (including commas and closers),
+     * node_idx >= capacity for every tape entry (including commas and closers),
      * so a tight estimate causes spurious cjsonx_grow_nodes calls which fail
      * for static docs (is_static prevents realloc). tape.count+1 guarantees
      * node_idx never reaches capacity before the parse finishes.
