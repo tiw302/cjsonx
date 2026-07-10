@@ -52,7 +52,7 @@
 #define CJSONX_VERSION_STRING "1.3.0"
 
 // internal headers (order matters: config → error → dom → tape → arena)
-// updated 2026-06-16
+// updated 2026-07-09
 // spdx-license-identifier: mit
 // copyright (c) 2026 jirawat siripuk
 #ifndef CJSONX_ARENA_H
@@ -68,7 +68,7 @@
 
 #include <stdlib.h>
 
-// updated 2026-07-07
+// updated 2026-07-09
 // spdx-license-identifier: mit
 // copyright (c) 2026 jirawat siripuk
 #ifndef CJSONX_CONFIG_H
@@ -166,7 +166,7 @@ static inline int cjsonx_clzll_impl(unsigned long long x) {
 #endif
 
 #endif  // cjsonx_config_h
-// updated 2026-07-07
+// updated 2026-07-09
 // spdx-license-identifier: mit
 // copyright (c) 2026 jirawat siripuk
 #ifndef CJSONX_DOM_H
@@ -181,7 +181,7 @@ static inline int cjsonx_clzll_impl(unsigned long long x) {
 // >>dom document object model
 
 
-// updated 2026-07-08
+// updated 2026-07-09
 // spdx-license-identifier: mit
 // copyright (c) 2026 jirawat siripuk
 #ifndef CJSONX_ERROR_H
@@ -527,7 +527,7 @@ static cjsonx_always_inline void* cjsonx_arena_alloc(cjsonx_doc_t* __restrict do
 #endif
 
 #endif  // cjsonx_arena_h
-// updated 2026-06-16
+// updated 2026-07-09
 // spdx-license-identifier: mit
 // copyright (c) 2026 jirawat siripuk
 #ifndef CJSONX_TAPE_H
@@ -667,7 +667,7 @@ static inline CJSONX_NODISCARD cjsonx_doc_t* cjsonx_parse_copy_cstr(const char* 
 #endif
 
 // builder included last so it can see cjsonx_parse_ex declarations
-// updated 2026-07-08
+// updated 2026-07-09
 // spdx-license-identifier: mit
 // copyright (c) 2026 jirawat siripuk
 #ifndef CJSONX_BUILDER_H
@@ -2033,7 +2033,7 @@ cjsonx_val_t cjsonx_merge_patch(cjsonx_val_t target, cjsonx_val_t patch) {
 #ifdef CJSONX_IMPLEMENTATION
 #ifndef CJSONX_IMPLEMENTED
 #define CJSONX_IMPLEMENTED
-// updated 2026-06-23
+// updated 2026-07-09
 // spdx-license-identifier: mit
 // copyright (c) 2026 jirawat siripuk
 #ifndef CJSONX_STAGE1_H
@@ -2054,7 +2054,7 @@ cjsonx_val_t cjsonx_merge_patch(cjsonx_val_t target, cjsonx_val_t patch) {
  * compile-time macros.
  */
 #if defined(__AVX2__)
-// updated 2026-06-18
+// updated 2026-07-09
 // spdx-license-identifier: mit
 // copyright (c) 2026 jirawat siripuk
 #ifndef CJSONX_AVX2_H
@@ -2235,7 +2235,7 @@ static inline bool cjsonx_stage1_avx2(const char* json, size_t length, cjsonx_ta
 
 #endif  // cjsonx_avx2_h
 #elif defined(__ARM_NEON)
-// updated 2026-06-18
+// updated 2026-07-09
 // spdx-license-identifier: mit
 // copyright (c) 2026 jirawat siripuk
 #ifndef CJSONX_NEON_H
@@ -2432,7 +2432,7 @@ static inline bool cjsonx_stage1_neon(const char* json, size_t length, cjsonx_ta
 
 #endif  // cjsonx_neon_h
 #elif defined(__wasm_simd128__)
-// updated 2026-06-23
+// updated 2026-07-09
 // spdx-license-identifier: mit
 // copyright (c) 2026 jirawat siripuk
 #ifndef CJSONX_WASM_H
@@ -2606,7 +2606,7 @@ static inline bool cjsonx_stage1_wasm(const char* json, size_t length, cjsonx_ta
 
 #endif  // cjsonx_wasm_h
 #else
-// updated 2026-06-16
+// updated 2026-07-09
 // spdx-license-identifier: mit
 // copyright (c) 2026 jirawat siripuk
 #ifndef CJSONX_SCALAR_H
@@ -2731,7 +2731,7 @@ bool cjsonx_stage1_build_tape(const char* json, size_t length, cjsonx_tape_t* ta
 #endif
 
 #endif  // cjsonx_stage1_h
-// updated 2026-07-08
+// updated 2026-07-09
 // spdx-license-identifier: mit
 // copyright (c) 2026 jirawat siripuk
 #ifndef CJSONX_STAGE2_H
@@ -2748,7 +2748,7 @@ bool cjsonx_stage1_build_tape(const char* json, size_t length, cjsonx_tape_t* ta
 #include <errno.h>
 #include <locale.h>
 
-// updated 2026-06-23
+// updated 2026-07-09
 // spdx-license-identifier: mit
 // copyright (c) 2026 jirawat siripuk
 #ifndef CJSONX_FASTFLOAT_H
@@ -2764,7 +2764,7 @@ bool cjsonx_stage1_build_tape(const char* json, size_t length, cjsonx_tape_t* ta
 
 #include <math.h>
 
-// updated 2026-06-16
+// updated 2026-07-09
 // spdx-license-identifier: mit
 // copyright (c) 2026 jirawat siripuk
 #ifndef CJSONX_EISEL_LEMIRE_H
@@ -3806,7 +3806,7 @@ static cjsonx_always_inline bool cjsonx_parse_fast_float(const char* __restrict 
 #endif
 
 #endif  // cjsonx_fastfloat_h
-// updated 2026-07-08
+// updated 2026-07-09
 // spdx-license-identifier: mit
 // copyright (c) 2026 jirawat siripuk
 #ifndef CJSONX_STRING_H
@@ -3821,7 +3821,7 @@ static cjsonx_always_inline bool cjsonx_parse_fast_float(const char* __restrict 
 // >>string processing
 
 
-// updated 2026-06-16
+// updated 2026-07-09
 // spdx-license-identifier: mit
 // copyright (c) 2026 jirawat siripuk
 #ifndef CJSONX_UTF8_H
