@@ -1,4 +1,5 @@
-// fuzz_parser.c — minimal libfuzzer harness for parser.
+// fuzz_parser.c - minimal libfuzzer harness for the parser.
+
 #include <stddef.h>
 #include <stdint.h>
 
