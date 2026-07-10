@@ -1,6 +1,7 @@
-// updated 2026-07-08
+// updated 2026-07-09
 // spdx-license-identifier: mit
 // copyright (c) 2026 jirawat siripuk
+
 #ifndef CJSONX_STRING_H
 #define CJSONX_STRING_H
 
@@ -310,7 +311,7 @@ static cjsonx_always_inline bool cjsonx_parse_string_impl(cjsonx_doc_t* doc,
                      * json represents characters outside the basic multilingual plane (bmp) using a
                      * surrogate pair.
                      * - cp (high surrogate): must be in the range 0xd800 to 0xdbff.
-                     * - cp2 (low surrogate): must immediately follow as \uXXXX and be in the range
+                     * - cp2 (low surrogate): must immediately follow as \uxxxx and be in the range
                      * 0xdc00 to 0xdfff.
                      * - combining the pair: (((high - 0xd800) << 10) | (low - 0xdc00)) + 0x10000.
                      *
