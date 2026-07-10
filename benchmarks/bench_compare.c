@@ -1,3 +1,14 @@
+/*
+ * file: bench_compare.c
+ * description: comprehensive competitive benchmarking tool.
+ *              measures parsing speed, stringification speed, and peak memory usage
+ *              across cjsonx, yyjson, and cJSON. uses custom allocators for memory tracking.
+ * 
+ * how to compile (via cmake):
+ *   cmake -S .. -B ../build && cmake --build ../build
+ *   ../build/bench_compare datasets/twitter.json
+ */
+
 #include "cjsonx.h"
 #include "third_party/cJSON.h"
 #include "third_party/yyjson.h"
