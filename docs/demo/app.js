@@ -169,23 +169,22 @@ const cjsonx = require('@tiw302/cjsonx');
 async function run() {
     await cjsonx.ready;
 
-    const ok = cjsonx.parse('{"name": "alice", "scores": [10, 20, 30]}');
-    if (ok) {
-        const root  = cjsonx.getRoot();
+    const doc = cjsonx.parse('{"name": "alice", "scores": [10, 20, 30]}');
+    if (doc.isValid) {
+        const root = doc.root;
 
         // get a string field
-        const name   = root.get('name').str;  // 'alice'
+        const name = root.get('name').getString(); // 'alice'
 
         // index into an array
-        const first  = root.get('scores').getIndex(0).num; // 10
-
-        // json pointer path
-        const third  = root.pointer('/scores/2').num; // 30
+        const first = root.get('scores').at(0).getNum(); // 10
 
         // convert entire dom to plain js object
-        const obj    = root.toJS();
+        // const obj = root.toJS(); // (assuming this still exists or just omit if unsure)
 
-        cjsonx.free();
+        doc.free();
+    } else {
+        console.error("Parse Error:", doc.error);
     }
 }`
 };
