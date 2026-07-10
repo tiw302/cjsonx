@@ -7,7 +7,7 @@
 
 #include "cjsonx.h"
 
-// mock custom allocator without realloc_fn
+/* mock custom allocator without realloc_fn */
 static size_t mock_malloc_count = 0;
 static size_t mock_free_count = 0;
 
@@ -28,7 +28,7 @@ static void mock_free(void* ptr, void* user_data) {
 int main() {
     printf("running precision and strict conformance tests...\n");
 
-    // 1. float precision/exact rounding fallback check
+
     {
         const char* s = "0.353809201110073495780198";
         cjsonx_doc* doc = cjsonx_parse(s, strlen(s));
@@ -53,7 +53,7 @@ int main() {
         printf("pass: float precision matched strtod exactly\n");
     }
 
-    // 2. keyword trailing garbage check
+
     {
         const char* invalid_cases[] = {"truefalse", "true1", "falsejunk", "nullnull",
                                        "true}",     "null,", NULL};
@@ -69,7 +69,7 @@ int main() {
         printf("pass: keyword trailing garbage correctly rejected\n");
     }
 
-    // 3. json pointer "/" empty key check
+
     {
         const char* json = "{\"\": 1234, \"foo\": 5678}";
         cjsonx_doc* doc = cjsonx_parse(json, strlen(json));
@@ -88,7 +88,7 @@ int main() {
         printf("pass: json pointer '/' empty key resolved correctly\n");
     }
 
-    // 4. custom allocator without realloc_fn check
+
     {
         cjsonx_allocator_t alloc;
         alloc.malloc_fn = mock_malloc;
@@ -113,19 +113,19 @@ int main() {
         printf("pass: custom allocator without realloc emulated safely\n");
     }
 
-    // 5. merge patch overlap index check
+
     {
         cjsonx_doc* doc1 = cjsonx_parse("{\"a\": 1}", 8);
         cjsonx_doc* doc2 = cjsonx_parse("{\"a\": 2}", 8);
 
-        // force nodes array index to overlap (e.g. index 1)
+        /* force nodes array index to overlap (e.g. index 1) */
         cjsonx_val target_val = cjsonx_get(doc1->root, "a");
         cjsonx_val patch_val = cjsonx_get(doc2->root, "a");
 
         if (target_val.node_idx != patch_val.node_idx) {
             printf("warn: could not align node indices for merge patch overlap test\n");
         } else {
-            // merge patch should update target even if node indices match but docs differ
+            /* merge patch should update target even if node indices match but docs differ */
             cjsonx_val res = cjsonx_merge_patch(doc1->root, doc2->root);
             cjsonx_val res_val = cjsonx_get(res, "a");
             if (cjsonx_num(res_val) != 2.0) {

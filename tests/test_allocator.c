@@ -10,7 +10,7 @@
 
 #include "cjsonx.h"
 
-// tracks active allocations to check for leaks and double-frees
+/* tracks active allocations to check for leaks and double-frees */
 #define MAX_TRACKED_ALLOCS 1024
 static void* g_tracked_ptrs[MAX_TRACKED_ALLOCS];
 static size_t g_tracked_count = 0;
@@ -68,7 +68,7 @@ int main() {
 
     const char* json = "{\"name\": \"Alice\", \"age\": 30}";
 
-    // parse using custom allocator
+
     cjsonx_doc* doc = cjsonx_parse_ex(json, strlen(json), &alloc);
 
     if (!doc || !doc->is_valid) {
@@ -82,7 +82,7 @@ int main() {
         return 1;
     }
 
-    // add something using builder to trigger realloc/malloc
+    /* add something using builder to trigger realloc/malloc */
     cjsonx_val new_val = cjsonx_create_string(doc, "Test");
     cjsonx_object_set(doc->root, "new_key", new_val);
 

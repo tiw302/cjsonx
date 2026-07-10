@@ -32,7 +32,7 @@ static inline uint32_t cjsonx_builder_alloc_node(cjsonx_doc_t* doc) {
     if (doc->node_count >= doc->node_capacity) {
         size_t new_cap = doc->node_capacity == 0 ? 128 : doc->node_capacity * 2;
 
-        // dev note: integer overflow check is spot on. prevents oom vulnerabilities.
+        /* dev note: integer overflow check is spot on. prevents oom vulnerabilities. */
         if (CJSONX_UNLIKELY(new_cap < doc->node_capacity ||
                             new_cap > (size_t)-1 / sizeof(cjsonx_node_t)))
             return UINT32_MAX;
@@ -101,7 +101,7 @@ static inline cjsonx_val_t cjsonx_create_string(cjsonx_doc_t* doc, const char* s
 static inline cjsonx_val_t cjsonx_create_object(cjsonx_doc_t* doc) {
     uint32_t idx = cjsonx_builder_alloc_node(doc);
     if (idx == UINT32_MAX) return cjsonx_make_null_handle();
-    // zero the whole node — realloc doesn't clear, first_child would be garbage
+    /* zero the whole node — realloc doesn't clear, first_child would be garbage */
     memset(&doc->nodes[idx], 0, sizeof(cjsonx_node_t));
     cjsonx_node_set_type_len(&doc->nodes[idx], CJSONX_OBJECT, 0);
     doc->nodes[idx].next_sibling = idx + 1;
@@ -112,7 +112,7 @@ static inline cjsonx_val_t cjsonx_create_object(cjsonx_doc_t* doc) {
 static inline cjsonx_val_t cjsonx_create_array(cjsonx_doc_t* doc) {
     uint32_t idx = cjsonx_builder_alloc_node(doc);
     if (idx == UINT32_MAX) return cjsonx_make_null_handle();
-    // same as object: zero before use so first_child isn't garbage from realloc
+    /* same as object: zero before use so first_child isn't garbage from realloc */
     memset(&doc->nodes[idx], 0, sizeof(cjsonx_node_t));
     cjsonx_node_set_type_len(&doc->nodes[idx], CJSONX_ARRAY, 0);
     doc->nodes[idx].next_sibling = idx + 1;
@@ -132,7 +132,7 @@ static inline bool cjsonx_object_set_len(cjsonx_val_t obj_handle, const char* ke
     cjsonx_node_t* obj = &obj_handle.doc->nodes[obj_handle.node_idx];
     if (cjsonx_node_type(obj) != CJSONX_OBJECT) return false;
 
-    // if the key already exists, overwrite its value inline to preserve order and key allocations
+    /* if the key already exists, overwrite its value inline to preserve order and key allocations */
     uint32_t curr = obj->val.first_child;
     size_t obj_len = cjsonx_node_length(obj);
     uint32_t last_val_idx = UINT32_MAX;
@@ -140,7 +140,7 @@ static inline bool cjsonx_object_set_len(cjsonx_val_t obj_handle, const char* ke
         cjsonx_node_t* k_node = &obj_handle.doc->nodes[curr];
         uint32_t val_idx = k_node->next_sibling;
         cjsonx_node_t* v_node = &obj_handle.doc->nodes[val_idx];
-        // fast char match avoids memcmp overhead on mismatch
+        /* fast char match avoids memcmp overhead on mismatch */
         if (cjsonx_node_length(k_node) == key_len &&
             (key_len == 0 ||
              (k_node->val.str[0] == key[0] && memcmp(k_node->val.str, key, key_len) == 0))) {
@@ -157,12 +157,14 @@ static inline bool cjsonx_object_set_len(cjsonx_val_t obj_handle, const char* ke
         curr = v_node->next_sibling;
     }
 
-    // guard against maximum length limit for 24-bit field
+    /* guard against maximum length limit for 24-bit field */
     size_t len = cjsonx_node_length(obj);
     if (CJSONX_UNLIKELY(len >= 0xFFFFFF)) return false;
 
-    // allocate key node — this may realloc doc->nodes (invalidates all node pointers).
-    // obj and key_node are re-fetched below after the call.
+    /*
+     * allocate key node — this may realloc doc->nodes (invalidates all node pointers).
+     * obj and key_node are re-fetched below after the call.
+     */
     uint32_t key_idx = cjsonx_builder_alloc_node(obj_handle.doc);
     if (key_idx == UINT32_MAX) return false;
 
@@ -177,11 +179,11 @@ static inline bool cjsonx_object_set_len(cjsonx_val_t obj_handle, const char* ke
     s[key_len] = '\0';
     key_node->val.str = s;
 
-    // re-fetch obj and key_node: alloc_node above may have reallocated doc->nodes
+    /* re-fetch obj and key_node: alloc_node above may have reallocated doc->nodes */
     obj = &obj_handle.doc->nodes[obj_handle.node_idx];
     key_node = &obj_handle.doc->nodes[key_idx];
 
-    // link key and value into object
+
     key_node->next_sibling = val_handle.node_idx;
 
     if (len == 0) {
@@ -202,8 +204,10 @@ static inline bool cjsonx_object_set(cjsonx_val_t obj_handle, const char* key,
     return cjsonx_object_set_len(obj_handle, key, key ? strlen(key) : 0, val_handle);
 }
 
-// fast o(1) append without checking for duplicate keys. use only when you are sure the key is
-// unique.
+/*
+ * fast o(1) append without checking for duplicate keys. use only when you are sure the key is
+ * unique.
+ */
 static inline bool cjsonx_object_add_unchecked_len(cjsonx_val_t obj_handle, const char* key,
                                                    size_t key_len, cjsonx_val_t val_handle) {
     if (!obj_handle.doc || !val_handle.doc || obj_handle.doc != val_handle.doc) return false;
@@ -685,7 +689,7 @@ static int cjsonx_emit_digits(char* digits, int ndigits, char* dest, int K, bool
 static inline int cjsonx_fpconv_dtoa(double d, char dest[24]) {
     uint64_t bits = cjsonx_get_dbits(d);
     if ((bits & CJSONX_EXPMASK) == CJSONX_EXPMASK) {
-        // nan or infinity: output null (strictly conforms to rfc 8259, no sign)
+        /* nan or infinity: output null (strictly conforms to rfc 8259, no sign) */
         dest[0] = 'n';
         dest[1] = 'u';
         dest[2] = 'l';
@@ -725,7 +729,7 @@ static const char cjsonx_digit_table[] =
  * compared to standard digit-by-digit loops, substantially improving
  * stringification performance for integer values.
  */
-// max int64_t is 19 digits + optional '-' sign = 20 chars. buf is 24 — safe.
+/* max int64_t is 19 digits + optional '-' sign = 20 chars. buf is 24 — safe. */
 static inline int cjsonx_write_i64(char* buf, int64_t val) {
     if (val == 0) {
         buf[0] = '0';
@@ -741,7 +745,7 @@ static inline int cjsonx_write_i64(char* buf, int64_t val) {
         uval = (uint64_t)val;
     }
     char temp[24];
-    // _static_assert would require c11. temp is 24; max usage is 20 chars (19 digits + sign).
+    /* _static_assert would require c11. temp is 24; max usage is 20 chars (19 digits + sign). */
     int t_idx = 24;
     while (uval >= 100) {
         uint32_t val2 = (uint32_t)(uval % 100);
@@ -783,7 +787,7 @@ typedef struct {
 static cjsonx_always_inline void cjsonx_strbuf_append(cjsonx_strbuf_t* __restrict sb,
                                                       const char* __restrict str, size_t len) {
     if (CJSONX_UNLIKELY(sb->oom)) return;
-    // unsigned wraparound: if sum < either operand, an overflow occurred
+    /* unsigned wraparound: if sum < either operand, an overflow occurred */
     if (CJSONX_UNLIKELY(sb->len + len < sb->len)) {
         sb->oom = true;
         return;
@@ -792,7 +796,7 @@ static cjsonx_always_inline void cjsonx_strbuf_append(cjsonx_strbuf_t* __restric
         size_t new_cap = sb->cap == 0 ? CJSONX_INITIAL_STRBUF_CAP : sb->cap * 2;
         if (CJSONX_UNLIKELY(new_cap <= sb->len + len)) {
             new_cap = sb->len + len + CJSONX_STRBUF_GROW_MARGIN;
-            // overflow guard for + 1024
+            /* overflow guard for + 1024 */
             if (CJSONX_UNLIKELY(new_cap < sb->len + len)) new_cap = sb->len + len;
         }
         char* new_buf = (char*)cjsonx_realloc(sb->alloc, sb->buf, sb->cap, new_cap);

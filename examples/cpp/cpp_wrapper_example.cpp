@@ -10,7 +10,7 @@
 
 #include <iostream>
 #include <string>
-#include "cjsonx.hpp" // assuming a cjsonx.hpp exists for c++ wrapper
+#include "cjsonx.hpp"
 
 int main() {
     std::string json_str = R"({
@@ -23,7 +23,7 @@ int main() {
 
     std::cout << "--- cjsonx c++ wrapper example ---\n";
 
-    // parse json utilizing raii semantics
+
     cjsonx::Document doc = cjsonx::parse(json_str);
 
     if (!doc.is_valid()) {
@@ -31,7 +31,7 @@ int main() {
         return 1;
     }
 
-    // fluent api style access
+    /* fluent api style access */
     cjsonx::Node root = doc.root();
     
     std::string status(root["status"].as_string());

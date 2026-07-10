@@ -9,8 +9,10 @@
 int main() {
     cjsonx_doc* doc = cjsonx_parse("{}", 2);
 
-    // create string with control characters and unicode
-    // "\b \f \n \r \t \" \\ \u0001 🔥"
+    /*
+     * create string with control characters and unicode
+     * "\b \f \n \r \t \" \\ \u0001 🔥"
+     */
     const char* str = "\b \f \n \r \t \" \\ \x01 \xF0\x9F\x94\xA5";
     cjsonx_val v = cjsonx_create_string(doc, str);
     cjsonx_object_set(doc->root, "weird", v);
@@ -21,7 +23,7 @@ int main() {
         return 1;
     }
 
-    // check if the output is correctly escaped
+
     const char* expected = "{\"weird\":\"\\b \\f \\n \\r \\t \\\" \\\\ \\u0001 \xF0\x9F\x94\xA5\"}";
 
     if (strcmp(out, expected) != 0) {

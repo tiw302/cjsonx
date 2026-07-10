@@ -17,7 +17,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-// msvc compat: neon doesn't have __builtin_prefetch, mirror the avx2 shim
+/* msvc compat: neon doesn't have __builtin_prefetch, mirror the avx2 shim */
 #if defined(_MSC_VER) && !defined(__clang__)
 #include <intrin.h>
 #define __builtin_prefetch(addr, ...) (void)(addr)
@@ -58,7 +58,7 @@ static inline bool cjsonx_stage1_neon(const char* json, size_t length, cjsonx_ta
             uint8x16_t v2 = vld1q_u8((const uint8_t*)(json + i + 16));
 
             if (prev_in_string) {
-                // if inside string, we only care about quotes and backslashes
+                /* if inside string, we only care about quotes and backslashes */
                 uint8x16_t q1 = vceqq_u8(v1, vdupq_n_u8('"'));
                 uint8x16_t q2 = vceqq_u8(v2, vdupq_n_u8('"'));
                 uint8x16_t b1 = vceqq_u8(v1, vdupq_n_u8('\\'));
@@ -78,7 +78,7 @@ static inline bool cjsonx_stage1_neon(const char* json, size_t length, cjsonx_ta
                     i += 32;
                     continue;
                 } else {
-                    goto scalar_fallback;  // boundary logic complex, fallback to scalar
+                    goto scalar_fallback;  /* boundary logic complex, fallback to scalar */
                 }
             } else {
                 // not in string. check if string starts or backslashes exist
@@ -91,7 +91,7 @@ static inline bool cjsonx_stage1_neon(const char* json, size_t length, cjsonx_ta
                 uint32_t b_mask = neon_movemask_u8(b1) | (neon_movemask_u8(b2) << 16);
 
                 if (q_mask != 0 || b_mask != 0 || escaped) {
-                    goto scalar_fallback;  // entering string or escaping, fallback to scalar
+                    goto scalar_fallback;  /* entering string or escaping, fallback to scalar */
                 }
 
                 // if no strings started, just find structurals and whitespaces

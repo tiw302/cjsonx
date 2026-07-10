@@ -86,7 +86,7 @@ class Node {
         return val;
     }
 
-    // Iterator wrapper for C++11 range-based for loops
+    /* iterator wrapper for c++11 range-based for loops */
     struct Iterator {
         cjsonx_iter_t iter;
         bool valid;
@@ -107,7 +107,7 @@ class Node {
             cjsonx_val_t k, v;
             std::string key() const { return std::string(cjsonx_str(k), cjsonx_str_len(k)); }
             Node value() const { return Node(v); }
-            // Implicit conversion for array iteration: `for (Node item : array)`
+            /* implicit conversion for array iteration: `for (node item : array)` */
             operator Node() const { return Node(v); }
         };
 

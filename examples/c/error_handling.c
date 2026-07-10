@@ -11,30 +11,30 @@
 #include "cjsonx.h"
 
 int main() {
-    // a malformed json string (missing closing quote on "cjsonx")
+    /* a malformed json string (missing closing quote on "cjsonx") */
     const char* json =
         "{\n"
         "  \"name\": \"cjsonx,\n"
         "  \"fast\": true\n"
         "}";
 
-    // attempt to parse the broken string
+
     cjsonx_doc* doc = cjsonx_parse(json, strlen(json));
 
     if (doc) {
         if (!doc->is_valid) {
             printf("Error detected!\n");
 
-            // get the human-readable error message
+
             const char* err_msg = cjsonx_error_string(doc->error);
 
-            // get the byte offset where the error occurred
+
             size_t err_offset = doc->error_offset;
 
             printf("Message: %s\n", err_msg);
             printf("Offset:  %zu\n", err_offset);
 
-            // visually point to the error
+
             printf("\nJSON Snippet:\n");
             size_t start = (err_offset > 15) ? err_offset - 15 : 0;
             printf("%.30s...\n", json + start);

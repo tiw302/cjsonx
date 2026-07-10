@@ -11,7 +11,7 @@
 #include "cjsonx.h"
 
 int main() {
-    // a json string with extremely long numbers that would overflow standard parsers
+    /* a json string with extremely long numbers that would overflow standard parsers */
     const char* json =
         "{\n"
         "  \"planck_length\": 1.616255e-35,\n"
@@ -19,8 +19,8 @@ int main() {
         "  \"ultra_precise\": 3.1415926535897932384626433832795028841971\n"
         "}";
 
-    // cjsonx parses and validates these numbers using clinger's fast path and eisel-lemire
-    // internally ensuring they conform strictly to rfc 8259 without crashing or throwing
+    /* cjsonx parses and validates these numbers using clinger's fast path and eisel-lemire
+     * internally ensuring they conform strictly to rfc 8259 without crashing or throwing */
     cjsonx_doc* doc = cjsonx_parse(json, strlen(json));
 
     if (doc && doc->is_valid) {
@@ -30,7 +30,7 @@ int main() {
 
         cjsonx_val huge = cjsonx_get(root, "huge_integer");
         if (cjsonx_get_type(huge) == CJSONX_NUMBER) {
-            // numbers are parsed directly into double precision via our fast float engine
+            /* numbers are parsed directly into double precision via our fast float engine */
             printf("huge_integer: %g\n", cjsonx_num(huge));
         }
 

@@ -10,7 +10,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-// shared file-reading helper used by all test binaries (dry)
+/* shared file-reading helper used by all test binaries (dry) */
 static inline char* test_read_file(const char* path, size_t* out_len) {
     FILE* f = fopen(path, "rb");
     if (!f) return NULL;

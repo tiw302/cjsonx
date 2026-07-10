@@ -39,7 +39,7 @@ cjsonx_get_next_mask(uint32_t parent_depth, const uint8_t* __restrict parent_typ
     return CJSONX_S_COM | CJSONX_S_ARR_END;
 }
 
-// check if the character range is only whitespace
+
 static cjsonx_always_inline bool cjsonx_is_all_whitespace(const char* str, const char* limit) {
     while (str < limit) {
         char c = *str;
@@ -330,7 +330,7 @@ static bool cjsonx_stage2_build(cjsonx_doc_t* doc, const char* json, cjsonx_tape
         }
         cjsonx_type_t t = (c == '{') ? CJSONX_OBJECT : CJSONX_ARRAY;
         cjsonx_node_set_type_len(node, t, 0);              // temp length
-        node->val.first_child = (uint32_t)(node_idx + 1);  // set first child
+        node->val.first_child = (uint32_t)(node_idx + 1);
         if (parent_depth > 0) count_stack[parent_depth - 1]++;
         parent_stack[parent_depth] = (uint32_t)node_idx;
         parent_type_stack[parent_depth] = t;
@@ -398,7 +398,7 @@ static bool cjsonx_stage2_build(cjsonx_doc_t* doc, const char* json, cjsonx_tape
             goto fail;
         }
         tape_idx++;
-        // optimization: read from parent_type_stack instead of doc->nodes to avoid cache miss
+        /* optimization: read from parent_type_stack instead of doc->nodes to avoid cache miss */
         cjsonx_type_t ptype = parent_type_stack[parent_depth - 1];
         allowed_mask = (ptype == CJSONX_OBJECT) ? CJSONX_S_KEY : CJSONX_S_VAL;
         CJSONX_NEXT_TOKEN();
@@ -613,7 +613,7 @@ cjsonx_doc_t* cjsonx_doc_new_ex(cjsonx_allocator_t* alloc) {
     doc->chunk_size = CJSONX_ARENA_CHUNK_SIZE;
     doc->chunk_used = 0;
 
-    // pre-allocate flat dom node array starting with 16 nodes capacity
+
     cjsonx_node_t* nodes;
     if (doc->alloc.malloc_fn) {
         nodes =
@@ -730,7 +730,7 @@ cjsonx_val_t cjsonx_pointer_get(cjsonx_val_t root, const char* path) {
     const char* p = path;
 
     while (*p == '/') {
-        p++;  // skip '/'
+        p++;
         const char* next_slash = strchr(p, '/');
         size_t token_len = next_slash ? (size_t)(next_slash - p) : strlen(p);
 
@@ -785,7 +785,7 @@ cjsonx_val_t cjsonx_pointer_get(cjsonx_val_t root, const char* path) {
             if (!is_valid_index) {
                 curr = cjsonx_make_null_handle();
             } else {
-                // check errno so strtoul overflow (returns ulong_max) is handled correctly
+                /* check errno so strtoul overflow (returns ulong_max) is handled correctly */
                 errno = 0;
                 unsigned long index = strtoul(token, NULL, 10);
                 if (errno == ERANGE || index > 0xFFFFFF) {

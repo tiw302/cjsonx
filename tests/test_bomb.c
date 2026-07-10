@@ -22,11 +22,11 @@ int main() {
     }
     bomb[len] = '\0';
 
-    // try to parse - this shouldn't crash with a segfault/stack overflow
+    /* try to parse - this shouldn't crash with a segfault/stack overflow */
     cjsonx_doc* doc = cjsonx_parse(bomb, len);
 
-    // it will probably fail because of cjsonx_error_depth or similar,
-    // but the critical part is that it does not crash.
+    /* it will probably fail because of cjsonx_error_depth or similar,
+     * but the critical part is that it does not crash. */
     if (doc) {
         if (!doc->is_valid) {
             printf("Parsing failed gracefully: %d\n", doc->error);

@@ -75,7 +75,7 @@ void test_parse_copy(void) {
     char* json_mut = malloc(32);
     strcpy(json_mut, "{\"a\": 42}");
     cjsonx_doc* doc = cjsonx_parse_copy(json_mut, strlen(json_mut));
-    // mutate the original string to prove parse_copy made a copy
+    /* mutate the original string to prove parse_copy made a copy */
     strcpy(json_mut, "{\"a\": 99}");
 
     if (!doc || !doc->is_valid) {
@@ -97,13 +97,13 @@ int main(void) {
     printf("--- cjsonx Stage 2 Test ---\n");
     test_parse_copy();
 
-    // basic types: string, number, boolean
+
     test_dom("{\"key\": \"value\", \"age\": 30, \"is_dev\": true}");
 
-    // nested containers: array + sub-object
+
     test_dom("{\"array\": [1, 2, 3], \"nested\": {\"a\": 1}}");
 
-    // escape sequences + utf-16 surrogate pair (rocket emoji u+1f680)
+
     test_dom("{\"escape\": \"Hello\\nWorld! \\u2764\\ufe0f\", \"emoji\": \"\\ud83d\\ude80\"}");
 
     printf("\n--- Running Error Offset and Correctness Tests ---\n");

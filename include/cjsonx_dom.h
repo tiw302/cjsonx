@@ -31,8 +31,10 @@ typedef struct {
     void (*free_fn)(void* ptr, void* user_data);
     void* user_data;
 
-    // dev note: you could also provide an aligned_alloc function pointer if strict simds
-    // needed manually aligned blocks in the future, though the arena handles it well for now.
+    /*
+     * dev note: you could also provide an aligned_alloc function pointer if strict simds
+     * needed manually aligned blocks in the future, though the arena handles it well for now.
+     */
 } cjsonx_allocator_t;
 
 // reallocate memory safely supporting custom/standard fallback
@@ -104,8 +106,10 @@ static cjsonx_always_inline uint32_t cjsonx_node_length(const cjsonx_node_t* n) 
 
 static cjsonx_always_inline void cjsonx_node_set_type_len(cjsonx_node_t* __restrict n,
                                                           cjsonx_type_t type, uint32_t length) {
-    // silently clamp length to 24-bit maximum (16,777,215).
-    // strings longer than 16mb or collections with more than 16m elements will be capped.
+    /*
+     * silently clamp length to 24-bit maximum (16,777,215).
+     * strings longer than 16mb or collections with more than 16m elements will be capped.
+     */
     if (CJSONX_UNLIKELY(length > 0xFFFFFF)) length = 0xFFFFFF;
     n->type_and_length = ((uint32_t)type) | (length << 8);
 }

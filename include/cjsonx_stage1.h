@@ -31,7 +31,7 @@
 #endif
 
 #ifdef CJSONX_IMPLEMENTATION
-// dispatches to the correct stage 1 implementation based on the detected architecture.
+/* dispatches to the correct stage 1 implementation based on the detected architecture. */
 bool cjsonx_stage1_build_tape(const char* json, size_t length, cjsonx_tape_t* tape) {
 #if defined(__AVX2__)
     return cjsonx_stage1_avx2(json, length, tape);

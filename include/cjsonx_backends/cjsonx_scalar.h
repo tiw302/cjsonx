@@ -44,13 +44,13 @@ static inline bool cjsonx_stage1_scalar(const char* json, size_t length, cjsonx_
     bool in_string = false;
     bool escaped = false;
     bool prev_was_sep =
-        true;  // true after whitespace/structural — used to detect start of primitive tokens
+        true;  /* true after whitespace/structural — used to detect start of primitive tokens */
 
     for (size_t i = 0; i < length; i++) {
         char c = json[i];
 
         if (in_string) {
-            // no raw control chars allowed in strings, rfc8259 says so
+            /* no raw control chars allowed in strings, rfc8259 says so */
             if ((unsigned char)c < 0x20) {
                 return false;
             }
@@ -81,7 +81,7 @@ static inline bool cjsonx_stage1_scalar(const char* json, size_t length, cjsonx_
                 }
                 prev_was_sep = true;
             } else if (!cjsonx_is_whitespace(c)) {
-                // start of a primitive (number, true/false/null). only store the first byte.
+                /* start of a primitive (number, true/false/null). only store the first byte. */
                 if (prev_was_sep) {
                     if (!cjsonx_tape_push(tape, (uint32_t)i)) {
                         return false;
@@ -89,7 +89,7 @@ static inline bool cjsonx_stage1_scalar(const char* json, size_t length, cjsonx_
                 }
                 prev_was_sep = false;
             } else {
-                // whitespace marks a token boundary
+                /* whitespace marks a token boundary */
                 prev_was_sep = true;
             }
         }

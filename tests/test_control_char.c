@@ -7,7 +7,7 @@
 
 int main() {
     char bad_json_raw[128];
-    // fill the buffer with spaces first to avoid any uninitialized garbage
+    /* fill the buffer with spaces first to avoid any uninitialized garbage */
     memset(bad_json_raw, ' ', sizeof(bad_json_raw));
 
     bad_json_raw[0] = '[';
@@ -15,12 +15,14 @@ int main() {
     bad_json_raw[2] = '\\';
     bad_json_raw[3] = '\\';
 
-    // put a control character (0x01) at index 40 of the string.
-    // the string starts at index 2 (after the quote at index 1).
-    // so string index 40 is buffer index 42.
+    /*
+     * put a control character (0x01) at index 40 of the string.
+     * the string starts at index 2 (after the quote at index 1).
+     * so string index 40 is buffer index 42.
+     */
     bad_json_raw[42] = 0x01;
 
-    // put the closing quote at string index 80, which is buffer index 82.
+    /* put the closing quote at string index 80, which is buffer index 82. */
     bad_json_raw[82] = '"';
     bad_json_raw[83] = ']';
     bad_json_raw[84] = '\0';

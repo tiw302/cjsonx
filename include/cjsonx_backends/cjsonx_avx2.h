@@ -37,13 +37,13 @@ static inline bool cjsonx_stage1_avx2(const char* json, size_t length, cjsonx_ta
     size_t i = 0;
 
     while (i < length) {
-        // prefetch 512 bytes ahead (~16 cache lines) for better throughput on modern cpus
+        /* prefetch 512 bytes ahead (~16 cache lines) for better throughput on modern cpus */
         __builtin_prefetch(json + i + 512, 0, 0);
 
         if (i + 31 < length) {
             __m256i v = _mm256_loadu_si256((const __m256i*)(json + i));
 
-            // if we have backslashes or an active escape, fall back to scalar for this block
+            /* if we have backslashes or an active escape, fall back to scalar for this block */
             uint32_t bs_bits =
                 (uint32_t)_mm256_movemask_epi8(_mm256_cmpeq_epi8(v, _mm256_set1_epi8('\\')));
             if (bs_bits != 0 || escaped) {

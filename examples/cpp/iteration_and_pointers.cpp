@@ -1,6 +1,6 @@
 /*
  * file: iteration_and_pointers.cpp
- * description: demonstrates modern C++11 range-based for loops and JSON pointers.
+ * description: demonstrates modern c++11 range-based for loops and json pointers.
  * 
  * how to compile:
  *   1. gcc -c -O3 -D_GNU_SOURCE -I../../include ../../src/cjsonx.c
@@ -33,20 +33,20 @@ int main() {
     cjsonx::Node root = doc.root();
 
     std::cout << "--- 1. JSON Pointer Access ---\n";
-    // Using RFC 6901 JSON Pointers to fetch nested data directly
+    /* using rfc 6901 json pointers to fetch nested data directly */
     cjsonx::Node author = root.pointer("/metadata/author");
     if (!author.is_null()) {
         std::cout << "Author: " << author.as_string() << "\n";
     }
 
     std::cout << "\n--- 2. Array Iteration ---\n";
-    // Implicit conversion allows receiving Node directly
+    /* implicit conversion allows receiving node directly */
     for (cjsonx::Node tag : root["tags"]) {
         std::cout << "Tag: " << tag.as_string() << "\n";
     }
 
     std::cout << "\n--- 3. Object Iteration ---\n";
-    // Object iteration yields KV pairs (key and value)
+    /* object iteration yields kv pairs (key and value) */
     for (auto kv : root["metrics"]) {
         std::cout << "Metric '" << kv.key() << "' = " << kv.value().as_double() << "\n";
     }

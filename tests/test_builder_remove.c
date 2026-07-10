@@ -21,7 +21,7 @@ int main() {
     printf("Original: %s\n", str1);
     free(str1);
 
-    // remove "b" (middle)
+
     bool rm = cjsonx_object_remove(doc->root, "b");
     if (!rm) {
         printf("FAIL: could not remove b\n");
@@ -36,7 +36,7 @@ int main() {
     }
     free(str2);
 
-    // remove "a" (first)
+
     cjsonx_object_remove(doc->root, "a");
     char* str3 = cjsonx_stringify(doc);
     printf("After removing a: %s\n", str3);
@@ -46,7 +46,7 @@ int main() {
     }
     free(str3);
 
-    // test array
+
     cjsonx_val arr = cjsonx_create_array(doc);
     cjsonx_array_push(arr, cjsonx_create_number(doc, 1));
     cjsonx_array_push(arr, cjsonx_create_number(doc, 2));
@@ -54,7 +54,7 @@ int main() {
 
     cjsonx_object_set(doc->root, "arr", arr);
 
-    // remove index 1 (value 2)
+
     cjsonx_array_remove(arr, 1);
     char* str4 = cjsonx_stringify(doc);
     printf("Array after remove index 1: %s\n", str4);

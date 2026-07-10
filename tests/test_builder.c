@@ -13,24 +13,24 @@
 int main() {
     printf("Running builder tests...\n");
 
-    // parse an empty object
+
     cjsonx_doc* doc = cjsonx_parse("{}", 2);
     if (!doc || !doc->is_valid) {
         printf("[FAIL] Failed to parse empty object\n");
         return 1;
     }
 
-    // create primitives
+
     cjsonx_val name = cjsonx_create_string(doc, "cjsonx");
     cjsonx_val version = cjsonx_create_number(doc, 2.1);
     cjsonx_val fast = cjsonx_create_bool(doc, true);
 
-    // set to root object
+
     cjsonx_object_set(doc->root, "name", name);
     cjsonx_object_set(doc->root, "version", version);
     cjsonx_object_set(doc->root, "is_fast", fast);
 
-    // create array
+
     cjsonx_val features = cjsonx_create_array(doc);
     cjsonx_array_push(features, cjsonx_create_string(doc, "simd"));
     cjsonx_array_push(features, cjsonx_create_string(doc, "strict"));
@@ -42,13 +42,13 @@ int main() {
     char* json_fmt = cjsonx_stringify_format(doc, 4);
     printf("Generated Formatted JSON:\n%s\n\n", json_fmt);
 
-    // test key overwrite behavior
+
     cjsonx_val new_version = cjsonx_create_number(doc, 3.0);
     cjsonx_object_set(doc->root, "version", new_version);
 
     char* json_str_overwrite = cjsonx_stringify(doc);
 
-    // verify
+
     const char* expected_overwrite =
         "{\"name\":\"cjsonx\",\"version\":3,\"is_fast\":true,\"features\":[\"simd\",\"strict\"]}";
     if (strcmp(json_str_overwrite, expected_overwrite) == 0) {
@@ -60,21 +60,21 @@ int main() {
         return 1;
     }
 
-    // note: free() is only safe when using the default allocator.
-    // with a custom allocator use alloc.free_fn(json_str, alloc.user_data) instead.
+    /* note: free() is only safe when using the default allocator.
+     * with a custom allocator use alloc.free_fn(json_str, alloc.user_data) instead. */
     free(json_str);
     free(json_fmt);
     free(json_str_overwrite);
     cjsonx_doc_free(doc);
 
-    // test 1: cjsonx_doc_new() and builder from scratch
+
     printf("Testing cjsonx_doc_new()...\n");
     cjsonx_doc* new_doc = cjsonx_doc_new();
     if (!new_doc || !new_doc->is_valid) {
         printf("[FAIL] Failed to create new document from scratch\n");
         return 1;
     }
-    // set root to a newly created object
+
     cjsonx_val root_obj = cjsonx_create_object(new_doc);
     new_doc->root = root_obj;
     cjsonx_object_set(new_doc->root, "status", cjsonx_create_string(new_doc, "success"));
@@ -90,7 +90,7 @@ int main() {
     }
     printf("[PASS] cjsonx_doc_new() and builder from scratch passed!\n");
 
-    // test 2: cjsonx_stringify_val()
+
     printf("Testing cjsonx_stringify_val()...\n");
     cjsonx_val status_val = cjsonx_get(new_doc->root, "status");
     char* val_str = cjsonx_stringify_val(status_val);
@@ -107,7 +107,7 @@ int main() {
     free(new_json);
     cjsonx_doc_free(new_doc);
 
-    // test 3: cjsonx_parse_str() macro
+
     printf("Testing cjsonx_parse_str()...\n");
     cjsonx_doc* parsed_macro = cjsonx_parse_str("{\"macro\":true}");
     if (!parsed_macro || !parsed_macro->is_valid) {
@@ -125,7 +125,7 @@ int main() {
     free(macro_str);
     cjsonx_doc_free(parsed_macro);
 
-    // test empty key clone (fuzzer crash scenario)
+    /* test empty key clone (fuzzer crash scenario) */
     printf("Testing empty key object clone...\n");
     cjsonx_doc* empty_key_doc = cjsonx_parse("{\"\":{}}", 7);
     if (empty_key_doc && empty_key_doc->is_valid) {

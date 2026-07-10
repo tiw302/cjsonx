@@ -75,8 +75,10 @@ static cjsonx_always_inline bool cjsonx_compute_float(uint64_t mantissa, int exp
      */
     if (mantissa <= 9007199254740991ULL && exponent >= -22 && exponent <= 22) {
         double d = (double)mantissa;
-        // fix: multiply by precomputed reciprocal instead of dividing;
-        // fp division is ~3-5x slower than multiplication.
+        /*
+         * fix: multiply by precomputed reciprocal instead of dividing;
+         * fp division is ~3-5x slower than multiplication.
+         */
         if (exponent < 0)
             d *= cjsonx_power_of_10_neg[-exponent];
         else
@@ -95,19 +97,21 @@ static cjsonx_always_inline bool cjsonx_compute_float(uint64_t mantissa, int exp
         *out = 0.0;
         return true;
     }
-    // use infinity constant — 1e308*10 is ub under -ffast-math / -ffinite-math-only
+    /* use infinity constant — 1e308*10 is ub under -ffast-math / -ffinite-math-only */
     if (exponent > 342) {
         *out = INFINITY;
         return true;
     }
 
-    // lookup precomputed powers of 10.
-    // cjsonx_eisel_lemire_mantissa stores the high 64 bits of 10^exponent scaled by 2^q.
+    /*
+     * lookup precomputed powers of 10.
+     * cjsonx_eisel_lemire_mantissa stores the high 64 bits of 10^exponent scaled by 2^q.
+     */
     int index = exponent + 348;
     uint64_t table_m = cjsonx_eisel_lemire_mantissa[index];
     int16_t table_e = cjsonx_eisel_lemire_exp[index];
 
-    // normalize mantissa: align it to the most significant bit to maximize precision
+    /* normalize mantissa: align it to the most significant bit to maximize precision */
     int lz = CJSONX_CLZLL(mantissa);
     uint64_t w = mantissa << lz;
 
@@ -126,16 +130,18 @@ static cjsonx_always_inline bool cjsonx_compute_float(uint64_t mantissa, int exp
     uint64_t discarded = high & mask;
 
     if (discarded == 0 || discarded == (1ULL << (shift - 1))) {
-        // ambiguous halfway case: attempt a second multiplication using the next
-        // table entry per the eisel-lemire paper. this resolves most ambiguous cases
-        // without falling back to the slow strtod path.
+        /*
+         * ambiguous halfway case: attempt a second multiplication using the next
+         * table entry per the eisel-lemire paper. this resolves most ambiguous cases
+         * without falling back to the slow strtod path.
+         */
         if (index + 1 > 690) return false;  // bounds check: table has 691 entries (0..690)
         uint64_t table_m2 = cjsonx_eisel_lemire_mantissa[index + 1];
         uint64_t high2 = cjsonx_mul64_high(w, table_m2);
         uint64_t mask2 = (1ULL << shift) - 1;
         uint64_t discarded2 = high2 & mask2;
         if (discarded2 == 0 || discarded2 == (1ULL << (shift - 1))) {
-            // still ambiguous after second pass; fall back to slow path.
+            /* still ambiguous after second pass; fall back to slow path. */
             return false;
         }
         // second pass resolved the ambiguity; apply its rounding decision.
@@ -164,9 +170,11 @@ static cjsonx_always_inline bool cjsonx_compute_float(uint64_t mantissa, int exp
 
     int final_exp = table_e - lz + 116 + shift;
 
-    // subnormal numbers or extremely small numbers go to fallback
-    // dev note: delegating subnormals to the slow path is standard practice in fastfloat
-    // to maintain exact accuracy in edge cases.
+    /*
+     * subnormal numbers or extremely small numbers go to fallback
+     * dev note: delegating subnormals to the slow path is standard practice in fastfloat
+     * to maintain exact accuracy in edge cases.
+     */
     if (final_exp <= -1023) {
         return false;
     }

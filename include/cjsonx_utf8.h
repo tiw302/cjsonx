@@ -19,8 +19,10 @@
 extern "C" {
 #endif
 
-// copyright (c) 2008-2009 bjoern hoehrmann <bjoern@hoehrmann.de>
-// see http://bjoern.hoehrmann.de/utf-8/decoder/dfa/ for details.
+/*
+ * copyright (c) 2008-2009 bjoern hoehrmann <bjoern@hoehrmann.de>
+ * see http://bjoern.hoehrmann.de/utf-8/decoder/dfa/ for details.
+ */
 
 #define CJSONX_UTF8_ACCEPT 0
 #define CJSONX_UTF8_REJECT 1

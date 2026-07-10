@@ -50,8 +50,8 @@ static inline bool cjsonx_stage1_wasm(const char* json, size_t length, cjsonx_ta
                 uint32_t q_mask = wasm_i8x16_bitmask(q1) | (wasm_i8x16_bitmask(q2) << 16);
                 uint32_t b_mask = wasm_i8x16_bitmask(b1) | (wasm_i8x16_bitmask(b2) << 16);
 
-                // dev note: skipping control char checks inside strings during stage 1
-                // is consistent with avx2/neon and avoids register pressure here.
+                /* dev note: skipping control char checks inside strings during stage 1
+                 * is consistent with avx2/neon and avoids register pressure here. */
                 if (q_mask == 0 && b_mask == 0) {
                     i += 32;
                     continue;

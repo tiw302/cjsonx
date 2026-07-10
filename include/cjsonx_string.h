@@ -89,15 +89,15 @@ static cjsonx_always_inline bool cjsonx_parse_string_impl(cjsonx_doc_t* doc,
     for (; i + 32 <= len; i += 32) {
         __m256i chunk = _mm256_loadu_si256((const __m256i*)(str_start + i));
 
-        // check for non-ascii (highest bit set)
+
         if (CJSONX_UNLIKELY(!_mm256_testz_si256(chunk, _mm256_set1_epi8((char)0x80)))) {
             has_non_ascii = true;
         }
 
-        // check for escape character
+
         __m256i cmp_esc = _mm256_cmpeq_epi8(chunk, escape_char);
 
-        // check for control char (< 0x20)
+
         __m256i cmp_ctrl = _mm256_cmpeq_epi8(_mm256_subs_epu8(chunk, _mm256_set1_epi8(0x1F)),
                                              _mm256_setzero_si256());
 
@@ -105,7 +105,7 @@ static cjsonx_always_inline bool cjsonx_parse_string_impl(cjsonx_doc_t* doc,
         if (CJSONX_UNLIKELY(!_mm256_testz_si256(bad, bad))) {
             if (!_mm256_testz_si256(cmp_ctrl, cmp_ctrl)) has_control = true;
             has_escape = true;
-            break;  // found escape or control, break to handle it
+            break;
         }
     }
 #elif defined(__ARM_NEON)
@@ -114,18 +114,18 @@ static cjsonx_always_inline bool cjsonx_parse_string_impl(cjsonx_doc_t* doc,
     for (; i + 16 <= len; i += 16) {
         uint8x16_t chunk = vld1q_u8((const uint8_t*)(str_start + i));
 
-        // bytes >= 0x80 have bit 7 set, which makes them negative as signed int8 — clean trick
+        /* bytes >= 0x80 have bit 7 set, which makes them negative as signed int8 — clean trick */
         uint8x16_t non_ascii = vcltq_s8(vreinterpretq_s8_u8(chunk), vdupq_n_s8(0));
 
-        // check for escape character
+
         uint8x16_t cmp_esc = vceqq_u8(chunk, escape_char);
 
-        // check for control char (< 0x20)
+
         uint8x16_t cmp_ctrl = vcltq_u8(chunk, ctrl_limit);
 
         uint8x16_t bad = vorrq_u8(cmp_esc, cmp_ctrl);
 
-        // bitwise or across vector to check if any condition matched
+
         uint32x4_t bad_u32 = vreinterpretq_u32_u8(bad);
         uint32x4_t non_ascii_u32 = vreinterpretq_u32_u8(non_ascii);
 
@@ -145,7 +145,7 @@ static cjsonx_always_inline bool cjsonx_parse_string_impl(cjsonx_doc_t* doc,
     for (; i + 16 <= len; i += 16) {
         v128_t chunk = wasm_v128_load((const v128_t*)(str_start + i));
 
-        // check for non-ascii (signed < 0)
+
         v128_t non_ascii = wasm_i8x16_lt(chunk, zero);
 
         v128_t cmp_esc = wasm_i8x16_eq(chunk, escape_char);

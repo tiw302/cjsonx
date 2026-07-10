@@ -23,7 +23,7 @@ int main() {
 
     cjsonx_doc* doc = cjsonx_parse(json, strlen(json));
 
-    // rfc 6901 test cases
+
     cjsonx_val v0 = cjsonx_pointer_get(doc->root, "");
     if (cjsonx_get_type(v0) != CJSONX_OBJECT) {
         printf("FAIL: \"\" should return whole document\n");
@@ -60,7 +60,7 @@ int main() {
         return 1;
     }
 
-    // check rfc 6901 compliance: leading zero and signs must be rejected
+    /* check rfc 6901 compliance: leading zero and signs must be rejected */
     cjsonx_val v_invalid1 = cjsonx_pointer_get(doc->root, "/foo/01");
     if (v_invalid1.doc != NULL) {
         printf("FAIL: \"/foo/01\" should be invalid (leading zero)\n");

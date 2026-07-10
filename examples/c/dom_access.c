@@ -19,7 +19,7 @@ int main() {
         "  \"tags\": [\"C11\", \"JSON\", \"SIMD\"]\n"
         "}";
 
-    // parse the json string
+
     cjsonx_doc* doc = cjsonx_parse(json, strlen(json));
 
     if (!doc || !doc->is_valid) {
@@ -27,22 +27,22 @@ int main() {
         return 1;
     }
 
-    // get root object
+
     cjsonx_val root = doc->root;
 
-    // access string value
+
     cjsonx_val name = cjsonx_get(root, "name");
     if (cjsonx_get_type(name) == CJSONX_STRING) {
         printf("name: %.*s\n", (int)cjsonx_str_len(name), cjsonx_str(name));
     }
 
-    // access boolean value
+
     cjsonx_val fast = cjsonx_get(root, "fast");
     if (cjsonx_get_type(fast) == CJSONX_BOOL) {
         printf("fast: %s\n", cjsonx_bool(fast) ? "true" : "false");
     }
 
-    // access array elements
+
     cjsonx_val tags = cjsonx_get(root, "tags");
     if (cjsonx_get_type(tags) == CJSONX_ARRAY) {
         printf("tags:\n");
@@ -53,7 +53,7 @@ int main() {
         }
     }
 
-    // free the document memory
+
     cjsonx_doc_free(doc);
 
     return 0;

@@ -34,7 +34,7 @@ int main() {
     for (int i = 0; test_cases[i] != NULL; i++) {
         const char* s = test_cases[i];
 
-        // parse with our engine
+
         cjsonx_doc* doc = cjsonx_parse(s, strlen(s));
         if (!doc || !doc->is_valid) {
             printf("[FAIL] Failed to parse: %s\n", s);
@@ -45,20 +45,18 @@ int main() {
         double fast_val = doc->nodes[0].val.f64;
         cjsonx_doc_free(doc);
 
-        // parse with strtod
+
         double std_val = strtod(s, NULL);
 
-        // compare
-        // we use relative error or bitwise equality
+        /* we use relative error or bitwise equality */
         uint64_t fast_bits, std_bits;
         memcpy(&fast_bits, &fast_val, 8);
         memcpy(&std_bits, &std_val, 8);
 
         if (fast_bits != std_bits) {
-            // check if nan (should not happen here)
+            /* check if nan (should not happen here) */
             double diff = fabs(fast_val - std_val);
-            if (diff > 1e-10 * fabs(std_val)) {  // small tolerance since we didn't do full 192-bit
-                                                 // exact tie-breaking
+            if (diff > 1e-10 * fabs(std_val)) {  /* small tolerance since we didn't do full 192-bit exact tie-breaking */
                 printf("[FAIL] %s\n", s);
                 printf("  fast_float: %.20g (0x%016llx)\n", fast_val,
                        (unsigned long long)fast_bits);
