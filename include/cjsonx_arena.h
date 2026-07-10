@@ -1,6 +1,7 @@
-// updated 2026-06-16
+// updated 2026-07-09
 // spdx-license-identifier: mit
 // copyright (c) 2026 jirawat siripuk
+
 #ifndef CJSONX_ARENA_H
 #define CJSONX_ARENA_H
 
