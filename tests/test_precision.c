@@ -1,4 +1,5 @@
-// test_precision.c — precision and strict conformance edge cases tests.
+// test_precision.c - strict conformance tests for high-precision large numbers and fractions.
+
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
