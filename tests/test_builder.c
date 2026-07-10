@@ -1,4 +1,9 @@
-// test_builder.c — tests for dom builder and stringify api.
+/*
+ * test_builder.c - tests for dom builder and stringify api.
+ * dynamically constructs json objects/arrays from scratch and serializes
+ * them back to strings to verify memory stability and formatting.
+ */
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
