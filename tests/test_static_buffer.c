@@ -1,10 +1,10 @@
-// test_static_buffer.c — tests for cjsonx_parse_with_buffer (zero-alloc static mode).
-//
-// note: static buffer documents are read-only. the builder api (cjsonx_object_set,
-// cjsonx_array_push etc.) will return failure on static docs because they cannot
-// grow the internal nodes array. stage 2 pre-allocates tape.count+1 nodes in the
-// static buffer, which is always enough since cjsonx_next_token checks capacity for
-// every tape entry (including commas and closers that don't allocate a node).
+/*
+ * test_static_buffer.c - tests for cjsonx_parse_with_buffer (zero-alloc static mode).
+ *
+ * note: static buffer documents are read-only. the builder api will return
+ * failure on static docs because they cannot grow the internal nodes array.
+ * stage 2 pre-allocates enough capacity safely.
+ */
 #include <stdio.h>
 #include <string.h>
 
