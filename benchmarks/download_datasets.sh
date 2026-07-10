@@ -1,4 +1,9 @@
 #!/bin/bash
+# =========================================================================
+# file: download_datasets.sh
+# description: utility script to fetch standard json benchmarking datasets
+#              (twitter.json, canada.json, citm_catalog.json) from official repos.
+# =========================================================================
 set -e
 
 # get the directory of the script
@@ -7,12 +12,12 @@ mkdir -p "$DIR/datasets"
 cd "$DIR/datasets"
 
 echo "Downloading twitter.json..."
-curl -L -O https://raw.githubusercontent.com/simdjson/simdjson-data/master/jsonexamples/twitter.json
+curl -f -L -O https://raw.githubusercontent.com/simdjson/simdjson-data/master/jsonexamples/twitter.json
 
 echo "Downloading canada.json..."
-curl -L -O https://raw.githubusercontent.com/miloyip/nativejson-benchmark/master/data/canada.json
+curl -f -L -O https://raw.githubusercontent.com/miloyip/nativejson-benchmark/master/data/canada.json
 
 echo "Downloading citm_catalog.json..."
-curl -L -O https://raw.githubusercontent.com/simdjson/simdjson-data/master/jsonexamples/citm_catalog.json
+curl -f -L -O https://raw.githubusercontent.com/simdjson/simdjson-data/master/jsonexamples/citm_catalog.json
 
 echo "Done."
