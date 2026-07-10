@@ -6,7 +6,7 @@
 # =========================================================================
 
 cmake_minimum_required(VERSION 3.21)
-project(cjsonx VERSION 1.3.0 LANGUAGES C)
+project(cjsonx VERSION 1.4.0 LANGUAGES C)
 
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED ON)
@@ -55,6 +55,7 @@ add_library(cjsonx STATIC src/cjsonx.c)
 target_include_directories(cjsonx PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+    $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
 )
 
 endif()
@@ -77,4 +78,34 @@ option(CJSONX_BUILD_BENCHMARKS "Build cjsonx benchmarks" ON)
 if(CJSONX_BUILD_BENCHMARKS AND TARGET cjsonx)
     add_subdirectory(benchmarks)
 endif()
+
+# =========================================================================
+# installation (supports: sudo cmake --install build)
+# =========================================================================
+include(GNUInstallDirs)
+
+install(TARGETS cjsonx
+    EXPORT cjsonxTargets
+    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+)
+
+install(FILES 
+    ${CMAKE_CURRENT_SOURCE_DIR}/single_include/cjsonx.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/cjsonx.hpp
+    DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+)
+
+install(EXPORT cjsonxTargets
+    FILE cjsonxTargets.cmake
+    NAMESPACE cjsonx::
+    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/cjsonx
+)
+
+file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/cjsonxConfig.cmake "include(\"\${CMAKE_CURRENT_LIST_DIR}/cjsonxTargets.cmake\")\n")
+
+install(FILES ${CMAKE_CURRENT_BINARY_DIR}/cjsonxConfig.cmake
+    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/cjsonx
+)
 
