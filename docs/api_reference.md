@@ -369,6 +369,44 @@ Serializes the document into a JSON file at the specified path. Returns `true` o
 
 ---
 
+---
+
+## C++ Wrapper API (`cjsonx.hpp`)
+
+The `include/cjsonx.hpp` header provides a modern, zero-overhead C++ wrapper around the C API. It utilizes RAII for automatic memory management and overloads operators for a fluent API experience.
+
+### `cjsonx::Document`
+
+The RAII container for a parsed JSON document.
+
+- `Document cjsonx::parse(std::string_view json)`: Parses a JSON string.
+- `bool is_valid() const`: Returns `true` if parsing succeeded.
+- `std::string error_message() const`: Returns the parsing error description.
+- `Node root() const`: Returns the root node of the document.
+
+### `cjsonx::Node`
+
+A lightweight wrapper around `cjsonx_val_t`.
+
+- **Type Checking:** `is_null()`, `is_bool()`, `is_number()`, `is_string()`, `is_array()`, `is_object()`
+- **Value Extraction:** `as_bool()`, `as_double()`, `as_int()`, `as_string()` (returns `std::string_view`)
+- **DOM Access:**
+  - `Node operator[](std::string_view key) const`: Object key lookup. Throws if not an object.
+  - `Node operator[](size_t index) const`: Array index lookup. Throws if not an array.
+  - `Node pointer(std::string_view path) const`: RFC 6901 JSON Pointer lookup.
+- **Iteration (C++11 Range-based for loops):**
+  ```cpp
+  // Array iteration
+  for (cjsonx::Node item : node["array"]) { ... }
+  
+  // Object iteration
+  for (auto kv : node["object"]) { 
+      std::cout << kv.key() << ": " << kv.value().as_string(); 
+  }
+  ```
+
+---
+
 ## Limits & Warnings
 
 - **16MB Node Size Limit:** The 16-byte DOM node packs its type and length field into a single `uint32_t` (8 bits for type, 24 bits for length). This limits the maximum length of any single string or serialized container to `16,777,215` bytes. Inputs exceeding this limit will fail with `CJSONX_ERROR_TOO_LARGE` — no silent truncation occurs.
