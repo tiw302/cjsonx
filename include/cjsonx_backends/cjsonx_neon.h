@@ -1,6 +1,7 @@
-// updated 2026-06-18
+// updated 2026-07-09
 // spdx-license-identifier: mit
 // copyright (c) 2026 jirawat siripuk
+
 #ifndef CJSONX_NEON_H
 #define CJSONX_NEON_H
 
@@ -69,7 +70,7 @@ static inline bool cjsonx_stage1_neon(const char* json, size_t length, cjsonx_ta
                 if (q_mask == 0 && b_mask == 0) {
                     /*
                      * safe bulk string processing: no quotes or backslashes in this 32-byte block.
-                     * note: control chars (< 0x20) inside strings are NOT checked here —
+                     * note: control chars (< 0x20) inside strings are not checked here —
                      * the check is intentionally delegated to cjsonx_parse_string_impl in stage 2,
                      * which scans the string content explicitly. this matches the avx2 backend
                      * behavior.
