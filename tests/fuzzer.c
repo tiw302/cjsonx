@@ -1,4 +1,9 @@
-// fuzzer.c — libfuzzer harness with dom walk and stringify.
+/*
+ * fuzzer.c - advanced libfuzzer harness.
+ * parsing is followed by a full dom tree traversal and stringification
+ * to catch memory corruption or undefined behavior in downstream processing.
+ */
+
 #include <stddef.h>
 #include <stdint.h>
 
