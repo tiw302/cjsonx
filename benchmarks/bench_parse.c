@@ -1,3 +1,13 @@
+/*
+ * file: bench_parse.c
+ * description: isolated benchmarking tool for measuring cjsonx parsing throughput.
+ *              includes cpu cache warmup and dynamic iteration scaling for fairness.
+ * 
+ * how to compile (via cmake):
+ *   cmake -S .. -B ../build && cmake --build ../build
+ *   ../build/bench_parse datasets/twitter.json
+ */
+
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
