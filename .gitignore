@@ -36,6 +36,9 @@ perf.data.old
 test_amalgamated
 test_dom
 a.out
+c_test
+test_cpp
+**/target/
 tests/run_stage1
 tests/run_stage1_avx2
 tests/run_tests
@@ -58,11 +61,13 @@ benchmarks/bench_compare
 benchmarks/bench_gotos
 benchmarks/bench_parse
 benchmarks/third_party/
-examples/dom_access
-examples/embedded_noalloc
-examples/error_handling
-examples/float128_precision
-examples/simple_parse
+examples/c/builder_api
+examples/c/dom_access
+examples/c/embedded_noalloc
+examples/c/error_handling
+examples/c/float128_precision
+examples/c/simple_parse
+examples/cpp/cpp_wrapper_example
 
 # submodules / test suites
 tests/JSONTestSuite
@@ -99,7 +104,7 @@ compile_commands.json
 _deps/
 Testing/
 
-# IDE / editor configs
+# ide / editor configs
 .vscode/
 .idea/
 .vs/
@@ -140,17 +145,15 @@ dist/
 js/cjsonx_wasm.js
 js/cjsonx_wasm.wasm
 
-# Node.js
+# node.js
 node_modules/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# Python testing & coverage
+# python testing & coverage
 .pytest_cache/
 .coverage
 htmlcov/
 .mypy_cache/
-
-*.egg-info/
