@@ -1,8 +1,23 @@
+// updated 2026-07-09
+// spdx-license-identifier: mit
+// copyright (c) 2026 jirawat siripuk
+
+/*
+ *       /\_/\
+ *      ( -.- )  <-- "parsing json at 3 gb/s. developer sanity: 0 bytes."
+ *     ==  y  ==
+ *      (  .  )
+ *      (  .  )
+ */
+
+#ifndef CJSONX_H
+#define CJSONX_H
+
 /*
  * cjsonx.h -- high-performance json parser for c11.
  * project url: https://github.com/tiw302/cjsonx
  * do this:
- * #define CJSONX_IMPLEMENTATION
+ * #define cjsonx_implementation
  * before you include this file in *one* c or c++ file to create the
  * implementation.
  * technical background:
@@ -19,7 +34,7 @@
  * use the builder api for large arrays.
  * conformance:
  * ------------
- * keep JSONTestSuite passing. don't break it.
+ * keep jsontestsuite passing. don't break it.
  * simd optimization:
  * ------------------
  * we've got backends for pretty much everything:
@@ -27,31 +42,36 @@
  * - neon:     arm64 (apple silicon, graviton, android)
  * - wasm:     webassembly with simd128
  * - scalar:   fallback for everything else (risc-v, ppc, etc.)
- * license:
- * --------
- * mit license
- * copyright (c) 2026 jirawat siripuk
  */
 
 #if defined(__linux__) && !defined(_GNU_SOURCE)
 #define _GNU_SOURCE 1  // expose posix locale functions in standard headers
 #endif
 
-#ifndef CJSONX_H
-#define CJSONX_H
-
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <string.h>
 
-// version macros
+// ██    ██ ███████ ██████  ███████ ██  ██████  ███    ██
+// ██    ██ ██      ██   ██ ██      ██ ██    ██ ████   ██
+// ██    ██ █████   ██████  ███████ ██ ██    ██ ██ ██  ██
+//  ██  ██  ██      ██   ██      ██ ██ ██    ██ ██  ██ ██
+//   ████   ███████ ██   ██ ███████ ██  ██████  ██   ████
+//
+// >>version macros
 #define CJSONX_VERSION_MAJOR 1
 #define CJSONX_VERSION_MINOR 3
 #define CJSONX_VERSION_PATCH 0
 #define CJSONX_VERSION_STRING "1.3.0"
 
-// internal headers (order matters: config → error → dom → tape → arena)
+// ██   ██ ███████ ██████   █████  ██████  ███████ ██████  ███████
+// ██   ██ ██      ██   ██ ██   ██ ██   ██ ██      ██   ██ ██
+// ███████ █████   ██████  ███████ ██   ██ █████   ██████  ███████
+// ██   ██ ██      ██   ██ ██   ██ ██   ██ ██      ██   ██      ██
+// ██   ██ ███████ ██   ██ ██   ██ ██████  ███████ ██   ██ ███████
+//
+// >>internal headers (order matters: config → error → dom → tape → arena)
 #include "cjsonx_arena.h"
 #include "cjsonx_config.h"
 #include "cjsonx_dom.h"
@@ -62,11 +82,23 @@
 extern "C" {
 #endif
 
-// stage 1: scan json to build structural token tape
+//  ██████  ████████  █████   ██████  ███████     ██
+// ██          ██    ██   ██ ██       ██        ████
+// ███████     ██    ███████ ██   ███ █████       ██
+//      ██     ██    ██   ██ ██    ██ ██          ██
+// ███████     ██    ██   ██  ██████  ███████     ██
+//
+// >>stage 1: scan json to build structural token tape
 // dev note: keeping this decoupled from stage 2 makes testing and benchmarking incredibly easy.
 CJSONX_API bool cjsonx_stage1_build_tape(const char* json, size_t length, cjsonx_tape_t* tape);
 
-// main parser entry point
+// ███    ███  █████  ██ ███    ██
+// ████  ████ ██   ██ ██ ████   ██
+// ██ ████ ██ ███████ ██ ██ ██  ██
+// ██  ██  ██ ██   ██ ██ ██  ██ ██
+// ██      ██ ██   ██ ██ ██   ████
+//
+// >>main parser entry point
 // warning: the input json buffer must outlive the returned document (zero-copy string references).
 CJSONX_API CJSONX_NODISCARD cjsonx_doc_t* cjsonx_parse(const char* json, size_t length);
 CJSONX_API CJSONX_NODISCARD cjsonx_doc_t* cjsonx_parse_ex(const char* json, size_t length,
