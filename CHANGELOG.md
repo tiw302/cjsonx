@@ -9,6 +9,26 @@ versioning follows [semantic versioning](https://semver.org/).
 
 ## [unreleased]
 
+---
+
+## [v1.4.0] — 2026-07-10
+
+### Added
+- **C++ Wrapper Enhancements**: Upgraded `cjsonx.hpp` to support modern C++11 Range-based Iterators for Arrays and Objects (`for (auto kv : obj)`).
+- **C++ JSON Pointers**: Added `Node::pointer()` method for deep DOM querying using RFC 6901 in C++.
+- **C++ Example**: Added `examples/cpp/iteration_and_pointers.cpp` to demonstrate the new RAII and Iterator features.
+
+### Documentation
+- **Project Structure**: Added comprehensive directory tree diagrams to both `README.md` and MkDocs to improve developer onboarding.
+- **Docs Synchronization**: Synced `docs/index.md` with GitHub's `README.md`, porting over the Rust/Cargo guides, community links, and testing instructions.
+- **AI Methodology**: Rewrote and upgraded the "Development Methodology & AI Assistance" section to highlight cross-platform CI, Eisel-Lemire stress-tests, and zero-cost language bindings.
+- **UI/UX Cleanup**: Wrapped all language-specific examples in `README.md` into clean, collapsible `<details>` blocks.
+- **C++ Docs**: Added the new `cjsonx.hpp` wrapper API documentation into `docs/api_reference.md`.
+
+---
+
+## [v1.3.0] — 2026-07-10
+
 ### added
 - python bindings (`pip install cjsonx`) with full dom access via `[]`, `.get()`, and `.pointer()`
 - javascript / webassembly bindings (`npm install @tiw302/cjsonx`) with `getRoot()`, `.get()`, `.getIndex()`, `.toJS()`, and `.pointer()`
@@ -33,7 +53,47 @@ versioning follows [semantic versioning](https://semver.org/).
 
 ---
 
-## [v1.1.1] — 2026-06-xx
+## [v1.2.4] — 2026-07-09
+
+### fixed
+- **python**: restore `setup.py` and update package versions
+
+---
+
+## [v1.2.3] — 2026-07-09
+
+### changed
+- **float**: optimize Eisel-Lemire bounds and locale initialization
+- **ci**: skip 32-bit wheel builds, add verbosity and timeout
+
+### fixed
+- **msvc**: add `CJSONX_CLZLL` to `config.h` to fix `LNK2019 __builtin_clzll` error
+
+---
+
+## [v1.2.2] — 2026-07-09
+
+### changed
+- minor chores and style updates for test comments
+
+---
+
+## [v1.2.1] — 2026-07-08
+
+### fixed
+- **stage2**: resolve MSVC `C2374` val redefinition
+- **macos**: fix `strtod_l` undeclared error
+
+---
+
+## [v1.2.0] — 2026-07-08
+
+### changed
+- _Note: Major features like Python/JS bindings, `cjsonx_parse_copy`, and size limit enforcements were introduced during the 1.2.x cycle but are fully documented as part of the v1.3.0 release above._
+
+---
+
+## [v1.1.1] — 2026-06-23
 
 ### fixed
 - **msvc lnk2019** linker error when building on windows — missing symbol resolved
@@ -41,7 +101,7 @@ versioning follows [semantic versioning](https://semver.org/).
 
 ---
 
-## [v1.1.0] — 2026-05-xx
+## [v1.1.0] — 2026-06-23
 
 ### added
 - asan / ubsan ci workflow (`sanitizers.yml`) — runs on every push and pull request
@@ -61,7 +121,7 @@ versioning follows [semantic versioning](https://semver.org/).
 
 ---
 
-## [v1.0.3] — 2026-05-xx
+## [v1.0.3] — 2026-06-18
 
 ### added
 - `test_static_buffer` — conformance tests for zero-allocation `cjsonx_parse_with_buffer` mode
@@ -75,7 +135,7 @@ versioning follows [semantic versioning](https://semver.org/).
 
 ---
 
-## [v1.0.2] — 2026-05-xx
+## [v1.0.2] — 2026-06-17
 
 ### added
 - `cjsonx_get_len` — length-based key lookup to avoid requiring null-terminated key strings
@@ -87,7 +147,7 @@ versioning follows [semantic versioning](https://semver.org/).
 
 ---
 
-## [v1.0.1] — 2026-05-xx
+## [v1.0.1] — 2026-06-16
 
 ### fixed
 - **stage 2 node array overflow** — parsing deeply nested or very large documents no longer writes past the initial node capacity; the array now grows dynamically via `realloc`
@@ -95,7 +155,7 @@ versioning follows [semantic versioning](https://semver.org/).
 
 ---
 
-## [v1.0.0] — 2026-03-xx
+## [v1.0.0] — 2026-06-16
 
 ### added
 - initial public release
@@ -111,7 +171,14 @@ versioning follows [semantic versioning](https://semver.org/).
 - jsontestsuite conformance: 95 valid cases pass, 188 invalid cases correctly rejected
 - mit license
 
-[unreleased]: https://github.com/tiw302/cjsonx/compare/v1.1.1...HEAD
+[unreleased]: https://github.com/tiw302/cjsonx/compare/v1.4.0...HEAD
+[v1.4.0]: https://github.com/tiw302/cjsonx/compare/v1.3.0...v1.4.0
+[v1.3.0]: https://github.com/tiw302/cjsonx/compare/v1.2.4...v1.3.0
+[v1.2.4]: https://github.com/tiw302/cjsonx/compare/v1.2.3...v1.2.4
+[v1.2.3]: https://github.com/tiw302/cjsonx/compare/v1.2.2...v1.2.3
+[v1.2.2]: https://github.com/tiw302/cjsonx/compare/v1.2.1...v1.2.2
+[v1.2.1]: https://github.com/tiw302/cjsonx/compare/v1.2.0...v1.2.1
+[v1.2.0]: https://github.com/tiw302/cjsonx/compare/v1.1.1...v1.2.0
 [v1.1.1]: https://github.com/tiw302/cjsonx/compare/v1.1.0...v1.1.1
 [v1.1.0]: https://github.com/tiw302/cjsonx/compare/v1.0.3...v1.1.0
 [v1.0.3]: https://github.com/tiw302/cjsonx/compare/v1.0.2...v1.0.3
