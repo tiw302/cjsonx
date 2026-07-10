@@ -1,4 +1,5 @@
-// test_builder_remove.c — tests for object/array element removal.
+// test_builder_remove.c - tests for object/array element removal and memory shifting.
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
