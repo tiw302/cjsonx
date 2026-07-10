@@ -19,6 +19,7 @@
 [![Dependencies](https://img.shields.io/badge/Dependencies-None-blueviolet.svg)](#introduction)
 [![npm](https://img.shields.io/npm/v/%40tiw302%2Fcjsonx.svg?label=npm)](https://www.npmjs.com/package/@tiw302/cjsonx)
 [![PyPI](https://img.shields.io/pypi/v/cjsonx.svg)](https://pypi.org/project/cjsonx/)
+[![Crates.io](https://img.shields.io/crates/v/cjsonx.svg)](https://crates.io/crates/cjsonx)
 
 **[Read the Official Documentation: docs/index.md](https://tiw302.github.io/cjsonx/)**<br>
 **[Try the Live WebAssembly Demo: https://tiw302.github.io/cjsonx/demo/](https://tiw302.github.io/cjsonx/demo/)**
@@ -41,6 +42,7 @@
   - [Why cjsonx?](#why-cjsonx)
   - [Trade-offs & Alternatives](#trade-offs--alternatives-when-not-to-use-cjsonx)
   - [Design Philosophy](#design-philosophy)
+- [Project Structure](#project-structure)
 - [Limits & Guarantees](#limits--guarantees)
 - [Requirements](#requirements)
   - [Verified Toolchains](#verified-toolchains)
@@ -49,7 +51,8 @@
   - [CMake (System Install)](#cmake-system-install)
   - [Python / PyPI](#python--pypi)
   - [Node.js / npm](#nodejs--npm)
-  - [Developer Build Flags](#developer-build-flags)
+  - [Rust / Cargo](#rust--cargo)
+  - [Running Tests & Build Flags](#running-tests--build-flags)
 - [Configuration Macros](#configuration-macros)
 - [API Reference](#api-reference)
   - [Core Parsing](#core-parsing)
@@ -65,6 +68,7 @@
   - [Quick Start: Zero-Allocation Mode](#quick-start-zero-allocation-mode-embeddedrtos)
 - [Benchmark Results](#benchmark-results)
 - [Development Methodology & AI Assistance](#development-methodology--ai-assistance)
+- [Community & Guidelines](#community--guidelines)
 - [Author's Note](#authors-note)
 - [License](#license)
 
@@ -122,6 +126,28 @@ The library is built around three strict constraints:
 **Zero OS-Dependencies.** The library is built entirely on standard C11. It does not rely on OS-specific file I/O or POSIX headers. It compiles seamlessly to WebAssembly, embedded ARM targets, and standard desktop operating systems.
 
 **True Zero-Allocation Mode.** For strict embedded constraints, the `cjsonx_parse_with_buffer()` API completely bypasses `malloc` by parsing the JSON entirely into a user-provided fixed-size stack buffer or RTOS memory pool.
+
+---
+
+## Project Structure
+
+The repository is modularly organized to separate the C11 core engine from language bindings, tests, and benchmarks.
+
+```text
+cjsonx/
+├── src/                 # Core C11 source files (Parser, Builder, Stringifier)
+├── include/             # Modular C headers and C++ RAII wrapper (cjsonx.hpp)
+├── single_include/      # Amalgamated single-header drop-in (cjsonx.h)
+├── python/              # Python bindings powered by pybind11
+├── js/                  # JavaScript & WebAssembly bindings
+├── rust/                # Safe Rust FFI bindings and Cargo configuration
+├── tests/               # Automated unit tests and JSONTestSuite conformance
+├── benchmarks/          # Performance benchmarks vs yyjson and cJSON
+├── examples/            # Runnable tutorials for C, C++, Python, and JS
+├── docs/                # Markdown documentation for MkDocs website
+├── scripts/             # Internal CI/CD and utility scripts
+└── CMakeLists.txt       # Unified cross-platform build system
+```
 
 ---
 
@@ -237,17 +263,43 @@ if (ok) {
 }
 ```
 
-### Developer Build Flags
+### Rust / Cargo
 
-The CMake build exposes optional flags for contributors and CI pipelines:
+Install the safe Rust bindings via Cargo. The bindings use FFI to communicate with the C11 core at zero-cost:
 
 ```bash
-# Enable AddressSanitizer + UndefinedBehaviorSanitizer
+cargo add cjsonx
+```
+
+Then parse and query JSON safely in Rust:
+
+```rust
+use cjsonx::Document;
+
+fn main() {
+    let doc = Document::parse(r#"{"name": "alice", "scores": [10, 20, 30]}"#).unwrap();
+    let root = doc.root();
+
+    println!("{}", root.get("name").unwrap().as_str().unwrap());
+    println!("{}", root.get("scores").unwrap().at(0).unwrap().as_f64().unwrap());
+}
+```
+
+### Running Tests & Build Flags
+
+The project integrates tightly with CMake's `ctest` infrastructure. For contributors, we highly recommend running the test suite with memory sanitizers enabled to ensure zero memory leaks and catch undefined behavior.
+
+```bash
+# 1. Build tests with AddressSanitizer (ASan) and UndefinedBehaviorSanitizer (UBSan)
 cmake -B build_san -DCJSONX_ENABLE_SANITIZERS=ON
 cmake --build build_san
-ctest --test-dir build_san
 
-# Enable gcov code coverage instrumentation
+# 2. Run the automated test suite
+ctest --test-dir build_san -V --output-on-failure
+```
+
+If you wish to generate code coverage reports (`gcov`), use:
+```bash
 cmake -B build_cov -DCJSONX_ENABLE_COVERAGE=ON
 cmake --build build_cov
 ctest --test-dir build_cov
@@ -374,13 +426,47 @@ Check out the `docs/` directory for deep-dives into the architecture and API:
 
 ## Examples
 
-Runnable examples are provided in the `examples/` directory:
+Runnable examples demonstrating advanced error handling, DOM iteration, JSON Pointers, and file I/O are provided in their respective directories:
 
-- **[simple_parse.c](file:///home/tiw/Public/cjsonx/examples/simple_parse.c)** — Demonstrates standard parsing, key retrieval, array iteration, and type checking using the iterator API.
-- **[dom_access.c](file:///home/tiw/Public/cjsonx/examples/dom_access.c)** — Demonstrates basic JSON object parsing and index-based array access.
-- **[embedded_noalloc.c](file:///home/tiw/Public/cjsonx/examples/embedded_noalloc.c)** — Demonstrates zero-allocation memory parsing using a pre-allocated static stack buffer (true zero `malloc`).
-- **[error_handling.c](file:///home/tiw/Public/cjsonx/examples/error_handling.c)** — Demonstrates detailed parse error diagnostics, showing how to extract byte offset and display a code pointer to the error source.
-- **[float128_precision.c](file:///home/tiw/Public/cjsonx/examples/float128_precision.c)** — Demonstrates parsing extreme, high-precision float and massive integer formats safely.
+<details open>
+<summary><b>C Examples (examples/c/)</b></summary>
+
+- **[simple_parse.c](examples/c/simple_parse.c)** — Demonstrates standard parsing, key retrieval, array iteration, and type checking using the iterator API.
+- **[dom_access.c](examples/c/dom_access.c)** — Demonstrates basic JSON object parsing and index-based array access.
+- **[embedded_noalloc.c](examples/c/embedded_noalloc.c)** — Demonstrates zero-allocation memory parsing using a pre-allocated static stack buffer.
+- **[error_handling.c](examples/c/error_handling.c)** — Demonstrates detailed parse error diagnostics.
+- **[float128_precision.c](examples/c/float128_precision.c)** — Demonstrates parsing extreme, high-precision float and massive integer formats.
+</details>
+
+<details>
+<summary><b>C++ Examples (examples/cpp/)</b></summary>
+
+- **[cpp_wrapper_example.cpp](examples/cpp/cpp_wrapper_example.cpp)** — Demonstrates RAII memory management, fluent API access, and automatic type conversion using the native C++ wrapper (`cjsonx.hpp`).
+</details>
+
+<details>
+<summary><b>Python Examples (examples/python/)</b></summary>
+
+- **[error_handling.py](examples/python/error_handling.py)** — Demonstrates catching exceptions and locating the exact byte offset of syntax errors.
+- **[file_io.py](examples/python/file_io.py)** — Demonstrates parsing a JSON file directly via the C++ backend.
+- **[iteration.py](examples/python/iteration.py)** — Demonstrates Pythonic dictionary-style iteration over object nodes.
+- **[json_pointer.py](examples/python/json_pointer.py)** — Demonstrates querying parsed documents using RFC 6901 JSON pointers.
+</details>
+
+<details>
+<summary><b>Node.js / WASM Examples (examples/js/)</b></summary>
+
+- **[error_handling.js](examples/js/error_handling.js)** — Demonstrates robust error detection and reporting offsets in JavaScript.
+- **[to_js_object.js](examples/js/to_js_object.js)** — Demonstrates converting flat C-memory DOM trees back into native V8 JavaScript objects.
+- **[json_pointer.js](examples/js/json_pointer.js)** — Demonstrates querying parsed documents using RFC 6901 JSON pointers.
+</details>
+
+<details>
+<summary><b>Rust Examples (rust/examples/)</b></summary>
+
+- **[rust_example.rs](rust/examples/rust_example.rs)** — Demonstrates safe parsing, type-checking, and array iteration using the Rust FFI bindings.
+- **[error_handling.rs](rust/examples/error_handling.rs)** — Demonstrates idiomatic Rust `Result` matching for graceful error handling without panicking.
+</details>
 
 ### Quick Start: Basic Parsing & Iteration
 
@@ -486,27 +572,27 @@ tiw@tiw-CachyOS ~/Public/cjsonx (master)
 
 Dataset: benchmarks/datasets/citm_catalog.json (1.65 MB)
 ========================================================================
-Library    | Parse (MB/s)    | Stringify (MB/s) | Peak Mem (MB)  
+Library    | Parse (MB/s)    | Stringify (MB/s) | Peak Mem (MB)
 -----------|-----------------|------------------|-----------------------
-cjsonx     | 1156.58         | 1990.31         | 2.13           
-yyjson     | 736.33          | 6539.28         | 3.29           
-cJSON      | 267.55          | 755.45          | 2.57           
+cjsonx     | 1156.58         | 1990.31         | 2.13
+yyjson     | 736.33          | 6539.28         | 3.29
+cJSON      | 267.55          | 755.45          | 2.57
 ========================================================================
 Dataset: benchmarks/datasets/twitter.json (0.60 MB)
 ========================================================================
-Library    | Parse (MB/s)    | Stringify (MB/s) | Peak Mem (MB)  
+Library    | Parse (MB/s)    | Stringify (MB/s) | Peak Mem (MB)
 -----------|-----------------|------------------|-----------------------
-cjsonx     | 611.63          | 1546.55         | 0.92           
-yyjson     | 756.00          | 3922.39         | 1.20           
-cJSON      | 283.91          | 414.75          | 1.23           
+cjsonx     | 611.63          | 1546.55         | 0.92
+yyjson     | 756.00          | 3922.39         | 1.20
+cJSON      | 283.91          | 414.75          | 1.23
 ========================================================================
 Dataset: benchmarks/datasets/canada.json (2.15 MB)
 ========================================================================
-Library    | Parse (MB/s)    | Stringify (MB/s) | Peak Mem (MB)  
+Library    | Parse (MB/s)    | Stringify (MB/s) | Peak Mem (MB)
 -----------|-----------------|------------------|-----------------------
-cjsonx     | 303.56          | 272.62          | 4.76           
-yyjson     | 754.31          | 606.38          | 7.87           
-cJSON      | 71.25           | 24.91           | 10.20          
+cjsonx     | 303.56          | 272.62          | 4.76
+yyjson     | 754.31          | 606.38          | 7.87
+cJSON      | 71.25           | 24.91           | 10.20
 ========================================================================
 
 tiw@tiw-CachyOS ~/Public/cjsonx (master)
@@ -521,17 +607,27 @@ tiw@tiw-CachyOS ~/Public/cjsonx (master)
 
 ---
 
+## Community & Guidelines
+
+- **[CHANGELOG.md](CHANGELOG.md):** Track all new features, bug fixes, and version releases.
+- **[CONTRIBUTING.md](CONTRIBUTING.md):** Learn how to build, test, and contribute to the project.
+- **[CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md):** Our community standards and expectations.
+- **[SECURITY.md](SECURITY.md):** Information on supported versions and how to report vulnerabilities.
+
+---
+
 ## Development Methodology & AI Assistance
 
-Building a memory-safe, SIMD-accelerated C parser from scratch involves handling incredibly complex edge cases—from vectorized bit-masking to IEEE 754 catastrophic cancellation bounds.
+Building a memory-safe, SIMD-accelerated C parser from scratch involves handling incredibly complex edge cases — from vectorized bit-masking and memory boundary checks, to IEEE 754 catastrophic cancellation bounds.
 
-To achieve this level of stability and performance within a short timeframe, this project was architected and rigorously verified in collaboration with **Advanced Agentic AI**. AI was specifically utilized to:
+To achieve this level of stability and performance, this project was architected and rigorously verified in collaboration with **Advanced Agentic AI**. AI was specifically utilized to:
 
 - Stress-test the Eisel-Lemire numerical engine against extreme floating-point edge cases and LibFuzzer.
-- Assist in planning the memory layout and cache-locality of the 16-byte arena DOM.
-- Automate the generation of robust cross-platform CI/CD pipelines (Linux, macOS, Windows, WASM, ClusterFuzzLite).
+- Assist in designing the memory layout and cache-locality of the 16-byte flat arena DOM.
+- Architect safe, zero-cost language bindings and object-oriented wrappers for Python, Node.js, Rust, and C++.
+- Automate the generation of robust cross-platform CI/CD pipelines (Linux, macOS, Windows, WASM, ClusterFuzzLite) including memory sanitizers and static analysis.
 
-However, **human agency remains at the core of this project**. Every single line of code generated or suggested was manually inspected, audited, and strictly verified. The core architecture, algorithms, and memory design were meticulously human-planned. This hybrid approach—combining human architectural vision with AI-driven debugging and verification—allowed us to push the boundaries of performance and reliability in a modern C library without compromising security or code ownership.
+However, **human agency remains at the core of this project**. Every single line of code generated or suggested was manually inspected, audited, and strictly verified. The core architecture, algorithms, and memory design were meticulously human-planned. This hybrid approach — combining human architectural vision with AI-driven debugging and verification — allowed this project to reach a level of engineering quality well beyond what a solo developer could achieve alone.
 
 ---
 
