@@ -1,6 +1,7 @@
-// updated 2026-06-23
+// updated 2026-07-09
 // spdx-license-identifier: mit
 // copyright (c) 2026 jirawat siripuk
+
 #ifndef CJSONX_FASTFLOAT_H
 #define CJSONX_FASTFLOAT_H
 
@@ -19,7 +20,7 @@
 
 #include "cjsonx_eisel_lemire.h"
 
-// CJSONX_CLZLL is defined in cjsonx_config.h (included via cjsonx_stage2.h chain)
+// cjsonx_clzll is defined in cjsonx_config.h (included via cjsonx_stage2.h chain)
 
 #ifdef __cplusplus
 extern "C" {
@@ -192,7 +193,7 @@ static cjsonx_always_inline bool cjsonx_compute_float(uint64_t mantissa, int exp
  *    are discarded but increment the exponent to maintain scale.
  * 3. fractional part: processes digits after the decimal point, decrementing the
  *    exponent for each digit to shift the decimal point.
- * 4. exponent suffix (e/E): parses the scientific notation suffix and adjusts
+ * 4. exponent suffix (e/e): parses the scientific notation suffix and adjusts
  *    the exponent value accordingly.
  *
  * dev note: when digits reach 19, the mantissa is already at maximum uint64 precision.
