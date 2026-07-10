@@ -66,17 +66,16 @@ echo Configuring examples build...
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
 if %errorlevel% neq 0 exit /b %errorlevel%
 echo Building examples...
-cmake --build build --target example_dom_access example_float128_precision example_error_handling example_simple_parse example_embedded_noalloc example_builder_api --parallel --config Release
+cmake --build build --parallel --config Release
 if %errorlevel% neq 0 exit /b %errorlevel%
 echo.
 echo ====================================================================================
 echo  build complete! to run examples:
-echo   * .\build\Release\example_dom_access.exe
-echo   * .\build\Release\example_float128_precision.exe
-echo   * .\build\Release\example_error_handling.exe
-echo   * .\build\Release\example_simple_parse.exe
-echo   * .\build\Release\example_embedded_noalloc.exe
-echo   * .\build\Release\example_builder_api.exe
+echo   * .\build\Release\example_c_dom_access.exe
+echo   * .\build\Release\example_c_simple_parse.exe
+echo   * .\build\Release\example_cpp_cpp_wrapper_example.exe
+echo   * .\build\Release\example_cpp_iteration_and_pointers.exe
+echo   * (and others in .\build\Release\)
 echo ====================================================================================
 echo.
 goto end
