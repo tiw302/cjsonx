@@ -17,6 +17,13 @@ versioning follows [semantic versioning](https://semver.org/).
 - **C++ Wrapper Enhancements**: Upgraded `cjsonx.hpp` to support modern C++11 Range-based Iterators for Arrays and Objects (`for (auto kv : obj)`).
 - **C++ JSON Pointers**: Added `Node::pointer()` method for deep DOM querying using RFC 6901 in C++.
 - **C++ Example**: Added `examples/cpp/iteration_and_pointers.cpp` to demonstrate the new RAII and Iterator features.
+- **System Installation**: Added missing `install()` targets to `CMakeLists.txt` to support `sudo cmake --install build` and `find_package(cjsonx)` integration.
+
+### Fixed
+- **Broken Example Builds**: Fixed `examples/CMakeLists.txt`, `build.sh`, and `build.bat` which were failing to locate the `.c` and `.cpp` example files after the recent directory restructuring.
+
+### Changed
+- **Benchmark Scripts**: Improved safety of benchmark download scripts by adding `set -e` and `curl -f`, and added professional header comments to all `.c` benchmark files.
 
 ### Documentation
 - **Project Structure**: Added comprehensive directory tree diagrams to both `README.md` and MkDocs to improve developer onboarding.
