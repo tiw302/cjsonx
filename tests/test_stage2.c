@@ -1,5 +1,5 @@
-// test_stage2.c — visual test for stage 2 dom parser.
-// parses json strings into a dom tree and prints field types for inspection.
+// test_stage2.c - unit test for stage 2 (dom tree building and string parsing).
+// ensures tape elements are converted into a navigable ast structure.
 
 #include <stdio.h>
 #include <string.h>
