@@ -1,6 +1,7 @@
-// updated 2026-07-07
+// updated 2026-07-09
 // spdx-license-identifier: mit
 // copyright (c) 2026 jirawat siripuk
+
 #ifndef CJSONX_CONFIG_H
 #define CJSONX_CONFIG_H
 
@@ -44,9 +45,9 @@
 #endif
 
 /*
- * msvc compat: wrap __builtin_clzll behind CJSONX_CLZLL.
- * _BitScanReverse64 is available on MSVC x64 only (not x86/win32).
- * all 32-bit targets are excluded from the build via CIBW_SKIP in CI.
+ * msvc compat: wrap __builtin_clzll behind cjsonx_clzll.
+ * _bitscanreverse64 is available on msvc x64 only (not x86/win32).
+ * all 32-bit targets are excluded from the build via cibw_skip in ci.
  */
 #if defined(_MSC_VER) && !defined(__clang__)
 #include <intrin.h>
