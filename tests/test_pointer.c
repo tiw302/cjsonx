@@ -1,4 +1,5 @@
-// test_pointer.c — rfc 6901 json pointer tests.
+// test_pointer.c - rfc 6901 json pointer evaluation tests.
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
