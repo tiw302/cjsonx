@@ -1,5 +1,5 @@
-// test_stage1.c — visual test for stage 1 structural token indexing.
-// prints the tape (byte-offsets + characters) for manual inspection.
+// test_stage1.c - unit test for stage 1 (simd structural token indexing).
+// verifies that quotes, brackets, and primitives are identified correctly.
 
 #include <stdio.h>
 #include <string.h>
