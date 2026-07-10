@@ -1,3 +1,5 @@
+// test_control_char.c - verifies correct handling and rejection of unescaped control characters.
+
 #include <stdio.h>
 #include <string.h>
 
