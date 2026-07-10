@@ -1,4 +1,6 @@
-// test_conformance.c — json test suite conformance runner.
+// test_conformance.c - json test suite conformance runner.
+// executes standard rfc conformance edge cases to prevent regressions.
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
