@@ -1,3 +1,9 @@
+/*
+ * test_helpers.h - shared utility header for the c test suite.
+ * provides common helper functions (like reading files into memory)
+ * to keep test binaries dry and reduce boilerplate.
+ */
+
 #ifndef TEST_HELPERS_H
 #define TEST_HELPERS_H
 
