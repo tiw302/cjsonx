@@ -2,6 +2,10 @@
 # examples/CMakeLists.txt
 # =========================================================================
 
+enable_language(CXX)
+set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
 set(C_EXAMPLES 
     dom_access
     float128_precision
