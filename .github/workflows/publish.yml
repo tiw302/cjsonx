@@ -38,7 +38,7 @@ jobs:
           pipx run build --sdist
           mv dist/*.tar.gz ./wheelhouse/
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: artifact-${{ matrix.os }}
           path: ./wheelhouse/*
