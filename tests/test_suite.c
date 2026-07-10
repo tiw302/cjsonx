@@ -1,4 +1,5 @@
-// test_suite.c — single-file parse harness for json test suite.
+// test_suite.c - single-file parse harness for json test suite.
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
