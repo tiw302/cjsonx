@@ -23,7 +23,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Build wheels
-        uses: pypa/cibuildwheel@v2.22.0
+        uses: pypa/cibuildwheel@v4.1.0
         env:
           CIBW_ARCHS_MACOS: x86_64 arm64
           # skip: 32-bit targets (win32, i686) — __int128 and 64-bit intrinsics
